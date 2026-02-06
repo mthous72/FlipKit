@@ -100,6 +100,7 @@ namespace CardLister
                 services.AddTransient<SettingsViewModel>();
                 services.AddTransient<SetupWizardViewModel>();
                 services.AddTransient<RepriceViewModel>();
+                services.AddTransient<ChecklistManagerViewModel>();
 
                 Services = services.BuildServiceProvider();
 

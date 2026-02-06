@@ -57,5 +57,51 @@ namespace CardLister.Services
 
             return result?.Path.LocalPath;
         }
+
+        public async Task<string?> OpenFileAsync(string title, string[] extensions)
+        {
+            var sp = GetStorageProvider();
+            if (sp == null) return null;
+
+            var patterns = extensions.Select(e => $"*.{e}").ToArray();
+            var result = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Supported Files")
+                    {
+                        Patterns = patterns
+                    }
+                }
+            });
+
+            return result.FirstOrDefault()?.Path.LocalPath;
+        }
+
+        public async Task<string?> SaveFileAsync(string title, string defaultFileName, string[] extensions)
+        {
+            var sp = GetStorageProvider();
+            if (sp == null) return null;
+
+            var ext = extensions.FirstOrDefault() ?? "json";
+            var patterns = extensions.Select(e => $"*.{e}").ToArray();
+            var result = await sp.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = title,
+                DefaultExtension = ext,
+                SuggestedFileName = defaultFileName,
+                FileTypeChoices = new[]
+                {
+                    new FilePickerFileType("Supported Files")
+                    {
+                        Patterns = patterns
+                    }
+                }
+            });
+
+            return result?.Path.LocalPath;
+        }
     }
 }

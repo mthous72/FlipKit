@@ -53,6 +53,7 @@ namespace CardLister.ViewModels
                 "Pricing" => _services.GetRequiredService<PricingViewModel>(),
                 "Export" => _services.GetRequiredService<ExportViewModel>(),
                 "Reports" => _services.GetRequiredService<ReportsViewModel>(),
+                "Checklists" => _services.GetRequiredService<ChecklistManagerViewModel>(),
                 "Settings" => _services.GetRequiredService<SettingsViewModel>(),
                 "Reprice" => _services.GetRequiredService<RepriceViewModel>(),
                 _ => CurrentPage

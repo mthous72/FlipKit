@@ -6,5 +6,7 @@ namespace CardLister.Services
     {
         Task<string?> OpenImageFileAsync();
         Task<string?> SaveCsvFileAsync(string defaultFileName);
+        Task<string?> OpenFileAsync(string title, string[] extensions);
+        Task<string?> SaveFileAsync(string title, string defaultFileName, string[] extensions);
     }
 }

@@ -63,6 +63,12 @@
                             Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=Reports}">
                         <TextBlock Text="Reports" FontSize="14"/>
                     </Button>
+                    <Button Command="{Binding NavigateToCommand}" CommandParameter="Checklists"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Padding="12,10" Classes="nav"
+                            Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=Checklists}">
+                        <TextBlock Text="Checklists" FontSize="14"/>
+                    </Button>
 
                     <!-- Spacer -->
                     <Border Height="1" Background="{DynamicResource SystemBaseLowColor}" Margin="4,12"/>

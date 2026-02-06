@@ -1,0 +1,226 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CardLister.ViewModels"
+             xmlns:models="using:CardLister.Models"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="CardLister.Views.ChecklistManagerView"
+             x:DataType="vm:ChecklistManagerViewModel"
+             Loaded="OnLoaded">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="24">
+
+        <!-- Header with Stats -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Checklists" FontSize="24" FontWeight="Bold" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <TextBlock>
+                    <Run Text="Total:" FontWeight="SemiBold"/>
+                    <Run Text="{Binding TotalChecklists}"/>
+                </TextBlock>
+                <TextBlock>
+                    <Run Text="Cards:" FontWeight="SemiBold"/>
+                    <Run Text="{Binding TotalCards}"/>
+                </TextBlock>
+                <TextBlock>
+                    <Run Text="Seeded:" FontWeight="SemiBold"/>
+                    <Run Text="{Binding SeededCount}"/>
+                </TextBlock>
+                <TextBlock>
+                    <Run Text="Learned:" FontWeight="SemiBold"/>
+                    <Run Text="{Binding LearnedCount}"/>
+                </TextBlock>
+                <TextBlock>
+                    <Run Text="Imported:" FontWeight="SemiBold"/>
+                    <Run Text="{Binding ImportedCount}"/>
+                </TextBlock>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
+            <Button Content="Import" Command="{Binding ImportCommand}" Padding="16,8"/>
+            <Button Content="Export" Command="{Binding ExportCommand}"
+                    IsEnabled="{Binding SelectedChecklist, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Padding="16,8"/>
+            <Button Content="Delete" Command="{Binding DeleteSelectedCommand}"
+                    IsEnabled="{Binding SelectedChecklist, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Foreground="Red" Padding="16,8"/>
+            <TextBox Text="{Binding SearchText}" Watermark="Search checklists..."
+                     Width="250" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Main Content: DataGrid + Detail Panel -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+
+            <!-- Checklists DataGrid -->
+            <DataGrid Grid.Column="0"
+                      ItemsSource="{Binding Checklists}"
+                      SelectedItem="{Binding SelectedChecklist}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      GridLinesVisibility="Horizontal"
+                      CanUserReorderColumns="True"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="True"
+                      SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="70"/>
+                    <DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="130"/>
+                    <DataGridTextColumn Header="Brand" Binding="{Binding Brand}" Width="140"/>
+                    <DataGridTextColumn Header="Sport" Binding="{Binding Sport}" Width="90"/>
+                    <DataGridTemplateColumn Header="Cards" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:SetChecklist">
+                                <TextBlock Text="{Binding Cards.Count}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Variations" Width="90">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:SetChecklist">
+                                <TextBlock Text="{Binding KnownVariations.Count}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Source" Binding="{Binding DataSource}" Width="80"/>
+                    <DataGridTemplateColumn Header="Last Updated" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate x:DataType="models:SetChecklist">
+                                <TextBlock Text="{Binding LastEnrichedAt, StringFormat='{}{0:yyyy-MM-dd}'}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Detail Panel (shown when checklist selected) -->
+            <Border Grid.Column="1" Width="320"
+                    IsVisible="{Binding ShowDetail}"
+                    Background="{DynamicResource SystemChromeLowColor}"
+                    BorderBrush="{DynamicResource SystemBaseLowColor}"
+                    BorderThickness="1,0,0,0"
+                    Padding="16">
+                <DockPanel>
+                    <!-- Detail Header -->
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" FontSize="16" FontWeight="Bold" TextWrapping="Wrap">
+                                <Run Text="{Binding SelectedChecklist.Year}"/>
+                                <Run Text=" "/>
+                                <Run Text="{Binding SelectedChecklist.Manufacturer}"/>
+                                <Run Text=" "/>
+                                <Run Text="{Binding SelectedChecklist.Brand}"/>
+                            </TextBlock>
+                            <Button Grid.Column="1" Content="X" Command="{Binding CloseDetailCommand}"
+                                    Padding="8,4" VerticalAlignment="Top"/>
+                        </Grid>
+                        <TextBlock Text="{Binding SelectedChecklist.Sport}" Opacity="0.6" Margin="0,4,0,0"/>
+                        <TextBlock Opacity="0.6" Margin="0,2,0,0">
+                            <Run Text="Source:"/>
+                            <Run Text="{Binding SelectedChecklist.DataSource}"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Cards and Variations in scrollable area -->
+                    <ScrollViewer>
+                        <StackPanel Spacing="16">
+                            <!-- Cards Section -->
+                            <StackPanel>
+                                <TextBlock Text="Cards" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
+                                <Border Background="{DynamicResource SystemChromeMediumLowColor}"
+                                        CornerRadius="6" Padding="8" MaxHeight="250">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding SelectedCards}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="models:ChecklistCard">
+                                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
+                                                        <TextBlock Text="{Binding CardNumber}" FontWeight="SemiBold"
+                                                                   Width="40" Opacity="0.7"/>
+                                                        <TextBlock Text="{Binding PlayerName}"/>
+                                                        <TextBlock Text="{Binding Team}" Opacity="0.5"
+                                                                   IsVisible="{Binding Team, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- Variations Section -->
+                            <StackPanel>
+                                <TextBlock Text="Known Variations" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,6"/>
+                                <Border Background="{DynamicResource SystemChromeMediumLowColor}"
+                                        CornerRadius="6" Padding="8" MaxHeight="150">
+                                    <ScrollViewer>
+                                        <ItemsControl ItemsSource="{Binding SelectedVariations}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource SystemBaseLowColor}"
+                                                            CornerRadius="4" Padding="8,4" Margin="0,2">
+                                                        <TextBlock Text="{Binding}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Missing Checklists Section -->
+        <Border Grid.Row="3" Margin="0,12,0,0"
+                Background="{DynamicResource SystemChromeLowColor}"
+                CornerRadius="6" Padding="16,10"
+                IsVisible="{Binding MissingChecklists.Count}">
+            <StackPanel>
+                <TextBlock Text="Missing Checklists (scanned but not found)" FontWeight="SemiBold"
+                           FontSize="14" Margin="0,0,0,8"/>
+                <ItemsControl ItemsSource="{Binding MissingChecklists}" MaxHeight="120">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:MissingChecklist">
+                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,2">
+                                <TextBlock Opacity="0.7">
+                                    <Run Text="{Binding Year}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding Manufacturer}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding Brand}"/>
+                                </TextBlock>
+                                <TextBlock Opacity="0.5">
+                                    <Run Text="("/>
+                                    <Run Text="{Binding Sport}"/>
+                                    <Run Text=")"/>
+                                </TextBlock>
+                                <TextBlock FontWeight="SemiBold">
+                                    <Run Text="Hits: "/>
+                                    <Run Text="{Binding HitCount}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- Status Footer -->
+        <Border Grid.Row="4" Margin="0,12,0,0"
+                Background="{DynamicResource SystemChromeLowColor}"
+                CornerRadius="6" Padding="16,10">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+                <TextBlock Text="{Binding StatusMessage}" Opacity="0.7"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <TextBlock Text="Loading..." Opacity="0.5"
+                           IsVisible="{Binding IsLoading}"/>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>

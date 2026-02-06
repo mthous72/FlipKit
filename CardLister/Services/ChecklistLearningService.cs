@@ -294,6 +294,39 @@ namespace CardLister.Services
             var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(outputPath, json);
         }
+
+        public async Task<List<SetChecklist>> GetAllChecklistsAsync()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            return await db.SetChecklists.OrderBy(s => s.Manufacturer).ThenBy(s => s.Brand).ThenBy(s => s.Year).ToListAsync();
+        }
+
+        public async Task<SetChecklist?> GetChecklistByIdAsync(int id)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            return await db.SetChecklists.FindAsync(id);
+        }
+
+        public async Task<List<MissingChecklist>> GetMissingChecklistsAsync()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            return await db.MissingChecklists.OrderByDescending(m => m.HitCount).ToListAsync();
+        }
+
+        public async Task DeleteChecklistAsync(int id)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            var checklist = await db.SetChecklists.FindAsync(id);
+            if (checklist != null)
+            {
+                db.SetChecklists.Remove(checklist);
+                await db.SaveChangesAsync();
+            }
+        }
     }
 
     // JSON models for seed data and import/export
