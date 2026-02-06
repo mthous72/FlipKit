@@ -5,7 +5,7 @@
              xmlns:conv="using:CardLister.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
              x:Class="CardLister.Views.InventoryView"
              x:DataType="vm:InventoryViewModel">
 
@@ -16,7 +16,7 @@
         <conv:FilePathToBitmapConverter x:Key="FilePathToBitmapConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="24">
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,16">
@@ -40,14 +40,19 @@
             <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding SelectedStatus}"
                       Width="130"/>
             <Button Content="Refresh" Command="{Binding RefreshCommand}" Padding="16,8"/>
+            <Border Width="1" Background="{DynamicResource SystemBaseLowColor}" Margin="4,2"/>
+            <Button Content="Select All" Command="{Binding SelectAllCommand}" Padding="12,8" FontSize="12"/>
+            <Button Content="Deselect All" Command="{Binding DeselectAllCommand}" Padding="12,8" FontSize="12"/>
+            <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} selected'}"
+                       VerticalAlignment="Center" Opacity="0.6" FontSize="12"/>
         </StackPanel>
 
         <!-- DataGrid -->
         <DataGrid Grid.Row="2"
                   ItemsSource="{Binding FilteredCards}"
-                  SelectedItem="{Binding SelectedCard}"
+                  SelectedItem="{Binding SelectedItem}"
                   AutoGenerateColumns="False"
-                  IsReadOnly="True"
+                  IsReadOnly="False"
                   GridLinesVisibility="Horizontal"
                   CanUserReorderColumns="True"
                   CanUserResizeColumns="True"
@@ -56,36 +61,45 @@
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="" Width="40">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="models:Card">
-                            <Image Source="{Binding ImagePathFront, Converter={StaticResource FilePathToBitmapConverter}}"
-                                   Width="28" Height="28"
-                                   Stretch="UniformToFill"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding ImagePathFront, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <DataTemplate x:DataType="models:SelectableCard">
+                            <CheckBox IsChecked="{Binding IsSelected}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      Command="{Binding $parent[DataGrid].((vm:InventoryViewModel)DataContext).UpdateSelectedCountCommand}"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="180"/>
-                <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="60"/>
-                <DataGridTextColumn Header="Brand" Binding="{Binding Brand}" Width="100"/>
-                <DataGridTextColumn Header="Parallel" Binding="{Binding ParallelName}" Width="100"/>
-                <DataGridTextColumn Header="Grade" Binding="{Binding GradeValue}" Width="60"/>
-                <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="140"/>
-                <DataGridTextColumn Header="Price" Binding="{Binding ListingPrice, Converter={StaticResource CurrencyFormat}, Mode=OneWay}" Width="80"/>
+                <DataGridTemplateColumn Header="" Width="40">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="models:SelectableCard">
+                            <Image Source="{Binding Card.ImagePathFront, Converter={StaticResource FilePathToBitmapConverter}}"
+                                   Width="28" Height="28"
+                                   Stretch="UniformToFill"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding Card.ImagePathFront, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Player" Binding="{Binding Card.PlayerName}" Width="180" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Year" Binding="{Binding Card.Year}" Width="60" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Brand" Binding="{Binding Card.Brand}" Width="100" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Parallel" Binding="{Binding Card.ParallelName}" Width="100" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Grade" Binding="{Binding Card.GradeValue}" Width="60" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Team" Binding="{Binding Card.Team}" Width="140" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Price" Binding="{Binding Card.ListingPrice, Converter={StaticResource CurrencyFormat}, Mode=OneWay}" Width="80" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Age" Width="50">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="models:Card">
+                        <DataTemplate x:DataType="models:SelectableCard">
                             <Ellipse Width="12" Height="12"
-                                     Fill="{Binding PriceDate, Converter={StaticResource PriceAgeColor}}"
+                                     Fill="{Binding Card.PriceDate, Converter={StaticResource PriceAgeColor}}"
                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Status" Binding="{Binding Status, Converter={StaticResource StatusBadge}, Mode=OneWay}" Width="80"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding Card.Status, Converter={StaticResource StatusBadge}, Mode=OneWay}" Width="80" IsReadOnly="True"/>
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Summary Footer -->
+        <!-- Action Footer -->
         <Border Grid.Row="3" Margin="0,12,0,0"
                 Background="{DynamicResource SystemChromeLowColor}"
                 CornerRadius="6" Padding="16,10">
@@ -111,19 +125,52 @@
                     <Run Text="{Binding StaleCardCount}"/>
                 </TextBlock>
                 <Button Content="Edit Card" Command="{Binding EditSelectedCommand}"
-                        IsEnabled="{Binding SelectedCard, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
                         Padding="12,4"/>
                 <Button Content="Delete Selected" Command="{Binding RequestDeleteSelectedCommand}"
-                        IsEnabled="{Binding SelectedCard, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
                         Padding="12,4"/>
                 <Button Content="Mark as Sold" Command="{Binding OpenSoldDialogCommand}"
-                        IsEnabled="{Binding SelectedCard, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        IsEnabled="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
                         Padding="12,4"/>
             </StackPanel>
         </Border>
 
+        <!-- Export Footer -->
+        <Border Grid.Row="4" Margin="0,6,0,0"
+                Background="{DynamicResource SystemChromeLowColor}"
+                CornerRadius="6" Padding="16,10">
+            <StackPanel Spacing="6">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Text="Export:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Button Content="Export Selected to CSV" Command="{Binding ExportSelectedCsvCommand}"
+                            Padding="12,6"/>
+                    <Button Content="Upload Images for Selected" Command="{Binding UploadSelectedImagesCommand}"
+                            IsEnabled="{Binding !IsUploading}" Padding="12,6"/>
+
+                    <!-- Upload Progress -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsUploading}">
+                        <ProgressBar Minimum="0" Maximum="{Binding UploadTotal}" Value="{Binding UploadProgress}" Width="100"/>
+                        <TextBlock VerticalAlignment="Center" FontSize="12">
+                            <Run Text="{Binding UploadProgress}"/>
+                            <Run Text="/"/>
+                            <Run Text="{Binding UploadTotal}"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Messages -->
+                    <TextBlock Text="{Binding ExportMessage}" Foreground="Green" FontSize="12"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding ExportMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{Binding ExportError}" Foreground="Red" FontSize="12"
+                               VerticalAlignment="Center"
+                               IsVisible="{Binding ExportError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <!-- Delete Confirmation Dialog Overlay -->
-        <Border Grid.RowSpan="4" IsVisible="{Binding ShowDeleteConfirmDialog}"
+        <Border Grid.RowSpan="5" IsVisible="{Binding ShowDeleteConfirmDialog}"
                 Background="#80000000" CornerRadius="0">
             <Border Background="{DynamicResource SystemChromeLowColor}"
                     BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
@@ -146,7 +193,7 @@
         </Border>
 
         <!-- Mark as Sold Dialog Overlay -->
-        <Border Grid.RowSpan="4" IsVisible="{Binding ShowSoldDialog}"
+        <Border Grid.RowSpan="5" IsVisible="{Binding ShowSoldDialog}"
                 Background="#80000000" CornerRadius="0">
             <Border Background="{DynamicResource SystemChromeLowColor}"
                     BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"

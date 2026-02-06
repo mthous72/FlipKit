@@ -10,21 +10,26 @@ using CardLister.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+
 namespace CardLister.ViewModels
 {
     public partial class InventoryViewModel : ViewModelBase
     {
         private readonly ICardRepository _cardRepository;
         private readonly ISettingsService _settingsService;
+        private readonly IExportService _exportService;
+        private readonly IFileDialogService _fileDialogService;
+        private readonly IImageUploadService _imageUploadService;
+        private readonly IBrowserService _browserService;
         private readonly ILogger<InventoryViewModel> _logger;
 
         private List<Card> _allCards = new();
 
-        [ObservableProperty] private ObservableCollection<Card> _filteredCards = new();
+        [ObservableProperty] private ObservableCollection<SelectableCard> _filteredCards = new();
         [ObservableProperty] private string _searchText = string.Empty;
         [ObservableProperty] private string _selectedSport = "All";
         [ObservableProperty] private string _selectedStatus = "All";
-        [ObservableProperty] private Card? _selectedCard;
+        [ObservableProperty] private SelectableCard? _selectedItem;
 
         // Summary
         [ObservableProperty] private int _totalCount;
@@ -45,16 +50,42 @@ namespace CardLister.ViewModels
         [ObservableProperty] private decimal? _soldShippingCost;
         [ObservableProperty] private decimal? _soldNetProfit;
 
+        // Export
+        [ObservableProperty] private bool _isUploading;
+        [ObservableProperty] private int _uploadProgress;
+        [ObservableProperty] private int _uploadTotal;
+        [ObservableProperty] private string? _exportMessage;
+        [ObservableProperty] private string? _exportError;
+        [ObservableProperty] private int _selectedCount;
+
+        public Card? SelectedCard => SelectedItem?.Card;
+
         public List<string> SportOptions { get; } = new() { "All", "Football", "Baseball", "Basketball" };
         public List<string> StatusOptions { get; } = new() { "All", "Draft", "Priced", "Ready", "Listed", "Sold" };
 
-        public InventoryViewModel(ICardRepository cardRepository, ISettingsService settingsService, ILogger<InventoryViewModel> logger)
+        public InventoryViewModel(
+            ICardRepository cardRepository,
+            ISettingsService settingsService,
+            IExportService exportService,
+            IFileDialogService fileDialogService,
+            IImageUploadService imageUploadService,
+            IBrowserService browserService,
+            ILogger<InventoryViewModel> logger)
         {
             _cardRepository = cardRepository;
             _settingsService = settingsService;
+            _exportService = exportService;
+            _fileDialogService = fileDialogService;
+            _imageUploadService = imageUploadService;
+            _browserService = browserService;
             _logger = logger;
 
             LoadCardsAsync();
+        }
+
+        partial void OnSelectedItemChanged(SelectableCard? value)
+        {
+            OnPropertyChanged(nameof(SelectedCard));
         }
 
         [RelayCommand]
@@ -68,7 +99,6 @@ namespace CardLister.ViewModels
         [RelayCommand]
         private void NavigateToReprice()
         {
-            // Navigate via the shared App.Services provider to get the main window's DataContext
             if (App.Services.GetService(typeof(MainWindowViewModel)) is MainWindowViewModel mainVm)
                 mainVm.NavigateToCommand.Execute("Reprice");
         }
@@ -115,12 +145,12 @@ namespace CardLister.ViewModels
         [RelayCommand]
         private async Task ConfirmDeleteAsync()
         {
-            if (SelectedCard == null) return;
+            if (SelectedCard == null || SelectedItem == null) return;
 
             await _cardRepository.DeleteCardAsync(SelectedCard.Id);
             _allCards.Remove(SelectedCard);
-            FilteredCards.Remove(SelectedCard);
-            SelectedCard = null;
+            FilteredCards.Remove(SelectedItem);
+            SelectedItem = null;
             ShowDeleteConfirmDialog = false;
             UpdateSummary();
         }
@@ -172,6 +202,124 @@ namespace CardLister.ViewModels
             UpdateSummary();
         }
 
+        // === Selection Commands ===
+
+        [RelayCommand]
+        private void SelectAll()
+        {
+            foreach (var item in FilteredCards)
+                item.IsSelected = true;
+            UpdateSelectedCount();
+        }
+
+        [RelayCommand]
+        private void DeselectAll()
+        {
+            foreach (var item in FilteredCards)
+                item.IsSelected = false;
+            UpdateSelectedCount();
+        }
+
+        [RelayCommand]
+        private void UpdateSelectedCount()
+        {
+            SelectedCount = FilteredCards.Count(c => c.IsSelected);
+        }
+
+        // === Export Commands ===
+
+        [RelayCommand]
+        private async Task ExportSelectedCsvAsync()
+        {
+            var selected = FilteredCards.Where(c => c.IsSelected).Select(c => c.Card).ToList();
+
+            if (selected.Count == 0)
+            {
+                ExportError = "No cards selected. Use the checkboxes to select cards for export.";
+                return;
+            }
+
+            var warnings = new List<string>();
+            foreach (var card in selected)
+            {
+                var errors = _exportService.ValidateCardForExport(card);
+                if (errors.Count > 0)
+                    warnings.Add($"{card.PlayerName}: {string.Join(", ", errors)}");
+            }
+
+            if (warnings.Count > 0)
+            {
+                ExportError = $"Validation issues: {string.Join("; ", warnings.Take(3))}";
+                return;
+            }
+
+            var path = await _fileDialogService.SaveCsvFileAsync($"whatnot-export-{DateTime.Now:yyyy-MM-dd}.csv");
+            if (path == null) return;
+
+            try
+            {
+                ExportError = null;
+                await _exportService.ExportCsvAsync(selected, path);
+                ExportMessage = $"Exported {selected.Count} cards to CSV.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CSV export failed");
+                ExportError = $"Export failed: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private async Task UploadSelectedImagesAsync()
+        {
+            var needUpload = FilteredCards
+                .Where(c => c.IsSelected && !string.IsNullOrEmpty(c.Card.ImagePathFront) && string.IsNullOrEmpty(c.Card.ImageUrl1))
+                .Select(c => c.Card)
+                .ToList();
+
+            if (needUpload.Count == 0)
+            {
+                ExportMessage = "No selected cards need image upload.";
+                return;
+            }
+
+            IsUploading = true;
+            UploadTotal = needUpload.Count;
+            UploadProgress = 0;
+            ExportError = null;
+            ExportMessage = null;
+
+            try
+            {
+                foreach (var card in needUpload)
+                {
+                    try
+                    {
+                        var (url1, url2) = await _imageUploadService.UploadCardImagesAsync(
+                            card.ImagePathFront!, card.ImagePathBack);
+
+                        if (url1 != null) card.ImageUrl1 = url1;
+                        if (url2 != null) card.ImageUrl2 = url2;
+
+                        await _cardRepository.UpdateCardAsync(card);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Image upload failed for {Player}", card.PlayerName);
+                        ExportError = $"Upload failed for {card.PlayerName}: {ex.Message}";
+                    }
+
+                    UploadProgress++;
+                }
+
+                ExportMessage = $"Uploaded {UploadProgress} images.";
+            }
+            finally
+            {
+                IsUploading = false;
+            }
+        }
+
         private void ApplyFilters()
         {
             var filtered = _allCards.AsEnumerable();
@@ -192,7 +340,9 @@ namespace CardLister.ViewModels
             if (SelectedStatus != "All" && Enum.TryParse<CardStatus>(SelectedStatus, out var status))
                 filtered = filtered.Where(c => c.Status == status);
 
-            FilteredCards = new ObservableCollection<Card>(filtered);
+            FilteredCards = new ObservableCollection<SelectableCard>(
+                filtered.Select(c => new SelectableCard(c)));
+            SelectedCount = 0;
         }
 
         private void UpdateSummary()

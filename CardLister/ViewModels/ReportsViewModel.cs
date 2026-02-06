@@ -17,8 +17,8 @@ namespace CardLister.ViewModels
         private readonly IExportService _exportService;
         private readonly IFileDialogService _fileDialogService;
 
-        [ObservableProperty] private DateTime _startDate = new(DateTime.UtcNow.Year, 1, 1);
-        [ObservableProperty] private DateTime _endDate = DateTime.UtcNow;
+        [ObservableProperty] private DateTimeOffset? _startDate = new DateTimeOffset(new DateTime(DateTime.UtcNow.Year, 1, 1));
+        [ObservableProperty] private DateTimeOffset? _endDate = new DateTimeOffset(DateTime.UtcNow);
 
         // Summary
         [ObservableProperty] private int _cardsSold;
@@ -49,10 +49,12 @@ namespace CardLister.ViewModels
             try
             {
                 var allCards = await _cardRepository.GetAllCardsAsync(CardStatus.Sold);
+                var start = StartDate?.DateTime ?? new DateTime(DateTime.UtcNow.Year, 1, 1);
+                var end = EndDate?.DateTime.AddDays(1) ?? DateTime.UtcNow.AddDays(1);
                 _soldCards = allCards.Where(c =>
                     c.SaleDate.HasValue &&
-                    c.SaleDate.Value >= StartDate &&
-                    c.SaleDate.Value <= EndDate.AddDays(1))
+                    c.SaleDate.Value >= start &&
+                    c.SaleDate.Value <= end)
                     .ToList();
 
                 CardsSold = _soldCards.Count;

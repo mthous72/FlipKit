@@ -51,12 +51,6 @@
                             Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=Pricing}">
                         <TextBlock Text="Price" FontSize="14"/>
                     </Button>
-                    <Button Command="{Binding NavigateToCommand}" CommandParameter="Export"
-                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                            Padding="12,10" Classes="nav"
-                            Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=Export}">
-                        <TextBlock Text="Export" FontSize="14"/>
-                    </Button>
                     <Button Command="{Binding NavigateToCommand}" CommandParameter="Reports"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Padding="12,10" Classes="nav"
