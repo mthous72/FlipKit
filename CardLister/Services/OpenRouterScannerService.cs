@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CardLister.Models;
 using CardLister.Models.Enums;
 using CardLister.Services.ApiModels;
+using Microsoft.Extensions.Logging;
 
 namespace CardLister.Services
 {
@@ -102,11 +103,13 @@ Return ONLY the JSON, no other text or markdown.";
 
         private readonly HttpClient _httpClient;
         private readonly ISettingsService _settingsService;
+        private readonly ILogger<OpenRouterScannerService> _logger;
 
-        public OpenRouterScannerService(HttpClient httpClient, ISettingsService settingsService)
+        public OpenRouterScannerService(HttpClient httpClient, ISettingsService settingsService, ILogger<OpenRouterScannerService> logger)
         {
             _httpClient = httpClient;
             _settingsService = settingsService;
+            _logger = logger;
         }
 
         public async Task<ScanResult> ScanCardAsync(string imagePath, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
@@ -187,25 +190,32 @@ Return ONLY the JSON, no other text or markdown.";
             {
                 try
                 {
-                    return await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey);
+                    _logger.LogDebug("Trying model {Model}", currentModel);
+                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey);
+                    _logger.LogInformation("Scan succeeded with model {Model}", currentModel);
+                    return result;
                 }
                 catch (HttpRequestException ex) when (IsRetryableHttpError(ex))
                 {
+                    _logger.LogWarning(ex, "Model {Model} failed with retryable error, trying next", currentModel);
                     lastException = ex;
                     continue;
                 }
                 catch (TaskCanceledException ex)
                 {
+                    _logger.LogWarning(ex, "Model {Model} timed out, trying next", currentModel);
                     lastException = ex;
                     continue;
                 }
                 catch (InvalidOperationException ex) when (ex.Message.Contains("No response content"))
                 {
+                    _logger.LogWarning(ex, "Model {Model} returned no content, trying next", currentModel);
                     lastException = ex;
                     continue;
                 }
             }
 
+            _logger.LogError(lastException, "All {Count} models failed", modelsToTry.Count);
             throw new InvalidOperationException(
                 $"All models failed. Last error: {lastException?.Message}", lastException);
         }

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
+using Serilog;
 
 namespace CardLister.Converters
 {
@@ -18,8 +19,9 @@ namespace CardLister.Converters
                 {
                     return new Bitmap(path);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Log.Warning(ex, "Failed to load bitmap from {Path}", path);
                     return null;
                 }
             }

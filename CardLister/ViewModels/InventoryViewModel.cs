@@ -9,12 +9,14 @@ using CardLister.Helpers;
 using CardLister.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 namespace CardLister.ViewModels
 {
     public partial class InventoryViewModel : ViewModelBase
     {
         private readonly ICardRepository _cardRepository;
         private readonly ISettingsService _settingsService;
+        private readonly ILogger<InventoryViewModel> _logger;
 
         private List<Card> _allCards = new();
 
@@ -46,10 +48,11 @@ namespace CardLister.ViewModels
         public List<string> SportOptions { get; } = new() { "All", "Football", "Baseball", "Basketball" };
         public List<string> StatusOptions { get; } = new() { "All", "Draft", "Priced", "Ready", "Listed", "Sold" };
 
-        public InventoryViewModel(ICardRepository cardRepository, ISettingsService settingsService)
+        public InventoryViewModel(ICardRepository cardRepository, ISettingsService settingsService, ILogger<InventoryViewModel> logger)
         {
             _cardRepository = cardRepository;
             _settingsService = settingsService;
+            _logger = logger;
 
             LoadCardsAsync();
         }
@@ -74,9 +77,9 @@ namespace CardLister.ViewModels
                 ApplyFilters();
                 UpdateSummary();
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently handle — will show empty list
+                _logger.LogError(ex, "Failed to load cards for inventory");
             }
         }
 

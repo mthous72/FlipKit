@@ -9,6 +9,7 @@ using CardLister.Helpers;
 using CardLister.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CardLister.Services
 {
@@ -16,11 +17,13 @@ namespace CardLister.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ISettingsService _settingsService;
+        private readonly ILogger<ChecklistLearningService> _logger;
 
-        public ChecklistLearningService(IServiceProvider serviceProvider, ISettingsService settingsService)
+        public ChecklistLearningService(IServiceProvider serviceProvider, ISettingsService settingsService, ILogger<ChecklistLearningService> logger)
         {
             _serviceProvider = serviceProvider;
             _settingsService = settingsService;
+            _logger = logger;
         }
 
         public async Task LearnFromCardAsync(Card card)
@@ -146,9 +149,11 @@ namespace CardLister.Services
                     await db.SaveChangesAsync();
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // Never crash the caller — learning is best-effort
+                _logger.LogError(ex, "Checklist learning failed for {Player} ({Manufacturer} {Brand} {Year})",
+                    card.PlayerName, card.Manufacturer, card.Brand, card.Year);
             }
         }
 

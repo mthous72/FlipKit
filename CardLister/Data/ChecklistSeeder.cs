@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using CardLister.Models;
 using CardLister.Services;
+using Serilog;
 
 namespace CardLister.Data
 {
@@ -59,9 +60,9 @@ namespace CardLister.Data
 
                     db.SetChecklists.Add(checklist);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Skip malformed seed files
+                    Log.Warning(ex, "Failed to load seed file: {ResourceName}", resourceName);
                 }
             }
 

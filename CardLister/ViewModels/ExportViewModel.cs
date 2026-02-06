@@ -7,6 +7,7 @@ using CardLister.Models.Enums;
 using CardLister.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 
 namespace CardLister.ViewModels
 {
@@ -17,6 +18,7 @@ namespace CardLister.ViewModels
         private readonly IExportService _exportService;
         private readonly IFileDialogService _fileDialogService;
         private readonly IBrowserService _browserService;
+        private readonly ILogger<ExportViewModel> _logger;
 
         private List<Card> _exportableCards = new();
 
@@ -35,13 +37,15 @@ namespace CardLister.ViewModels
             IImageUploadService imageUploadService,
             IExportService exportService,
             IFileDialogService fileDialogService,
-            IBrowserService browserService)
+            IBrowserService browserService,
+            ILogger<ExportViewModel> logger)
         {
             _cardRepository = cardRepository;
             _imageUploadService = imageUploadService;
             _exportService = exportService;
             _fileDialogService = fileDialogService;
             _browserService = browserService;
+            _logger = logger;
 
             LoadExportDataAsync();
         }
@@ -60,8 +64,9 @@ namespace CardLister.ViewModels
                 NeedsImageUploadCount = _exportableCards.Count(c => string.IsNullOrEmpty(c.ImageUrl1));
                 TotalValue = _exportableCards.Where(c => c.ListingPrice.HasValue).Sum(c => c.ListingPrice!.Value);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to load export data");
                 ErrorMessage = "Failed to load export data.";
             }
         }
@@ -113,6 +118,7 @@ namespace CardLister.ViewModels
                     }
                     catch (Exception ex)
                     {
+                        _logger.LogError(ex, "Image upload failed for {Player}", card.PlayerName);
                         ErrorMessage = $"Upload failed for {card.PlayerName}: {ex.Message}";
                     }
 
@@ -178,6 +184,7 @@ namespace CardLister.ViewModels
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "CSV export failed");
                 ErrorMessage = $"Export failed: {ex.Message}";
             }
         }
