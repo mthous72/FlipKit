@@ -39,6 +39,12 @@
                             Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=Scan}">
                         <TextBlock Text="Scan" FontSize="14"/>
                     </Button>
+                    <Button Command="{Binding NavigateToCommand}" CommandParameter="BulkScan"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Padding="12,10" Classes="nav"
+                            Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=BulkScan}">
+                        <TextBlock Text="Bulk Scan" FontSize="14"/>
+                    </Button>
                     <Button Command="{Binding NavigateToCommand}" CommandParameter="Inventory"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Padding="12,10" Classes="nav"

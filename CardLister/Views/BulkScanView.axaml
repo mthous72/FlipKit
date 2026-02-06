@@ -1,0 +1,207 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:CardLister.ViewModels"
+             xmlns:conv="using:CardLister.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="CardLister.Views.BulkScanView"
+             x:DataType="vm:BulkScanViewModel">
+
+    <UserControl.Resources>
+        <conv:FilePathToBitmapConverter x:Key="FilePathToBitmapConverter"/>
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Bulk Scan" FontSize="24" FontWeight="Bold"/>
+            <TextBlock Text="Select multiple card images, scan them all, then review and save"
+                       Opacity="0.6" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Main Content: Two columns -->
+        <Grid Grid.Row="1" ColumnDefinitions="300,*" ColumnSpacing="16">
+
+            <!-- Left Column: Card List -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*">
+
+                <!-- Controls -->
+                <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,8">
+                    <Button Content="Select Images" Command="{Binding SelectImagesCommand}"
+                            HorizontalAlignment="Stretch" Classes="accent" Padding="12,8"/>
+                    <CheckBox IsChecked="{Binding ImagesArePairs}"
+                              Content="Images are front+back pairs"
+                              FontSize="12"/>
+                </StackPanel>
+
+                <!-- Progress Bar (during scan) -->
+                <StackPanel Grid.Row="1" IsVisible="{Binding IsScanning}" Spacing="4" Margin="0,0,0,8">
+                    <ProgressBar Minimum="0" Maximum="{Binding ScanTotal}" Value="{Binding ScanProgress}"/>
+                    <TextBlock FontSize="12" Opacity="0.7">
+                        <Run Text="Scanning "/>
+                        <Run Text="{Binding ScanProgress}"/>
+                        <Run Text=" of "/>
+                        <Run Text="{Binding ScanTotal}"/>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Card List -->
+                <ListBox Grid.Row="2" ItemsSource="{Binding Items}"
+                         SelectedItem="{Binding SelectedItem}"
+                         x:CompileBindings="False">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="36,*,Auto" Margin="4">
+                                <!-- Thumbnail -->
+                                <Image Grid.Column="0" Width="28" Height="28" Stretch="UniformToFill"
+                                       Source="{Binding FrontImagePath, Converter={StaticResource FilePathToBitmapConverter}}"/>
+                                <!-- Name + status -->
+                                <StackPanel Grid.Column="1" Margin="8,0">
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding Status}" FontSize="11" Opacity="0.6"/>
+                                </StackPanel>
+                                <!-- Index -->
+                                <TextBlock Grid.Column="2" Text="{Binding Index}" FontSize="11"
+                                           Opacity="0.4" VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+
+            <!-- Right Column: Card Detail Form (when a scanned card is selected) -->
+            <ScrollViewer Grid.Column="1">
+                <StackPanel Spacing="8">
+
+                    <!-- Card detail form (shown when a scanned item is selected) -->
+                    <Border IsVisible="{Binding SelectedCard, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <StackPanel Spacing="8"
+                                    x:CompileBindings="False"
+                                    DataContext="{Binding SelectedCard}">
+
+                            <TextBlock Text="Card Details" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                            <!-- Identity -->
+                            <TextBlock Text="Player Name" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding PlayerName}" Watermark="Player Name"/>
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Card #"/>
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding CardNumber}" Watermark="#"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Year"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Year}" Watermark="2024"/>
+                            </Grid>
+
+                            <TextBlock Text="Sport"/>
+                            <ComboBox SelectedItem="{Binding Sport}" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="{x:Null}" Tag=""/>
+                                <ComboBoxItem Content="Football"/>
+                                <ComboBoxItem Content="Baseball"/>
+                                <ComboBoxItem Content="Basketball"/>
+                            </ComboBox>
+
+                            <!-- Manufacturer -->
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Manufacturer"/>
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding Manufacturer}" Watermark="Panini"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Brand"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Brand}" Watermark="Prizm"/>
+                            </Grid>
+
+                            <TextBlock Text="Team"/>
+                            <TextBox Text="{Binding Team}" Watermark="Team Name"/>
+
+                            <!-- Variation -->
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Variation Type"/>
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding VariationType}" Watermark="Base"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Parallel"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ParallelName}" Watermark="Silver"/>
+                            </Grid>
+
+                            <TextBlock Text="Serial Numbered"/>
+                            <TextBox Text="{Binding SerialNumbered}" Watermark="/99"/>
+
+                            <!-- Checkboxes -->
+                            <WrapPanel Margin="0,4">
+                                <CheckBox IsChecked="{Binding IsRookie}" Content="Rookie" Margin="0,0,16,0"/>
+                                <CheckBox IsChecked="{Binding IsAuto}" Content="Auto" Margin="0,0,16,0"/>
+                                <CheckBox IsChecked="{Binding IsRelic}" Content="Relic" Margin="0,0,16,0"/>
+                                <CheckBox IsChecked="{Binding IsShortPrint}" Content="SP" Margin="0,0,16,0"/>
+                                <CheckBox IsChecked="{Binding IsSSP}" Content="SSP"/>
+                            </WrapPanel>
+
+                            <!-- Condition -->
+                            <TextBlock Text="Condition"/>
+                            <ComboBox SelectedItem="{Binding Condition}" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="Near Mint"/>
+                                <ComboBoxItem Content="Like New"/>
+                                <ComboBoxItem Content="Very Good"/>
+                                <ComboBoxItem Content="Good"/>
+                                <ComboBoxItem Content="Acceptable"/>
+                            </ComboBox>
+
+                            <!-- Cost Basis -->
+                            <TextBlock Text="Cost Basis" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Cost ($)"/>
+                                <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding CostBasis}" Watermark="0.00"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Source"/>
+                                <ComboBox Grid.Row="1" Grid.Column="1" SelectedItem="{Binding CostSource}" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="{x:Null}" Tag=""/>
+                                    <ComboBoxItem Content="LCS"/>
+                                    <ComboBoxItem Content="Online"/>
+                                    <ComboBoxItem Content="CardShow"/>
+                                    <ComboBoxItem Content="Break"/>
+                                    <ComboBoxItem Content="Trade"/>
+                                    <ComboBoxItem Content="Gift"/>
+                                    <ComboBoxItem Content="PersonalCollection"/>
+                                    <ComboBoxItem Content="Unknown"/>
+                                </ComboBox>
+                            </Grid>
+
+                            <TextBlock Text="Notes"/>
+                            <TextBox Text="{Binding Notes}" Watermark="Optional notes..." AcceptsReturn="True" MinHeight="50"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Empty state when no item is selected or no items scanned -->
+                    <StackPanel IsVisible="{Binding SelectedCard, Converter={x:Static ObjectConverters.IsNull}}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Spacing="8" Margin="0,80,0,0">
+                        <TextBlock Text="No card selected" FontSize="16" Opacity="0.5"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="Select images, scan them, then click a card to edit"
+                                   Opacity="0.4" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Bottom Button Row -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Scan All" Command="{Binding ScanAllCommand}"
+                    Classes="accent" Padding="20,10"/>
+            <Button Content="Cancel Scan" Command="{Binding CancelScanCommand}"
+                    IsVisible="{Binding IsScanning}" Padding="20,10"/>
+            <Button Content="Save All" Command="{Binding SaveAllCommand}"
+                    Padding="20,10"/>
+            <Button Content="Remove Selected" Command="{Binding RemoveSelectedCommand}"
+                    Padding="20,10"/>
+            <Button Content="Clear All" Command="{Binding ClearAllCommand}"
+                    Padding="20,10"/>
+
+            <!-- Messages -->
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="{Binding SuccessMessage}" Foreground="Green"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       IsVisible="{Binding SuccessMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

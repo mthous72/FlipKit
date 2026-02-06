@@ -93,6 +93,7 @@ namespace CardLister
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddTransient<ScanViewModel>();
+                services.AddTransient<BulkScanViewModel>();
                 services.AddTransient<InventoryViewModel>();
                 services.AddTransient<PricingViewModel>();
                 services.AddTransient<ExportViewModel>();

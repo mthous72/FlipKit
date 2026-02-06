@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -34,6 +35,27 @@ namespace CardLister.Services
             });
 
             return result.FirstOrDefault()?.Path.LocalPath;
+        }
+
+        public async Task<List<string>> OpenImageFilesAsync()
+        {
+            var sp = GetStorageProvider();
+            if (sp == null) return new List<string>();
+
+            var result = await sp.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select Card Images",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("Image Files")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp" }
+                    }
+                }
+            });
+
+            return result.Select(f => f.Path.LocalPath).ToList();
         }
 
         public async Task<string?> SaveCsvFileAsync(string defaultFileName)

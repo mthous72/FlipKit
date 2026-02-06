@@ -50,6 +50,7 @@ namespace CardLister.ViewModels
             CurrentPage = page switch
             {
                 "Scan" => _services.GetRequiredService<ScanViewModel>(),
+                "BulkScan" => _services.GetRequiredService<BulkScanViewModel>(),
                 "Inventory" => _services.GetRequiredService<InventoryViewModel>(),
                 "Pricing" => _services.GetRequiredService<PricingViewModel>(),
                 "Export" => _services.GetRequiredService<ExportViewModel>(),
