@@ -101,6 +101,14 @@ Comprehensive specs are in `Docs/`. Reference these when implementing features:
 | `10-GUI-ARCHITECTURE.md` | Detailed Avalonia MVVM patterns, DI setup, view specs |
 | `13-INVENTORY-TRACKING.md` | Price staleness and financial tracking |
 
+## Git Branching Workflow
+
+- **Never commit directly to `master`.** All work must be done on feature/fix branches.
+- **Branch naming:** `feature/<short-name>` for new features, `fix/<short-name>` for bug fixes (e.g., `feature/graded-cards`, `fix/date-picker-type`).
+- **Create the branch before making changes:** `git checkout -b feature/<name>` from an up-to-date `master`.
+- **Merge to master only after verification:** `dotnet build` passes with 0 errors, and the feature has been manually tested.
+- **Delete the branch after merging** to keep the repo clean.
+
 ## Common Troubleshooting
 
 - **View not found at runtime:** Check that the ViewModel class name matches the View name via the ViewLocator convention.

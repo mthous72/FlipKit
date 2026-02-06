@@ -25,6 +25,8 @@ namespace CardLister.Services
             if (card.IsAuto) parts.Add("Auto");
             if (card.IsRelic) parts.Add("Relic");
             if (!string.IsNullOrEmpty(card.SerialNumbered)) parts.Add(card.SerialNumbered);
+            if (card.IsGraded && !string.IsNullOrEmpty(card.GradeCompany) && !string.IsNullOrEmpty(card.GradeValue))
+                parts.Add($"{card.GradeCompany} {card.GradeValue}");
             if (!string.IsNullOrEmpty(card.CardNumber)) parts.Add($"#{card.CardNumber}");
 
             return string.Join(" ", parts);
@@ -48,6 +50,16 @@ namespace CardLister.Services
                 sb.AppendLine($"Team: {card.Team}");
 
             sb.AppendLine($"Condition: {card.Condition}");
+
+            if (card.IsGraded)
+            {
+                if (!string.IsNullOrEmpty(card.GradeCompany) && !string.IsNullOrEmpty(card.GradeValue))
+                    sb.AppendLine($"Grade: {card.GradeCompany} {card.GradeValue}");
+                if (!string.IsNullOrEmpty(card.AutoGrade))
+                    sb.AppendLine($"Auto Grade: {card.AutoGrade}");
+                if (!string.IsNullOrEmpty(card.CertNumber))
+                    sb.AppendLine($"Cert #: {card.CertNumber}");
+            }
 
             if (!string.IsNullOrEmpty(card.SerialNumbered))
                 sb.AppendLine($"Serial: {card.SerialNumbered}");

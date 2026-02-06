@@ -51,6 +51,11 @@ Return ONLY a JSON object with these exact fields (use null for unknown values):
   ""is_auto"": true or false,
   ""is_relic"": true or false,
   ""is_short_print"": true or false,
+  ""is_graded"": true or false,
+  ""grade_company"": ""PSA|BGS|CGC|CCG|SGC or null"",
+  ""grade_value"": ""Numeric grade (10, 9.5, 9, etc.) or Authentic or null"",
+  ""auto_grade"": ""Autograph grade if separate from card grade, or null"",
+  ""cert_number"": ""Certificate/serial number on the slab or null"",
   ""condition_notes"": ""Any visible condition issues"",
   ""visual_cues"": {
     ""border_color"": ""Color of the card border or null"",
@@ -87,6 +92,11 @@ Identification tips:
 - Jersey swatch or memorabilia piece = relic
 - Report ALL text you can read on the card in all_visible_text
 - For confidence: high = clearly visible/certain, medium = partially visible/likely, low = guessing/unclear
+- Graded cards are in hard plastic ""slabs"" with a label showing company, grade, and cert number
+- PSA labels are red/white, BGS are silver/black, CGC are green, SGC are gold
+- Look for numeric grade prominently displayed on the label (e.g., ""GEM MINT 10"", ""9.5"")
+- ""Authentic"" means verified genuine but not numerically graded
+- If graded, the grade company and value should be clearly readable on the label
 
 Return ONLY the JSON, no other text or markdown.";
 
@@ -293,6 +303,11 @@ Return ONLY the JSON, no other text or markdown.";
                 IsAuto = data.IsAuto ?? false,
                 IsRelic = data.IsRelic ?? false,
                 IsShortPrint = data.IsShortPrint ?? false,
+                IsGraded = data.IsGraded ?? false,
+                GradeCompany = data.GradeCompany,
+                GradeValue = data.GradeValue,
+                AutoGrade = data.AutoGrade,
+                CertNumber = data.CertNumber,
                 ImagePathFront = imagePath,
                 Condition = "Near Mint"
             };

@@ -38,6 +38,7 @@ namespace CardLister.Models
         public string? GradeCompany { get; set; }
         public string? GradeValue { get; set; }
         public string? CertNumber { get; set; }
+        public string? AutoGrade { get; set; }
 
         // === ACQUISITION / COST BASIS ===
         public decimal? CostBasis { get; set; }

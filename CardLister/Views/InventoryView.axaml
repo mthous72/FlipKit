@@ -69,6 +69,7 @@
                 <DataGridTextColumn Header="Year" Binding="{Binding Year}" Width="60"/>
                 <DataGridTextColumn Header="Brand" Binding="{Binding Brand}" Width="100"/>
                 <DataGridTextColumn Header="Parallel" Binding="{Binding ParallelName}" Width="100"/>
+                <DataGridTextColumn Header="Grade" Binding="{Binding GradeValue}" Width="60"/>
                 <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="140"/>
                 <DataGridTextColumn Header="Price" Binding="{Binding ListingPrice, Converter={StaticResource CurrencyFormat}, Mode=OneWay}" Width="80"/>
                 <DataGridTemplateColumn Header="Age" Width="50">

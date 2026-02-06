@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,6 +40,30 @@ namespace CardLister.Data
             await db.Database.ExecuteSqlRawAsync(@"
                 CREATE UNIQUE INDEX IF NOT EXISTS IX_missing_checklists_Manufacturer_Brand_Year_Sport
                 ON missing_checklists (Manufacturer, Brand, Year, Sport);");
+
+            await EnsureAutoGradeColumnAsync(db);
+        }
+
+        private static async Task EnsureAutoGradeColumnAsync(CardListerDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(cards)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+
+                if (!columns.Contains("AutoGrade"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN AutoGrade TEXT");
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
         }
     }
 }

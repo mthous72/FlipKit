@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace CardLister.Models
 {
     public class AppSettings
@@ -16,5 +18,6 @@ namespace CardLister.Models
         public bool EnableVariationVerification { get; set; } = true;
         public bool AutoApplyHighConfidenceSuggestions { get; set; } = true;
         public bool RunConfirmationPass { get; set; } = true;
+        public List<string> CustomGradingCompanies { get; set; } = new();
     }
 }

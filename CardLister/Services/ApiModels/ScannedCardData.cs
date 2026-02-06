@@ -50,6 +50,21 @@ namespace CardLister.Services.ApiModels
         [JsonPropertyName("is_short_print")]
         public bool? IsShortPrint { get; set; }
 
+        [JsonPropertyName("is_graded")]
+        public bool? IsGraded { get; set; }
+
+        [JsonPropertyName("grade_company")]
+        public string? GradeCompany { get; set; }
+
+        [JsonPropertyName("grade_value")]
+        public string? GradeValue { get; set; }
+
+        [JsonPropertyName("auto_grade")]
+        public string? AutoGrade { get; set; }
+
+        [JsonPropertyName("cert_number")]
+        public string? CertNumber { get; set; }
+
         [JsonPropertyName("condition_notes")]
         public string? ConditionNotes { get; set; }
 

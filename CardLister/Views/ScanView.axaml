@@ -186,6 +186,36 @@
                             <ComboBoxItem Content="Acceptable"/>
                         </ComboBox>
 
+                        <!-- Grading -->
+                        <CheckBox IsChecked="{Binding IsGraded}" Content="Graded" Margin="0,8,0,0"/>
+
+                        <StackPanel IsVisible="{Binding IsGraded}" Spacing="4">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Grading Company"/>
+                                <ComboBox Grid.Row="1" Grid.Column="0" IsEditable="True"
+                                          x:CompileBindings="False"
+                                          Text="{Binding GradeCompany}"
+                                          ItemsSource="{Binding GradingCompanyOptions}"
+                                          HorizontalAlignment="Stretch"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Card Grade"/>
+                                <ComboBox Grid.Row="1" Grid.Column="1"
+                                          x:CompileBindings="False"
+                                          SelectedItem="{Binding GradeValue}"
+                                          ItemsSource="{Binding GradeOptions}"
+                                          HorizontalAlignment="Stretch"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Auto Grade"/>
+                                <ComboBox Grid.Row="1" Grid.Column="0"
+                                          x:CompileBindings="False"
+                                          SelectedItem="{Binding AutoGrade}"
+                                          ItemsSource="{Binding AutoGradeOptions}"
+                                          HorizontalAlignment="Stretch"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Cert #"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CertNumber}" Watermark="Certificate number"/>
+                            </Grid>
+                        </StackPanel>
+
                         <!-- Cost Basis -->
                         <TextBlock Text="Cost Basis" FontWeight="SemiBold" Margin="0,12,0,0"/>
                         <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">

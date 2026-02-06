@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using CardLister.Models;
 using CardLister.Models.Enums;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -7,6 +8,19 @@ namespace CardLister.ViewModels
 {
     public partial class CardDetailViewModel : ObservableObject
     {
+        public static List<string> GradeOptions { get; } = BuildGradeOptions();
+        public static List<string> AutoGradeOptions { get; } = BuildGradeOptions();
+
+        private static List<string> BuildGradeOptions()
+        {
+            var options = new List<string> { "", "Authentic" };
+            for (decimal d = 0; d <= 10; d += 0.5m)
+                options.Add(d.ToString("0.#"));
+            return options;
+        }
+
+        public List<string> GradingCompanyOptions { get; set; } = new() { "PSA", "BGS", "CGC", "CCG", "SGC" };
+
         // Card Identity
         [ObservableProperty] private string _playerName = string.Empty;
         [ObservableProperty] private string? _cardNumber;
@@ -37,6 +51,7 @@ namespace CardLister.ViewModels
         [ObservableProperty] private string? _gradeCompany;
         [ObservableProperty] private string? _gradeValue;
         [ObservableProperty] private string? _certNumber;
+        [ObservableProperty] private string? _autoGrade;
 
         // Cost Basis
         [ObservableProperty] private decimal? _costBasis;
@@ -82,6 +97,7 @@ namespace CardLister.ViewModels
                 GradeCompany = GradeCompany,
                 GradeValue = GradeValue,
                 CertNumber = CertNumber,
+                AutoGrade = AutoGrade,
                 CostBasis = CostBasis,
                 CostSource = CostSource,
                 CostDate = CostDate,
@@ -121,6 +137,7 @@ namespace CardLister.ViewModels
                 GradeCompany = card.GradeCompany,
                 GradeValue = card.GradeValue,
                 CertNumber = card.CertNumber,
+                AutoGrade = card.AutoGrade,
                 CostBasis = card.CostBasis,
                 CostSource = card.CostSource,
                 CostDate = card.CostDate,
