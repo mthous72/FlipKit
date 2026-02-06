@@ -14,5 +14,7 @@ namespace CardLister.Models
         public List<string> KnownVariations { get; set; } = new();
         public int TotalBaseCards { get; set; }
         public DateTime CachedAt { get; set; } = DateTime.UtcNow;
+        public string DataSource { get; set; } = "seed";
+        public DateTime LastEnrichedAt { get; set; } = DateTime.MinValue;
     }
 }

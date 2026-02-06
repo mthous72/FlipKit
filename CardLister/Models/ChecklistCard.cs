@@ -18,5 +18,8 @@ namespace CardLister.Models
 
         [JsonPropertyName("subset")]
         public string? Subset { get; set; }
+
+        [JsonPropertyName("source")]
+        public string Source { get; set; } = "seed";
     }
 }

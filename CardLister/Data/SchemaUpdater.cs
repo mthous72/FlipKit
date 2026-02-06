@@ -39,6 +39,33 @@ namespace CardLister.Data
             await db.Database.ExecuteSqlRawAsync(@"
                 CREATE UNIQUE INDEX IF NOT EXISTS IX_missing_checklists_Manufacturer_Brand_Year_Sport
                 ON missing_checklists (Manufacturer, Brand, Year, Sport);");
+
+            await EnsureChecklistLearningColumnsAsync(db);
+        }
+
+        public static async Task EnsureChecklistLearningColumnsAsync(CardListerDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(set_checklists)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+
+                if (!columns.Contains("DataSource"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE set_checklists ADD COLUMN DataSource TEXT NOT NULL DEFAULT 'seed'");
+
+                if (!columns.Contains("LastEnrichedAt"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE set_checklists ADD COLUMN LastEnrichedAt TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'");
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
         }
     }
 }

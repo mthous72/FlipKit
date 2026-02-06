@@ -16,6 +16,7 @@ namespace CardLister.ViewModels
         private readonly IFileDialogService _fileDialogService;
         private readonly ISettingsService _settingsService;
         private readonly IVariationVerifier _variationVerifier;
+        private readonly IChecklistLearningService _checklistLearningService;
 
         private ScanResult? _lastScanResult;
 
@@ -34,13 +35,15 @@ namespace CardLister.ViewModels
             ICardRepository cardRepository,
             IFileDialogService fileDialogService,
             ISettingsService settingsService,
-            IVariationVerifier variationVerifier)
+            IVariationVerifier variationVerifier,
+            IChecklistLearningService checklistLearningService)
         {
             _scannerService = scannerService;
             _cardRepository = cardRepository;
             _fileDialogService = fileDialogService;
             _settingsService = settingsService;
             _variationVerifier = variationVerifier;
+            _checklistLearningService = checklistLearningService;
         }
 
         [RelayCommand]
@@ -226,6 +229,9 @@ namespace CardLister.ViewModels
                 card.ImagePathBack = ImagePathBack;
                 card.Status = Models.Enums.CardStatus.Draft;
                 await _cardRepository.InsertCardAsync(card);
+
+                // Learn from saved card (fire-and-forget)
+                _ = _checklistLearningService.LearnFromCardAsync(card);
 
                 SuccessMessage = $"Saved {card.PlayerName} to My Cards!";
                 Clear();

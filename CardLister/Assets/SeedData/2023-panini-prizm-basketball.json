@@ -1,0 +1,26 @@
+{
+  "manufacturer": "Panini",
+  "brand": "Prizm",
+  "year": 2023,
+  "sport": "Basketball",
+  "totalBaseCards": 300,
+  "cards": [
+    { "card_number": "1", "player_name": "LeBron James", "team": "Los Angeles Lakers", "is_rookie": false },
+    { "card_number": "25", "player_name": "Stephen Curry", "team": "Golden State Warriors", "is_rookie": false },
+    { "card_number": "50", "player_name": "Giannis Antetokounmpo", "team": "Milwaukee Bucks", "is_rookie": false },
+    { "card_number": "75", "player_name": "Luka Doncic", "team": "Dallas Mavericks", "is_rookie": false },
+    { "card_number": "100", "player_name": "Kevin Durant", "team": "Phoenix Suns", "is_rookie": false },
+    { "card_number": "125", "player_name": "Jayson Tatum", "team": "Boston Celtics", "is_rookie": false },
+    { "card_number": "150", "player_name": "Nikola Jokic", "team": "Denver Nuggets", "is_rookie": false },
+    { "card_number": "200", "player_name": "Joel Embiid", "team": "Philadelphia 76ers", "is_rookie": false },
+    { "card_number": "280", "player_name": "Victor Wembanyama", "team": "San Antonio Spurs", "is_rookie": true },
+    { "card_number": "290", "player_name": "Brandon Miller", "team": "Charlotte Hornets", "is_rookie": true }
+  ],
+  "knownVariations": [
+    "Base", "Silver", "Red White Blue", "Blue /199", "Blue Shimmer /199",
+    "Red /299", "Green /75", "Orange /49", "Purple /25", "Gold /10",
+    "Gold Vinyl 1/1", "Black Finite 1/1", "Neon Green", "Pink",
+    "Tiger Stripe", "Camo", "Disco", "Snakeskin",
+    "Choice Blue /249", "Choice Green /75", "Choice Gold /10"
+  ]
+}

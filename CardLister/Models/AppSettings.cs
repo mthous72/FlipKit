@@ -16,5 +16,6 @@ namespace CardLister.Models
         public bool EnableVariationVerification { get; set; } = true;
         public bool AutoApplyHighConfidenceSuggestions { get; set; } = true;
         public bool RunConfirmationPass { get; set; } = true;
+        public bool EnableChecklistLearning { get; set; } = true;
     }
 }

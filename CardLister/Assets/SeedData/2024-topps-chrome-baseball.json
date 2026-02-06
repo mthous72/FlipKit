@@ -1,0 +1,27 @@
+{
+  "manufacturer": "Topps",
+  "brand": "Chrome",
+  "year": 2024,
+  "sport": "Baseball",
+  "totalBaseCards": 250,
+  "cards": [
+    { "card_number": "1", "player_name": "Shohei Ohtani", "team": "Los Angeles Dodgers", "is_rookie": false },
+    { "card_number": "15", "player_name": "Mike Trout", "team": "Los Angeles Angels", "is_rookie": false },
+    { "card_number": "25", "player_name": "Ronald Acuna Jr", "team": "Atlanta Braves", "is_rookie": false },
+    { "card_number": "50", "player_name": "Mookie Betts", "team": "Los Angeles Dodgers", "is_rookie": false },
+    { "card_number": "75", "player_name": "Aaron Judge", "team": "New York Yankees", "is_rookie": false },
+    { "card_number": "100", "player_name": "Freddie Freeman", "team": "Los Angeles Dodgers", "is_rookie": false },
+    { "card_number": "125", "player_name": "Bryce Harper", "team": "Philadelphia Phillies", "is_rookie": false },
+    { "card_number": "150", "player_name": "Juan Soto", "team": "New York Yankees", "is_rookie": false },
+    { "card_number": "200", "player_name": "Corey Seager", "team": "Texas Rangers", "is_rookie": false },
+    { "card_number": "220", "player_name": "Elly De La Cruz", "team": "Cincinnati Reds", "is_rookie": true }
+  ],
+  "knownVariations": [
+    "Base", "Refractor", "X-Fractor", "Sepia Refractor",
+    "Pink Refractor", "Blue Refractor /150", "Green Refractor /99",
+    "Gold Refractor /50", "Orange Refractor /25",
+    "Red Refractor /5", "Superfractor 1/1",
+    "Aqua Refractor /199", "Purple Refractor /299",
+    "Prism Refractor"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "manufacturer": "Panini",
+  "brand": "Donruss",
+  "year": 2023,
+  "sport": "Football",
+  "totalBaseCards": 350,
+  "cards": [
+    { "card_number": "1", "player_name": "Patrick Mahomes", "team": "Kansas City Chiefs", "is_rookie": false },
+    { "card_number": "25", "player_name": "Josh Allen", "team": "Buffalo Bills", "is_rookie": false },
+    { "card_number": "50", "player_name": "Jalen Hurts", "team": "Philadelphia Eagles", "is_rookie": false },
+    { "card_number": "88", "player_name": "Justin Jefferson", "team": "Minnesota Vikings", "is_rookie": false },
+    { "card_number": "100", "player_name": "Travis Kelce", "team": "Kansas City Chiefs", "is_rookie": false },
+    { "card_number": "150", "player_name": "Tyreek Hill", "team": "Miami Dolphins", "is_rookie": false },
+    { "card_number": "200", "player_name": "Joe Burrow", "team": "Cincinnati Bengals", "is_rookie": false },
+    { "card_number": "250", "player_name": "Dak Prescott", "team": "Dallas Cowboys", "is_rookie": false },
+    { "card_number": "301", "player_name": "CJ Stroud", "team": "Houston Texans", "is_rookie": true },
+    { "card_number": "330", "player_name": "Bryce Young", "team": "Carolina Panthers", "is_rookie": true }
+  ],
+  "knownVariations": [
+    "Base", "Rated Rookie", "Press Proof Silver", "Press Proof Blue /249",
+    "Press Proof Gold /50", "Press Proof Red /25", "Press Proof Black 1/1",
+    "Holo Red", "Holo Blue", "Holo Green", "Holo Purple"
+  ]
+}

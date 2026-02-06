@@ -66,6 +66,9 @@
                     <CheckBox IsChecked="{Binding RunConfirmationPass}"
                               Content="Run confirmation pass for ambiguous cards"
                               IsEnabled="{Binding EnableVariationVerification}"/>
+
+                    <CheckBox IsChecked="{Binding EnableChecklistLearning}"
+                              Content="Auto-learn checklists from saved cards"/>
                 </StackPanel>
             </Border>
 

@@ -38,6 +38,7 @@ namespace CardLister.ViewModels
         [ObservableProperty] private bool _enableVariationVerification = true;
         [ObservableProperty] private bool _autoApplyHighConfidenceSuggestions = true;
         [ObservableProperty] private bool _runConfirmationPass = true;
+        [ObservableProperty] private bool _enableChecklistLearning = true;
 
         // Financial
         [ObservableProperty] private decimal _whatnotFeePercent = 11.0m;
@@ -76,6 +77,7 @@ namespace CardLister.ViewModels
             EnableVariationVerification = s.EnableVariationVerification;
             AutoApplyHighConfidenceSuggestions = s.AutoApplyHighConfidenceSuggestions;
             RunConfirmationPass = s.RunConfirmationPass;
+            EnableChecklistLearning = s.EnableChecklistLearning;
             WhatnotFeePercent = s.WhatnotFeePercent;
             EbayFeePercent = s.EbayFeePercent;
             DefaultShippingCostPwe = s.DefaultShippingCostPwe;
@@ -116,6 +118,7 @@ namespace CardLister.ViewModels
                 EnableVariationVerification = EnableVariationVerification,
                 AutoApplyHighConfidenceSuggestions = AutoApplyHighConfidenceSuggestions,
                 RunConfirmationPass = RunConfirmationPass,
+                EnableChecklistLearning = EnableChecklistLearning,
                 WhatnotFeePercent = WhatnotFeePercent,
                 EbayFeePercent = EbayFeePercent,
                 DefaultShippingCostPwe = DefaultShippingCostPwe,

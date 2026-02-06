@@ -53,6 +53,7 @@ namespace CardLister
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 services.AddTransient<IExportService, CsvExportService>();
                 services.AddTransient<IVariationVerifier, VariationVerifierService>();
+                services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();
