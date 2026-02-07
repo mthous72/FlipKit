@@ -73,17 +73,39 @@ public class Point130SoldPriceService : ISoldPriceService
                 .ToList();
         }
 
-        // Match graded vs raw (CRITICAL: prevents mixing PSA 10 with PSA 9 or raw)
+        // Match graded vs raw with tiered approach
         if (card.IsGraded)
         {
-            query = query.Where(r => r.IsGraded &&
-                                     r.GradeCompany == card.GradeCompany &&
-                                     r.GradeValue == card.GradeValue)
+            // First, filter to graded cards only (never mix with raw)
+            var gradedOnly = query.Where(r => r.IsGraded).ToList();
+
+            // Priority 1: Try exact match (same company + same grade)
+            var exactMatches = gradedOnly.Where(r =>
+                r.GradeCompany == card.GradeCompany &&
+                r.GradeValue == card.GradeValue)
                 .ToList();
 
-            _logger.LogDebug(
-                "Filtered to graded cards only: {Company} {Value} ({Count} matches)",
-                card.GradeCompany, card.GradeValue, query.Count);
+            if (exactMatches.Count >= 3)
+            {
+                // We have enough exact matches - use only those
+                query = exactMatches;
+                _logger.LogInformation(
+                    "Found {Count} exact matches for {Company} {Value}",
+                    exactMatches.Count, card.GradeCompany, card.GradeValue);
+            }
+            else
+            {
+                // Priority 2: Expand to similar grades from other graders
+                var cardGradeNumeric = ParseGradeValue(card.GradeValue);
+                var similarMatches = gradedOnly.Where(r =>
+                    IsGradeEquivalent(cardGradeNumeric, ParseGradeValue(r.GradeValue)))
+                    .ToList();
+
+                query = similarMatches;
+                _logger.LogInformation(
+                    "Found {ExactCount} exact {Company} {Value} matches, expanded to {TotalCount} similar grade matches",
+                    exactMatches.Count, card.GradeCompany, card.GradeValue, similarMatches.Count);
+            }
         }
         else
         {
@@ -255,15 +277,54 @@ public class Point130SoldPriceService : ISoldPriceService
         var high = filtered.Max();
         var mostRecent = records.Max(r => r.SoldDate);
 
-        // Determine confidence based on sample size and data freshness
+        // Check if we have mixed graders (for graded cards)
+        var isMixedGraders = false;
+        var sourceDetail = "";
+        if (card.IsGraded)
+        {
+            var exactMatches = records.Count(r =>
+                r.GradeCompany == card.GradeCompany &&
+                r.GradeValue == card.GradeValue);
+
+            isMixedGraders = exactMatches < records.Count;
+
+            if (exactMatches > 0 && isMixedGraders)
+            {
+                sourceDetail = $" ({exactMatches} exact {card.GradeCompany} {card.GradeValue}, {records.Count - exactMatches} similar grades)";
+            }
+            else if (isMixedGraders)
+            {
+                sourceDetail = $" (similar grades: no exact {card.GradeCompany} {card.GradeValue} found)";
+            }
+            else
+            {
+                sourceDetail = $" (all {card.GradeCompany} {card.GradeValue})";
+            }
+        }
+
+        // Determine confidence based on sample size, data freshness, and grader consistency
         var daysOld = (DateTime.UtcNow - mostRecent).TotalDays;
-        var confidence = filtered.Count >= 5 && daysOld <= 30 ? PriceConfidence.High :
-                         filtered.Count >= 2 && daysOld <= 60 ? PriceConfidence.Medium :
-                         PriceConfidence.Low;
+        var baseConfidence = filtered.Count >= 5 && daysOld <= 30 ? PriceConfidence.High :
+                             filtered.Count >= 2 && daysOld <= 60 ? PriceConfidence.Medium :
+                             PriceConfidence.Low;
+
+        // Lower confidence by one level if using only mixed graders (no exact matches)
+        var confidence = baseConfidence;
+        if (card.IsGraded && isMixedGraders)
+        {
+            var exactMatches = records.Count(r =>
+                r.GradeCompany == card.GradeCompany &&
+                r.GradeValue == card.GradeValue);
+
+            if (exactMatches == 0 && confidence == PriceConfidence.High)
+                confidence = PriceConfidence.Medium;
+            else if (exactMatches == 0 && confidence == PriceConfidence.Medium)
+                confidence = PriceConfidence.Low;
+        }
 
         _logger.LogInformation(
-            "Calculated market value for {Player}: Median=${Median:F2}, {Count} sales, {Confidence} confidence",
-            card.PlayerName, median, filtered.Count, confidence);
+            "Calculated market value for {Player}: Median=${Median:F2}, {Count} sales, {Confidence} confidence{Detail}",
+            card.PlayerName, median, filtered.Count, confidence, sourceDetail);
 
         return new PriceLookupResult
         {
@@ -275,7 +336,7 @@ public class Point130SoldPriceService : ISoldPriceService
             SampleSize = filtered.Count,
             MostRecentSale = mostRecent,
             Confidence = confidence,
-            Source = $"130point ({filtered.Count} sales)"
+            Source = $"130point ({filtered.Count} sales{sourceDetail})"
         };
     }
 
@@ -575,5 +636,36 @@ public class Point130SoldPriceService : ISoldPriceService
             "fixedprice" => "Buy It Now",
             _ => saleType
         };
+    }
+
+    /// <summary>
+    /// Parse grade value to numeric (e.g., "10" → 10.0, "9.5" → 9.5)
+    /// </summary>
+    private double ParseGradeValue(string? gradeValue)
+    {
+        if (string.IsNullOrEmpty(gradeValue))
+            return 0;
+
+        if (double.TryParse(gradeValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var numeric))
+            return numeric;
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Check if two grades are equivalent across different grading companies.
+    /// Uses ±0.5 tolerance to account for grading differences.
+    /// Examples:
+    ///   PSA 10 matches BGS 9.5, BGS 10, CGC 10, SGC 10
+    ///   PSA 9 matches BGS 8.5, BGS 9, BGS 9.5, CGC 9, SGC 9
+    /// </summary>
+    private bool IsGradeEquivalent(double grade1, double grade2)
+    {
+        if (grade1 == 0 || grade2 == 0)
+            return false;
+
+        // Allow ±0.5 tolerance for cross-grader equivalency
+        var difference = Math.Abs(grade1 - grade2);
+        return difference <= 0.5;
     }
 }
