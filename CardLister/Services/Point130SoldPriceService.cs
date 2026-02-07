@@ -366,29 +366,36 @@ public class Point130SoldPriceService : ISoldPriceService
 
     /// <summary>
     /// Build search query string from card details.
-    /// IMPORTANT: Includes grading info (PSA 10, BGS 9.5, etc.) to get accurate pricing.
+    /// IMPORTANT: Includes ALL available card attributes for accurate matching.
     /// </summary>
     private string BuildSearchQuery(Card card)
     {
         var parts = new List<string>();
 
-        // Player name is required
-        if (!string.IsNullOrEmpty(card.PlayerName))
-            parts.Add(card.PlayerName);
-
-        // Add year if available
+        // Core identification (in order of importance)
         if (card.Year.HasValue)
             parts.Add(card.Year.Value.ToString());
 
-        // Add brand if available
+        if (!string.IsNullOrEmpty(card.Manufacturer))
+            parts.Add(card.Manufacturer);
+
         if (!string.IsNullOrEmpty(card.Brand))
             parts.Add(card.Brand);
 
-        // Add parallel if available (helps narrow results)
+        if (!string.IsNullOrEmpty(card.PlayerName))
+            parts.Add(card.PlayerName);
+
+        if (!string.IsNullOrEmpty(card.CardNumber))
+            parts.Add($"#{card.CardNumber}");
+
+        // Variation details
         if (!string.IsNullOrEmpty(card.ParallelName))
             parts.Add(card.ParallelName);
 
-        // Add grade info if graded (CRITICAL for accurate pricing)
+        if (!string.IsNullOrEmpty(card.Team))
+            parts.Add(card.Team);
+
+        // Grading information (CRITICAL for accurate pricing)
         if (card.IsGraded && !string.IsNullOrEmpty(card.GradeCompany))
         {
             parts.Add(card.GradeCompany);

@@ -10,10 +10,24 @@ namespace CardLister.Services
         public string BuildTerapeakUrl(Card card)
         {
             var parts = new List<string>();
+
+            // Core identification
             if (card.Year.HasValue) parts.Add(card.Year.Value.ToString());
+            if (!string.IsNullOrEmpty(card.Manufacturer)) parts.Add(card.Manufacturer);
             if (!string.IsNullOrEmpty(card.Brand)) parts.Add(card.Brand);
             if (!string.IsNullOrEmpty(card.PlayerName)) parts.Add(card.PlayerName);
+            if (!string.IsNullOrEmpty(card.CardNumber)) parts.Add($"#{card.CardNumber}");
+
+            // Variation details
             if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
+            if (!string.IsNullOrEmpty(card.Team)) parts.Add(card.Team);
+
+            // Grading information (CRITICAL for accurate pricing)
+            if (card.IsGraded)
+            {
+                if (!string.IsNullOrEmpty(card.GradeCompany)) parts.Add(card.GradeCompany);
+                if (!string.IsNullOrEmpty(card.GradeValue)) parts.Add(card.GradeValue);
+            }
 
             var query = Uri.EscapeDataString(string.Join(" ", parts));
             return $"https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords={query}&tabName=SOLD";
@@ -22,11 +36,24 @@ namespace CardLister.Services
         public string BuildEbaySoldUrl(Card card)
         {
             var parts = new List<string>();
+
+            // Core identification
             if (card.Year.HasValue) parts.Add(card.Year.Value.ToString());
+            if (!string.IsNullOrEmpty(card.Manufacturer)) parts.Add(card.Manufacturer);
             if (!string.IsNullOrEmpty(card.Brand)) parts.Add(card.Brand);
             if (!string.IsNullOrEmpty(card.PlayerName)) parts.Add(card.PlayerName);
-            if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
             if (!string.IsNullOrEmpty(card.CardNumber)) parts.Add($"#{card.CardNumber}");
+
+            // Variation details
+            if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
+            if (!string.IsNullOrEmpty(card.Team)) parts.Add(card.Team);
+
+            // Grading information (CRITICAL for accurate pricing)
+            if (card.IsGraded)
+            {
+                if (!string.IsNullOrEmpty(card.GradeCompany)) parts.Add(card.GradeCompany);
+                if (!string.IsNullOrEmpty(card.GradeValue)) parts.Add(card.GradeValue);
+            }
 
             var query = Uri.EscapeDataString(string.Join(" ", parts));
             return $"https://www.ebay.com/sch/i.html?_nkw={query}&_sacat=261328&LH_Sold=1&LH_Complete=1";
