@@ -111,6 +111,13 @@ namespace CardLister.Services
 
         public async Task ExportCsvAsync(List<Card> cards, string outputPath)
         {
+            // Use active export platform from settings (default behavior)
+            var settings = _settingsService.Load();
+            await ExportCsvAsync(cards, outputPath, settings.ActiveExportPlatform);
+        }
+
+        public async Task ExportCsvAsync(List<Card> cards, string outputPath, ExportPlatform platform)
+        {
             await using var writer = new StreamWriter(outputPath, false, new UTF8Encoding(false));
             await using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
             {
@@ -137,7 +144,7 @@ namespace CardLister.Services
             {
                 csv.WriteField("Sports Cards");
                 csv.WriteField(card.WhatnotSubcategory ?? GetSubcategoryFromSport(card));
-                csv.WriteField(GenerateTitle(card));
+                csv.WriteField(GenerateTitle(card, platform));
                 csv.WriteField(GenerateDescription(card));
                 csv.WriteField(card.Quantity);
                 csv.WriteField(card.ListingType);

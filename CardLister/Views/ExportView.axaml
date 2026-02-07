@@ -63,9 +63,31 @@
                     CornerRadius="8" Padding="20">
                 <StackPanel Spacing="12">
                     <TextBlock Text="Step 2: Download CSV" FontSize="16" FontWeight="SemiBold"/>
-                    <TextBlock Text="Generate Whatnot-compatible CSV file for bulk import" Opacity="0.6"/>
+                    <TextBlock Text="Generate CSV file with optimized listing titles" Opacity="0.6"/>
 
-                    <Button Content="Download Whatnot CSV" Command="{Binding ExportCsvCommand}"
+                    <!-- Export Platform Selector -->
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Export Platform" FontWeight="SemiBold"/>
+                        <ComboBox ItemsSource="{Binding ExportPlatformOptions}"
+                                  SelectedItem="{Binding SelectedExportPlatform}"
+                                  HorizontalAlignment="Stretch"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.6">
+                            <Run Text="Titles will be formatted using the"/>
+                            <Run Text="{Binding SelectedExportPlatform}" FontWeight="SemiBold"/>
+                            <Run Text="template. Different platforms use different SEO strategies:"/>
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.5" Margin="0,-4,0,0">
+                            • Whatnot: Brand + Player focus (e.g., "Prizm CJ Stroud")
+                            • eBay: Comprehensive with manufacturer emphasis
+                            • COMC: Consignment format without manufacturer
+                            • Generic: Balanced approach
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.5" Margin="0,4,0,0">
+                            Tip: Customize templates in Settings for each platform.
+                        </TextBlock>
+                    </StackPanel>
+
+                    <Button Content="Download CSV for Export" Command="{Binding ExportCsvCommand}"
                             Classes="accent" Padding="20,10"/>
                 </StackPanel>
             </Border>

@@ -18,6 +18,7 @@ namespace CardLister.ViewModels
         private readonly IExportService _exportService;
         private readonly IFileDialogService _fileDialogService;
         private readonly IBrowserService _browserService;
+        private readonly ISettingsService _settingsService;
         private readonly ILogger<ExportViewModel> _logger;
 
         private List<Card> _exportableCards = new();
@@ -31,6 +32,9 @@ namespace CardLister.ViewModels
         [ObservableProperty] private int _uploadTotal;
         [ObservableProperty] private string? _statusMessage;
         [ObservableProperty] private string? _errorMessage;
+        [ObservableProperty] private ExportPlatform _selectedExportPlatform;
+
+        public List<ExportPlatform> ExportPlatformOptions { get; } = Enum.GetValues<ExportPlatform>().ToList();
 
         public ExportViewModel(
             ICardRepository cardRepository,
@@ -38,6 +42,7 @@ namespace CardLister.ViewModels
             IExportService exportService,
             IFileDialogService fileDialogService,
             IBrowserService browserService,
+            ISettingsService settingsService,
             ILogger<ExportViewModel> logger)
         {
             _cardRepository = cardRepository;
@@ -45,7 +50,12 @@ namespace CardLister.ViewModels
             _exportService = exportService;
             _fileDialogService = fileDialogService;
             _browserService = browserService;
+            _settingsService = settingsService;
             _logger = logger;
+
+            // Initialize selected platform from settings
+            var settings = _settingsService.Load();
+            _selectedExportPlatform = settings.ActiveExportPlatform;
 
             LoadExportDataAsync();
         }
@@ -167,7 +177,7 @@ namespace CardLister.ViewModels
 
             try
             {
-                await _exportService.ExportCsvAsync(exportCards, path);
+                await _exportService.ExportCsvAsync(exportCards, path, SelectedExportPlatform);
 
                 // Mark as listed
                 foreach (var card in exportCards)
@@ -179,7 +189,7 @@ namespace CardLister.ViewModels
                     }
                 }
 
-                StatusMessage = $"Exported {exportCards.Count} cards to CSV!";
+                StatusMessage = $"Exported {exportCards.Count} cards to CSV for {SelectedExportPlatform}!";
                 ErrorMessage = null;
             }
             catch (Exception ex)
