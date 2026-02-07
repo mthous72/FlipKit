@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using CardLister.ViewModels;
@@ -9,6 +10,18 @@ namespace CardLister.Views
         public MainWindow()
         {
             InitializeComponent();
+
+            // Ensure cleanup on window close
+            Closing += OnClosing;
+        }
+
+        private void OnClosing(object? sender, WindowClosingEventArgs e)
+        {
+            // Dispose the MainWindowViewModel to clean up all child ViewModels
+            if (DataContext is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)

@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CardLister.ViewModels
 {
-    public partial class MainWindowViewModel : ViewModelBase
+    public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         private readonly IServiceProvider _services;
         private readonly ISettingsService _settingsService;
@@ -43,6 +43,18 @@ namespace CardLister.ViewModels
             }
         }
 
+        partial void OnCurrentPageChanging(ViewModelBase value)
+        {
+            // Dispose old page if it implements IDisposable
+            // Note: Intentionally using backing field here since this is called before property change
+#pragma warning disable MVVMTK0034
+            if (_currentPage is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+#pragma warning restore MVVMTK0034
+        }
+
         [RelayCommand]
         private void NavigateTo(string page)
         {
@@ -68,6 +80,15 @@ namespace CardLister.ViewModels
             await editVm.LoadCardAsync(cardId);
             CurrentPageName = "EditCard";
             CurrentPage = editVm;
+        }
+
+        public void Dispose()
+        {
+            // Dispose the current page on window close
+            if (CurrentPage is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
     }
 }
