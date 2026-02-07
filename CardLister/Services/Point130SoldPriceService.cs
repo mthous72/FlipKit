@@ -395,16 +395,19 @@ public class Point130SoldPriceService : ISoldPriceService
         if (!string.IsNullOrEmpty(card.Team))
             parts.Add(card.Team);
 
-        // Grading information (CRITICAL for accurate pricing)
-        if (card.IsGraded && !string.IsNullOrEmpty(card.GradeCompany))
+        // Grading information (search across all graders for broader results)
+        if (card.IsGraded && !string.IsNullOrEmpty(card.GradeValue))
         {
-            parts.Add(card.GradeCompany);
-            if (!string.IsNullOrEmpty(card.GradeValue))
-                parts.Add(card.GradeValue);
+            // Include "graded" + grade value (not company) to find all comparable grades
+            // Example: "graded 10" matches PSA 10, BGS 10, CGC 10, SGC 10
+            // The matching filter will still enforce exact grade matching
+            parts.Add("graded");
+            parts.Add(card.GradeValue);
         }
 
         var query = string.Join(" ", parts);
-        _logger.LogDebug("Built search query: '{Query}' (IsGraded: {IsGraded})", query, card.IsGraded);
+        _logger.LogDebug("Built search query: '{Query}' (IsGraded: {IsGraded}, Grade: {Grade})",
+            query, card.IsGraded, card.GradeValue ?? "N/A");
         return query;
     }
 

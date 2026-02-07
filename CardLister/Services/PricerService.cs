@@ -22,11 +22,13 @@ namespace CardLister.Services
             if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
             if (!string.IsNullOrEmpty(card.Team)) parts.Add(card.Team);
 
-            // Grading information (CRITICAL for accurate pricing)
-            if (card.IsGraded)
+            // Grading information (search across all graders for better data)
+            if (card.IsGraded && !string.IsNullOrEmpty(card.GradeValue))
             {
-                if (!string.IsNullOrEmpty(card.GradeCompany)) parts.Add(card.GradeCompany);
-                if (!string.IsNullOrEmpty(card.GradeValue)) parts.Add(card.GradeValue);
+                // Include "graded" + grade value (not company) to find all comparable grades
+                // Example: "graded 10" matches PSA 10, BGS 10, CGC 10, SGC 10
+                parts.Add("graded");
+                parts.Add(card.GradeValue);
             }
 
             var query = Uri.EscapeDataString(string.Join(" ", parts));
@@ -48,11 +50,13 @@ namespace CardLister.Services
             if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
             if (!string.IsNullOrEmpty(card.Team)) parts.Add(card.Team);
 
-            // Grading information (CRITICAL for accurate pricing)
-            if (card.IsGraded)
+            // Grading information (search across all graders for better data)
+            if (card.IsGraded && !string.IsNullOrEmpty(card.GradeValue))
             {
-                if (!string.IsNullOrEmpty(card.GradeCompany)) parts.Add(card.GradeCompany);
-                if (!string.IsNullOrEmpty(card.GradeValue)) parts.Add(card.GradeValue);
+                // Include "graded" + grade value (not company) to find all comparable grades
+                // Example: "graded 10" matches PSA 10, BGS 10, CGC 10, SGC 10
+                parts.Add("graded");
+                parts.Add(card.GradeValue);
             }
 
             var query = Uri.EscapeDataString(string.Join(" ", parts));
