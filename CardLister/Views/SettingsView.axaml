@@ -209,6 +209,56 @@
                 </StackPanel>
             </Border>
 
+            <!-- Search Query Templates (Pricing Research) -->
+            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                    CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="Search Query Templates" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
+                        Customize how search queries are built for pricing research (Terapeak/eBay).
+                        Exclude overly specific fields (CardNumber, Serial) to get broader search results.
+                    </TextBlock>
+
+                    <!-- Terapeak Search Template -->
+                    <TextBlock Text="Terapeak Search Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding TerapeakSearchTemplate}"
+                             Watermark="Example: Year Brand Player Parallel"
+                             TextWrapping="Wrap" AcceptsReturn="False"/>
+                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                        Used when clicking "Open Terapeak" in Pricing view
+                    </TextBlock>
+
+                    <!-- eBay Search Template -->
+                    <TextBlock Text="eBay Sold Search Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding EbaySearchTemplate}"
+                             Watermark="Example: Year Manufacturer Brand Player Team"
+                             TextWrapping="Wrap" AcceptsReturn="False"/>
+                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                        Used when clicking "Open eBay Sold" in Pricing view
+                    </TextBlock>
+
+                    <!-- Validation & Preview -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                        <Button Content="Validate Templates" Command="{Binding ValidateSearchTemplatesCommand}"
+                                Padding="12,6"/>
+                        <Button Content="Preview with Sample Card" Command="{Binding GenerateSearchPreviewCommand}"
+                                Padding="12,6"/>
+                        <Button Content="Reset to Defaults" Command="{Binding ResetSearchTemplatesCommand}"
+                                Padding="12,6"/>
+                    </StackPanel>
+
+                    <!-- Validation Message -->
+                    <TextBlock Text="{Binding SearchTemplateValidationMessage}"
+                               IsVisible="{Binding SearchTemplateValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               FontSize="12" Foreground="Orange" TextWrapping="Wrap"/>
+
+                    <!-- Preview -->
+                    <TextBlock Text="{Binding SearchTemplatePreview}"
+                               IsVisible="{Binding SearchTemplatePreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               FontSize="12" Foreground="Blue" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
             <!-- Your Data -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                     CornerRadius="8" Padding="20">

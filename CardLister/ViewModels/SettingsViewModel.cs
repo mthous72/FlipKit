@@ -65,6 +65,12 @@ namespace CardLister.ViewModels
         public List<ExportPlatform> ExportPlatformOptions { get; } = Enum.GetValues<ExportPlatform>().ToList();
         public string PlaceholderHelpText => TitleTemplateService.GetPlaceholderHelpText();
 
+        // Search Query Templates (for pricing research)
+        [ObservableProperty] private string _terapeakSearchTemplate = string.Empty;
+        [ObservableProperty] private string _ebaySearchTemplate = string.Empty;
+        [ObservableProperty] private string _searchTemplateValidationMessage = string.Empty;
+        [ObservableProperty] private string _searchTemplatePreview = string.Empty;
+
         // Save feedback
         [ObservableProperty] private string _saveMessage = string.Empty;
 
@@ -105,6 +111,10 @@ namespace CardLister.ViewModels
             GenericTitleTemplate = s.GenericTitleTemplate;
             ActiveExportPlatform = s.ActiveExportPlatform;
 
+            // Search Query Templates
+            TerapeakSearchTemplate = s.TerapeakSearchTemplate;
+            EbaySearchTemplate = s.EbaySearchTemplate;
+
             OpenRouterStatus = string.IsNullOrWhiteSpace(OpenRouterApiKey) ? "Not configured" : "Configured (not tested)";
             ImgBBStatus = string.IsNullOrWhiteSpace(ImgBBApiKey) ? "Not configured" : "Configured (not tested)";
 
@@ -131,10 +141,12 @@ namespace CardLister.ViewModels
             // Validate all templates before saving
             var templates = new[]
             {
-                ("Whatnot", WhatnotTitleTemplate),
-                ("eBay", EbayTitleTemplate),
-                ("COMC", ComcTitleTemplate),
-                ("Generic", GenericTitleTemplate)
+                ("Whatnot Title", WhatnotTitleTemplate),
+                ("eBay Title", EbayTitleTemplate),
+                ("COMC Title", ComcTitleTemplate),
+                ("Generic Title", GenericTitleTemplate),
+                ("Terapeak Search", TerapeakSearchTemplate),
+                ("eBay Search", EbaySearchTemplate)
             };
 
             foreach (var (name, template) in templates)
@@ -144,6 +156,7 @@ namespace CardLister.ViewModels
                 {
                     SaveMessage = $"{name} template error: {errorMessage}";
                     TemplateValidationMessage = SaveMessage;
+                    SearchTemplateValidationMessage = SaveMessage;
                     return;
                 }
             }
@@ -169,7 +182,9 @@ namespace CardLister.ViewModels
                 EbayTitleTemplate = EbayTitleTemplate,
                 ComcTitleTemplate = ComcTitleTemplate,
                 GenericTitleTemplate = GenericTitleTemplate,
-                ActiveExportPlatform = ActiveExportPlatform
+                ActiveExportPlatform = ActiveExportPlatform,
+                TerapeakSearchTemplate = TerapeakSearchTemplate,
+                EbaySearchTemplate = EbaySearchTemplate
             };
 
             _settingsService.Save(s);
@@ -266,6 +281,64 @@ namespace CardLister.ViewModels
             catch (Exception ex)
             {
                 TemplatePreview = $"Error generating preview: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private void ResetSearchTemplates()
+        {
+            TerapeakSearchTemplate = "{Year} {Brand} {Player} {Parallel} {Attributes} {Grade}";
+            EbaySearchTemplate = "{Year} {Manufacturer} {Brand} {Player} {Team} {Parallel} {Attributes} {Grade}";
+            SearchTemplateValidationMessage = "Search templates reset to defaults";
+        }
+
+        [RelayCommand]
+        private void ValidateSearchTemplates()
+        {
+            var templates = new[]
+            {
+                ("Terapeak", TerapeakSearchTemplate),
+                ("eBay", EbaySearchTemplate)
+            };
+
+            foreach (var (name, template) in templates)
+            {
+                var (isValid, errorMessage) = TitleTemplateService.ValidateTemplate(template);
+                if (!isValid)
+                {
+                    SearchTemplateValidationMessage = $"✗ {name}: {errorMessage}";
+                    return;
+                }
+            }
+
+            SearchTemplateValidationMessage = "✓ All search templates are valid";
+        }
+
+        [RelayCommand]
+        private async Task GenerateSearchPreviewAsync()
+        {
+            // Get a sample card from the database for preview
+            try
+            {
+                using var scope = _services.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                var sampleCard = await db.Cards.FirstOrDefaultAsync();
+
+                if (sampleCard == null)
+                {
+                    SearchTemplatePreview = "No cards in database. Add a card to see preview.";
+                    return;
+                }
+
+                var titleService = new TitleTemplateService();
+                var terapeakQuery = titleService.GenerateTitle(sampleCard, TerapeakSearchTemplate);
+                var ebayQuery = titleService.GenerateTitle(sampleCard, EbaySearchTemplate);
+
+                SearchTemplatePreview = $"Terapeak: {terapeakQuery}\neBay: {ebayQuery}";
+            }
+            catch (Exception ex)
+            {
+                SearchTemplatePreview = $"Error generating preview: {ex.Message}";
             }
         }
     }

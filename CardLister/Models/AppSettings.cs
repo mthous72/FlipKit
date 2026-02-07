@@ -32,5 +32,13 @@ namespace CardLister.Models
 
         // Active export platform (used for exports)
         public ExportPlatform ActiveExportPlatform { get; set; } = ExportPlatform.Whatnot;
+
+        // Search Query Templates - Optimized for pricing research
+        // Exclude overly specific fields (CardNumber, Serial) to get broader results
+        // Terapeak: Focus on key identifiers without team (already covered by player)
+        public string TerapeakSearchTemplate { get; set; } = "{Year} {Brand} {Player} {Parallel} {Attributes} {Grade}";
+
+        // eBay Sold: More comprehensive with manufacturer and team for better filtering
+        public string EbaySearchTemplate { get; set; } = "{Year} {Manufacturer} {Brand} {Player} {Team} {Parallel} {Attributes} {Grade}";
     }
 }

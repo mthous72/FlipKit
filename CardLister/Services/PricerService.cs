@@ -7,59 +7,32 @@ namespace CardLister.Services
 {
     public class PricerService : IPricerService
     {
+        private readonly ISettingsService _settingsService;
+        private readonly TitleTemplateService _titleTemplateService;
+
+        public PricerService(ISettingsService settingsService)
+        {
+            _settingsService = settingsService;
+            _titleTemplateService = new TitleTemplateService();
+        }
+
         public string BuildTerapeakUrl(Card card)
         {
-            var parts = new List<string>();
+            // Use customizable search template for Terapeak
+            var settings = _settingsService.Load();
+            var searchQuery = _titleTemplateService.GenerateTitle(card, settings.TerapeakSearchTemplate);
 
-            // Core identification
-            if (card.Year.HasValue) parts.Add(card.Year.Value.ToString());
-            if (!string.IsNullOrEmpty(card.Manufacturer)) parts.Add(card.Manufacturer);
-            if (!string.IsNullOrEmpty(card.Brand)) parts.Add(card.Brand);
-            if (!string.IsNullOrEmpty(card.PlayerName)) parts.Add(card.PlayerName);
-            if (!string.IsNullOrEmpty(card.CardNumber)) parts.Add($"#{card.CardNumber}");
-
-            // Variation details
-            if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
-            if (!string.IsNullOrEmpty(card.Team)) parts.Add(card.Team);
-
-            // Grading information (search across all graders for better data)
-            if (card.IsGraded && !string.IsNullOrEmpty(card.GradeValue))
-            {
-                // Include "graded" + grade value (not company) to find all comparable grades
-                // Example: "graded 10" matches PSA 10, BGS 10, CGC 10, SGC 10
-                parts.Add("graded");
-                parts.Add(card.GradeValue);
-            }
-
-            var query = Uri.EscapeDataString(string.Join(" ", parts));
+            var query = Uri.EscapeDataString(searchQuery);
             return $"https://www.ebay.com/sh/research?marketplace=EBAY-US&keywords={query}&tabName=SOLD";
         }
 
         public string BuildEbaySoldUrl(Card card)
         {
-            var parts = new List<string>();
+            // Use customizable search template for eBay
+            var settings = _settingsService.Load();
+            var searchQuery = _titleTemplateService.GenerateTitle(card, settings.EbaySearchTemplate);
 
-            // Core identification
-            if (card.Year.HasValue) parts.Add(card.Year.Value.ToString());
-            if (!string.IsNullOrEmpty(card.Manufacturer)) parts.Add(card.Manufacturer);
-            if (!string.IsNullOrEmpty(card.Brand)) parts.Add(card.Brand);
-            if (!string.IsNullOrEmpty(card.PlayerName)) parts.Add(card.PlayerName);
-            if (!string.IsNullOrEmpty(card.CardNumber)) parts.Add($"#{card.CardNumber}");
-
-            // Variation details
-            if (!string.IsNullOrEmpty(card.ParallelName)) parts.Add(card.ParallelName);
-            if (!string.IsNullOrEmpty(card.Team)) parts.Add(card.Team);
-
-            // Grading information (search across all graders for better data)
-            if (card.IsGraded && !string.IsNullOrEmpty(card.GradeValue))
-            {
-                // Include "graded" + grade value (not company) to find all comparable grades
-                // Example: "graded 10" matches PSA 10, BGS 10, CGC 10, SGC 10
-                parts.Add("graded");
-                parts.Add(card.GradeValue);
-            }
-
-            var query = Uri.EscapeDataString(string.Join(" ", parts));
+            var query = Uri.EscapeDataString(searchQuery);
             return $"https://www.ebay.com/sch/i.html?_nkw={query}&_sacat=261328&LH_Sold=1&LH_Complete=1";
         }
 
