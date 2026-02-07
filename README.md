@@ -27,16 +27,17 @@ These features are implemented and functional today:
   - **Basketball (21 sets):** Panini Prizm, Donruss Optic, Mosaic (2018-2024)
   - **Baseball (28 sets):** Topps Chrome, Bowman, Bowman Chrome, Topps (2018-2024)
 - **Inventory Grid** -- Browse, search, filter, and sort your card collection in a DataGrid. Track card status (Draft, Priced, Listed, Sold) and price staleness indicators.
-- **Pricing Workflow** -- Step through unpriced cards one at a time with intelligent Terapeak and eBay sold listing links that open in your browser. Search URLs include **all card details** (year, manufacturer, brand, player, card number, parallel, team, and grading info) for more accurate research. For graded cards, searches include "graded [grade]" to find comparable sales across **all grading companies** (PSA, BGS, CGC, SGC). Enter market value, get a suggested list price, and save with cost basis tracking.
+- **Pricing Workflow** -- Step through unpriced cards one at a time with intelligent Terapeak and eBay sold listing links that open in your browser. Search URLs use **customizable templates** to include relevant card details (year, manufacturer, brand, player, parallel, team, and grading info) while excluding overly specific fields like card number and serial number for broader results. For graded cards, searches include "graded [grade]" to find comparable sales across **all grading companies** (PSA, BGS, CGC, SGC). Enter market value, get a suggested list price, and save with cost basis tracking.
 - **Reprice Feature** -- Send any priced card back to the pricing queue from the Inventory view to update market values or correct pricing mistakes.
 - **Stale Price Repricing** -- Cards whose price is older than a configurable threshold (default 30 days) are flagged. Walk through them to keep or update prices.
 - **Mark as Sold** -- Record sale price, platform (Whatnot/eBay), fees, and shipping cost. Net profit is auto-calculated.
 - **Delete Cards** -- Remove cards from inventory with a confirmation dialog.
 - **ImgBB Image Upload** -- Batch upload card images to ImgBB for free public URLs compatible with Whatnot.
-- **Whatnot CSV Export** -- Generate properly formatted CSV files matching Whatnot's bulk upload format with auto-generated titles and descriptions.
+- **Whatnot CSV Export** -- Generate properly formatted CSV files with SEO-optimized, platform-specific titles and descriptions. Choose export platform (Whatnot/eBay/COMC/Generic) to use the appropriate title template for that marketplace's search algorithm.
 - **Tax Report Export** -- Export sold cards as a CSV with sale date, cost basis, fees, and net profit for record-keeping.
 - **Reports** -- View sold card summary with total revenue, cost basis, fees, and net profit. Monthly breakdown and top sellers list.
-- **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, and verification preferences.
+- **Listing Title Optimization** -- SEO-optimized title templates for different platforms (Whatnot, eBay, COMC, Generic). Customize title format per platform using placeholders like `{Year} {Brand} {Player} {Parallel}`. Search query templates optimize pricing research by excluding overly specific fields. Export platform selector lets you choose which template to use per-export. Based on WTSCards research showing different platforms weight fields differently for search ranking.
+- **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, and verification preferences. Includes full title and search template customization with validation, preview, and reset options.
 - **Setup Wizard** -- First-run walkthrough for entering API keys and setting preferences.
 - **Local-First Data** -- All data is stored on your machine in SQLite. API keys are stored in your local app data folder, never in the repo.
 
