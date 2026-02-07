@@ -14,6 +14,7 @@ namespace CardLister.Data
         public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
         public DbSet<SetChecklist> SetChecklists => Set<SetChecklist>();
         public DbSet<MissingChecklist> MissingChecklists => Set<MissingChecklist>();
+        public DbSet<SoldPriceRecord> SoldPriceRecords => Set<SoldPriceRecord>();
 
         public CardListerDbContext(DbContextOptions<CardListerDbContext> options)
             : base(options)
@@ -108,6 +109,25 @@ namespace CardLister.Data
 
             missingChecklist.HasIndex(m => new { m.Manufacturer, m.Brand, m.Year, m.Sport })
                 .IsUnique();
+
+            // SoldPriceRecord configuration
+            var soldPrice = modelBuilder.Entity<SoldPriceRecord>();
+
+            soldPrice.ToTable("sold_price_records");
+            soldPrice.HasKey(s => s.Id);
+
+            soldPrice.Property(s => s.PlayerName).IsRequired();
+
+            // Decimal precision
+            soldPrice.Property(s => s.SoldPrice).HasColumnType("decimal(10,2)");
+            soldPrice.Property(s => s.ShippingCost).HasColumnType("decimal(10,2)");
+
+            // Indexes for efficient lookups
+            soldPrice.HasIndex(s => new { s.PlayerName, s.Year, s.Brand, s.Sport })
+                .HasDatabaseName("idx_soldprice_lookup");
+
+            soldPrice.HasIndex(s => s.SoldDate)
+                .HasDatabaseName("idx_soldprice_date");
         }
     }
 }
