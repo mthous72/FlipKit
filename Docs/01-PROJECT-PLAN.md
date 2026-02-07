@@ -1,5 +1,32 @@
 # Sports Card Lister for Whatnot — Avalonia MVVM Edition
 
+## Current Status (February 2026)
+
+**🎉 MVP Complete (~80-90%)** — CardLister is a fully functional desktop application with end-to-end workflow from scanning to sale tracking.
+
+**Latest Milestone:** Working on `feature/bulk-scan` branch to add batch scanning capabilities.
+
+**What Works:**
+- ✅ AI-powered card scanning (11 free vision models)
+- ✅ Variation verification with checklist database
+- ✅ Inventory management with advanced filtering
+- ✅ Pricing research integration
+- ✅ Whatnot CSV export with image hosting
+- ✅ Sales and financial reporting
+- ✅ Graded card support
+- ✅ Checklist learning system
+
+**What's Next:**
+- Complete bulk scanning feature
+- 3-project architecture refactor
+- Unit and integration tests
+- Automated price scraping
+- Dark theme support
+
+See "Development Phases" section below for detailed status.
+
+---
+
 ## Project Goal
 
 Build a cross-platform desktop application using **C# / .NET 8+ with Avalonia UI and the MVVM pattern** that:
@@ -311,65 +338,107 @@ public partial class ScanViewModel : ObservableObject
 
 ## Development Phases
 
-### Phase 1: Foundation & Skeleton
-- [ ] Create solution structure (3 projects: App, Core, Infrastructure)
-- [ ] Set up dependency injection in `App.axaml.cs`
-- [ ] Create `MainWindow` with sidebar navigation (Scan, My Cards, Price, Export, Settings)
-- [ ] Implement `ViewLocator` for ViewModel-first navigation
-- [ ] Create EF Core DbContext with Card entity + SQLite
-- [ ] Run initial migration to create `cards.db`
-- [ ] Implement `JsonSettingsService` for `config.json` (API keys, preferences)
+### Phase 1: Foundation & Skeleton ✅ COMPLETE
+- [x] Create solution structure (single project - refactor to 3 projects planned)
+- [x] Set up dependency injection in `App.axaml.cs`
+- [x] Create `MainWindow` with sidebar navigation
+- [x] Implement `ViewLocator` for ViewModel-first navigation
+- [x] Create EF Core DbContext with Card entity + SQLite
+- [x] Run initial migration to create `cards.db`
+- [x] Implement `JsonSettingsService` for settings persistence
 
-### Phase 2: Card Scanning
-- [ ] Build `ScanView` — image drop zone + preview + editable form + save button
-- [ ] Implement `OpenRouterScannerService` — `HttpClient` calls to OpenRouter vision API
-- [ ] Create `CardDetailViewModel` — shared form for card fields (player, year, brand, etc.)
-- [ ] Parse JSON response → map to `Card` entity
-- [ ] Wire up `ScanViewModel` — browse image → scan → review → save flow
+### Phase 2: Card Scanning ✅ COMPLETE
+- [x] Build `ScanView` — image drop zone + preview + editable form + save button
+- [x] Implement `OpenRouterScannerService` — 11 free vision models supported
+- [x] Create `CardDetailViewModel` — shared form for card fields
+- [x] Parse JSON response → map to `Card` entity (with markdown stripping)
+- [x] Wire up `ScanViewModel` — browse image → scan → review → save flow
+- [x] Add variation verification against checklist database
+- [x] Implement fuzzy matching for player names and parallels
+- [x] Add confidence scoring and conflict resolution
 
-### Phase 3: Inventory Management
-- [ ] Build `InventoryView` — DataGrid with card list
-- [ ] Implement filters: sport, status, search text, price age
-- [ ] Click row → open `CardDetailView` for editing
-- [ ] Bulk actions: select multiple → delete, mark ready
-- [ ] Price age indicators (🟢🟡🔴) via `PriceAgeToColorConverter`
+### Phase 3: Inventory Management ✅ COMPLETE
+- [x] Build `InventoryView` — DataGrid with card list
+- [x] Implement filters: sport, status, search text, price age
+- [x] Click row → open `EditCardView` for editing
+- [x] Bulk actions: select multiple → delete, mark ready, mark sold
+- [x] Price age indicators (🟢🟡🔴) via `PriceAgeToColorConverter`
+- [x] CSV export from inventory
+- [x] Image upload status tracking
 
-### Phase 4: Pricing
-- [ ] Build `PricingView` — card selector + research links + price input
-- [ ] Implement `PricerService` — Terapeak URL builder, eBay sold URL builder
-- [ ] Open URLs in system browser via `SystemBrowserService`
-- [ ] Fee calculator: market value → suggested Whatnot price (accounting for ~11% fees)
-- [ ] Save & Next workflow for batch pricing
-- [ ] Cost basis fields: acquisition cost, source, date, notes
+### Phase 4: Pricing ✅ COMPLETE
+- [x] Build `PricingView` — card selector + research links + price input
+- [x] Implement `PricerService` — Terapeak URL builder, eBay sold URL builder
+- [x] Open URLs in system browser via `SystemBrowserService`
+- [x] Fee calculator: market value → suggested Whatnot price
+- [x] Save & Next workflow for batch pricing
+- [x] Cost basis fields: acquisition cost, source, date, notes
+- [x] Market value and listing price fields
 
-### Phase 5: Image Upload & CSV Export
-- [ ] Implement `ImgBBUploadService` — upload images, store public URLs
-- [ ] Build `ExportView` — filter ready cards, preview, batch upload, download CSV
-- [ ] Implement `CsvExportService` — map Card fields to Whatnot CSV columns via CsvHelper
-- [ ] Validate required fields before export
-- [ ] Progress bar for batch image upload
+### Phase 5: Image Upload & CSV Export ✅ COMPLETE
+- [x] Implement `ImgBBUploadService` — upload images, store public URLs
+- [x] Build `ExportView` — filter ready cards, preview, batch upload, download CSV
+- [x] Implement `CsvExportService` — map Card fields to Whatnot CSV columns
+- [x] Validate required fields before export
+- [x] Progress bar for batch image upload
+- [x] Whatnot category/subcategory mapping
 
-### Phase 6: Setup Wizard & Settings
-- [ ] Build `SetupWizardView` — 3-step guided setup (OpenRouter, ImgBB, preferences)
-- [ ] "Test Connection" buttons that validate API keys
-- [ ] Build `SettingsView` — change keys, preferences, data management
-- [ ] Auto-detect first run → show wizard
+### Phase 6: Setup Wizard & Settings ✅ COMPLETE
+- [x] Build `SetupWizardView` — 3-step guided setup
+- [x] "Test Connection" buttons that validate API keys
+- [x] Build `SettingsView` — change keys, preferences, data management
+- [x] Auto-detect first run → show wizard
+- [x] Support for custom grading companies
 
-### Phase 7: Price Re-checking & Financial Tracking
-- [ ] Build `RepriceView` — stale card queue with skip/keep/update options
-- [ ] Price history table + `PriceHistory` entity
-- [ ] "Mark as Sold" workflow — sale price, fees, shipping → net profit calculation
-- [ ] Financial summary view — revenue, costs, profit by date range
-- [ ] Tax export CSV generation
+### Phase 7: Price Re-checking & Financial Tracking ✅ COMPLETE
+- [x] Build `RepriceView` — stale card queue with skip/keep/update options
+- [x] Price history table + `PriceHistory` entity
+- [x] "Mark as Sold" workflow — sale price, fees, shipping → net profit calculation
+- [x] Build `ReportsView` — revenue, costs, profit by date range
+- [x] Financial summary with monthly breakdown
+- [x] Top sellers report
+- [x] Sales tracking with date filtering
 
-### Phase 8: Polish & Distribution
-- [ ] Theming — consistent colors, spacing, dark/light mode support
-- [ ] Error handling — friendly messages, retry options, "Enter Manually" fallback
-- [ ] Loading states — spinners, progress bars, disabled buttons during async ops
+### Phase 8: Advanced Features ✅ COMPLETE
+- [x] Graded card support (PSA, BGS, CGC, CCG, SGC)
+- [x] Auto-grade detection from AI scanning
+- [x] Checklist learning system (learns from saved cards)
+- [x] Checklist CSV import
+- [x] `ChecklistManagerView` for viewing and editing checklists
+- [x] Missing checklist tracking
+- [x] Seed data system with embedded JSON
+
+### Phase 9: Bulk Scanning 🚧 IN PROGRESS (feature/bulk-scan)
+- [x] Build `BulkScanView` — multi-card grid layout
+- [x] Front/back image pairing
+- [x] Progress tracking for batch operations
+- [x] Rate limiting for free-tier models (4-second delays)
+- [ ] Finalize UI polish and error handling
+- [ ] Complete testing and merge to master
+
+### Phase 10: Polish & Distribution ⏳ PLANNED
+- [ ] Theming — dark mode support
+- [ ] Enhanced error handling and retry logic
+- [ ] Loading states optimization
 - [ ] Keyboard shortcuts (Ctrl+N, Ctrl+S, Ctrl+F, arrow keys)
 - [ ] Publish as self-contained executable (Windows x64, macOS arm64/x64, Linux x64)
 - [ ] Create installer or single-file deploy
-- [ ] Write user documentation
+- [ ] Write end-user documentation
+
+### Phase 11: Architecture Refactor ⏳ PLANNED
+- [ ] Split into 3 projects: App, Core, Infrastructure
+- [ ] Move ViewModels to Core
+- [ ] Move service interfaces to Core
+- [ ] Move implementations to Infrastructure
+- [ ] Update ViewLocator for new namespace structure
+- [ ] Add unit test projects
+
+### Phase 12: Testing ⏳ PLANNED
+- [ ] Unit tests for ViewModels
+- [ ] Unit tests for services
+- [ ] Integration tests for database
+- [ ] Integration tests for API calls
+- [ ] UI automation tests
 
 ---
 

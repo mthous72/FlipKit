@@ -1,8 +1,10 @@
-# Building in Claude Code — Avalonia MVVM Edition
+# Working with CardLister in Claude Code
 
 ## Overview
 
-This guide walks through implementing the Card Lister using Claude Code. We build incrementally in C# with Avalonia UI + MVVM, testing each piece before moving on.
+This guide helps you work with the existing CardLister codebase using Claude Code. CardLister is ~80-90% complete MVP with full end-to-end functionality. Use this guide to understand the architecture, add features, and troubleshoot issues.
+
+**Current State:** Fully functional single-project Avalonia MVVM application with 14 ViewModels, 12 Views, 11 services, SQLite database, and complete workflow from scanning to sales tracking.
 
 ---
 
@@ -16,71 +18,414 @@ This guide walks through implementing the Card Lister using Claude Code. We buil
 
 ---
 
-## Build Order
+## Project Structure
 
-### Step 1: Create Solution & Projects
+### Current Architecture (Single Project)
+
+```
+CardLister/
+├── CardLister.csproj          # Single project with all code
+├── Program.cs                 # Entry point
+├── App.axaml.cs               # DI setup, logging, database init
+├── ViewLocator.cs             # ViewModel → View mapping
+│
+├── ViewModels/                # 14 ViewModels
+│   ├── MainWindowViewModel.cs         # Navigation
+│   ├── ScanViewModel.cs               # Single-card scanning
+│   ├── BulkScanViewModel.cs           # Multi-card scanning (WIP)
+│   ├── InventoryViewModel.cs          # Card management
+│   ├── EditCardViewModel.cs           # Card editing
+│   ├── PricingViewModel.cs            # Price research
+│   ├── RepriceViewModel.cs            # Stale card repricing
+│   ├── ExportViewModel.cs             # Whatnot export
+│   ├── ReportsViewModel.cs            # Financial reports
+│   ├── ChecklistManagerViewModel.cs   # Checklist editing
+│   ├── SettingsViewModel.cs           # App settings
+│   ├── SetupWizardViewModel.cs        # First-run setup
+│   ├── CardDetailViewModel.cs         # Shared form logic
+│   └── ViewModelBase.cs               # Base class
+│
+├── Views/                     # 12 XAML Views
+│   ├── MainWindow.axaml              # Shell with sidebar
+│   ├── ScanView.axaml                # Scanning page
+│   ├── BulkScanView.axaml            # Bulk scanning
+│   ├── InventoryView.axaml           # Card list
+│   ├── EditCardView.axaml            # Edit form
+│   ├── PricingView.axaml             # Pricing
+│   ├── RepriceView.axaml             # Reprice
+│   ├── ExportView.axaml              # Export
+│   ├── ReportsView.axaml             # Reports
+│   ├── ChecklistManagerView.axaml    # Checklists
+│   ├── SettingsView.axaml            # Settings
+│   └── SetupWizardView.axaml         # Setup
+│
+├── Models/                    # Domain entities
+│   ├── Card.cs                       # 88 fields
+│   ├── PriceHistory.cs               # Price tracking
+│   ├── SetChecklist.cs               # Verification data
+│   ├── MissingChecklist.cs           # Learning tracker
+│   ├── AppSettings.cs                # User config
+│   └── Enums/                        # CardStatus, Sport, CostSource, etc.
+│
+├── Services/                  # 11 services (interface + impl)
+│   ├── ICardRepository.cs + CardRepository.cs
+│   ├── IScannerService.cs + OpenRouterScannerService.cs + MockScannerService.cs
+│   ├── IVariationVerifier.cs + VariationVerifierService.cs
+│   ├── IChecklistLearningService.cs + ChecklistLearningService.cs
+│   ├── IPricerService.cs + PricerService.cs
+│   ├── IImageUploadService.cs + ImgBBUploadService.cs
+│   ├── IExportService.cs + CsvExportService.cs
+│   ├── ISettingsService.cs + JsonSettingsService.cs
+│   ├── IBrowserService.cs + SystemBrowserService.cs
+│   └── IFileDialogService.cs + AvaloniaFileDialogService.cs
+│
+├── Data/                      # EF Core & seeding
+│   ├── CardListerDbContext.cs        # DbContext
+│   ├── Migrations/                   # EF migrations
+│   ├── SchemaUpdater.cs              # Column additions
+│   └── ChecklistSeeder.cs            # Seed data loader
+│
+├── Converters/                # 8 XAML value converters
+│   ├── BoolToVisibilityConverter.cs
+│   ├── CardStatusToColorConverter.cs
+│   ├── ConfidenceToColorConverter.cs
+│   ├── CurrencyConverter.cs
+│   ├── DateAgeConverter.cs
+│   ├── InverseBoolConverter.cs
+│   ├── NullToVisibilityConverter.cs
+│   └── PriceAgeToColorConverter.cs
+│
+├── Helpers/
+│   ├── FuzzyMatcher.cs               # String matching
+│   ├── PriceCalculator.cs            # Fee calculations
+│   └── ConfidenceScorer.cs           # Verification scoring
+│
+├── ApiModels/
+│   ├── OpenRouterRequest.cs
+│   ├── OpenRouterResponse.cs
+│   ├── ScanResult.cs
+│   ├── ImgBBRequest.cs
+│   └── ImgBBResponse.cs
+│
+├── Styles/
+│   └── AppStyles.axaml               # Global styles
+│
+└── Assets/
+    ├── Icons/
+    └── SeedData/                     # Embedded JSON checklists
+        ├── football_checklists.json
+        ├── baseball_checklists.json
+        └── basketball_checklists.json
+```
+
+## Adding New Features
+
+### Example: Adding a New Page
 
 **Prompt for Claude Code:**
 ```
-Create a new .NET 8 solution called "CardLister" with three projects:
+Add a new "Collection Stats" page to CardLister that shows:
 
-1. CardLister.App — Avalonia application (use `dotnet new avalonia.app`)
-2. CardLister.Core — Class library for ViewModels, Models, and service interfaces
-3. CardLister.Infrastructure — Class library for concrete service implementations
+1. Create ViewModel: ViewModels/CollectionStatsViewModel.cs
+   - Inherit from ViewModelBase
+   - Use [ObservableProperty] for stats properties
+   - Inject ICardRepository
+   - Load stats in constructor or LoadDataAsync command
 
-Set up project references:
-- App references Core and Infrastructure
-- Infrastructure references Core
+2. Create View: Views/CollectionStatsView.axaml
+   - Create XAML layout with stats display
+   - Bind to ViewModel properties
+   - Use existing converters for formatting
 
-Add these NuGet packages:
-- CardLister.App: Avalonia (11.*), Avalonia.Desktop, Avalonia.Themes.Fluent, Avalonia.Fonts.Inter
-- CardLister.Core: CommunityToolkit.Mvvm (8.*)
-- CardLister.Infrastructure: Microsoft.EntityFrameworkCore.Sqlite (8.*), CsvHelper (33.*), Microsoft.Extensions.DependencyInjection (8.*), Microsoft.Extensions.Http (8.*), Serilog.Extensions.Logging, Serilog.Sinks.File
+3. Register in DI: App.axaml.cs
+   - Add services.AddTransient<CollectionStatsViewModel>();
 
-Also install the Avalonia templates if not already:
-dotnet new install Avalonia.Templates
+4. Add navigation: MainWindowViewModel.cs
+   - Add new navigation case
+   - Update MainWindow sidebar
 
-Create the initial folder structure in each project:
-- Core: Models/, ViewModels/, Services/, Helpers/
-- Infrastructure: Data/, Services/, ApiModels/
-- App: Views/, Styles/, Converters/, Assets/
+Example ViewModel:
+```csharp
+public partial class CollectionStatsViewModel : ViewModelBase
+{
+    private readonly ICardRepository _repository;
+
+    [ObservableProperty]
+    private int _totalCards;
+
+    [ObservableProperty]
+    private decimal _totalValue;
+
+    public CollectionStatsViewModel(ICardRepository repository)
+    {
+        _repository = repository;
+        LoadDataAsync();
+    }
+
+    private async void LoadDataAsync()
+    {
+        var cards = await _repository.GetAllCardsAsync();
+        TotalCards = cards.Count;
+        TotalValue = cards.Sum(c => c.ListingPrice ?? 0);
+    }
+}
+```
 ```
 
-### Step 2: Models & Enums
+### Example: Adding a New Service
 
-**Prompt:**
+**Prompt for Claude Code:**
 ```
-In CardLister.Core/Models/, create these files:
+Add a new backup service to CardLister that:
 
-1. Card.cs — The main entity with these properties:
-   - Id (int, primary key)
-   - PlayerName, Year, Manufacturer, Brand, CardNumber, Team
-   - Sport (enum: Football, Baseball, Basketball)
-   - ParallelName, IsRookie, IsAutograph, IsRelic, IsNumbered, NumberedTo, Condition
-   - ImagePathFront, ImagePathBack, ImageUrl1, ImageUrl2
-   - EstimatedValue, ListingPrice, PriceDate (DateTime?), PriceCheckCount
-   - CostBasis, CostSource (enum), CostDate, CostNotes
-   - SalePrice, SaleDate, SalePlatform, FeesPaid, ShippingCost, NetProfit
-   - Status (enum: Draft, Priced, Ready, Listed, Sold)
-   - ShippingProfile, Notes, CreatedAt, UpdatedAt
+1. Create interface: Services/IBackupService.cs
+2. Create implementation: Services/BackupService.cs
+3. Register in DI: App.axaml.cs
+   - services.AddSingleton<IBackupService, BackupService>();
+4. Inject into ViewModel where needed
 
-2. PriceHistory.cs — Price tracking entity:
-   - Id, CardId, EstimatedValue, ListingPrice, PriceSource, Notes, RecordedAt
-   - Navigation property to Card
+Example:
+```csharp
+public interface IBackupService
+{
+    Task<bool> BackupDatabaseAsync(string destinationPath);
+    Task<bool> RestoreFromBackupAsync(string backupPath);
+}
 
-3. AppSettings.cs — User configuration:
-   - OpenRouterApiKey, ImgbbApiKey, IsEbaySeller
-   - DefaultShippingProfile, DefaultCondition
-   - WhatnotFeePercent, EbayFeePercent
-   - DefaultShippingCostPwe, DefaultShippingCostBmwt
-   - PriceStalenessThresholdDays
+public class BackupService : IBackupService
+{
+    private readonly string _dbPath;
 
-4. Enums/CardStatus.cs — Draft, Priced, Ready, Listed, Sold
-5. Enums/Sport.cs — Football, Baseball, Basketball
-6. Enums/CostSource.cs — LCS, Online, Break, Trade, Pack, Gift, Other
+    public BackupService()
+    {
+        _dbPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "CardLister", "cards.db");
+    }
 
-Use decimal for all money fields. Use DateTime for all date fields.
+    public async Task<bool> BackupDatabaseAsync(string destinationPath)
+    {
+        try
+        {
+            await Task.Run(() => File.Copy(_dbPath, destinationPath, overwrite: true));
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
 ```
+```
+
+### Example: Adding a Database Column
+
+**Prompt for Claude Code:**
+```
+Add a "Notes" field to the Card entity in CardLister:
+1. Update Model: Models/Card.cs
+   - Card already has a Notes field, but if adding a new one:
+   - Add the property: `public string? NewField { get; set; }`
+
+2. Add Migration:
+   ```bash
+   # If using EF Core migrations (future refactor)
+   dotnet ef migrations add AddNewFieldToCard
+
+   # Current approach: Use SchemaUpdater
+   ```
+
+3. Update SchemaUpdater: Data/SchemaUpdater.cs
+   - Add ALTER TABLE command if column doesn't exist
+   - Called automatically on app startup
+
+4. Update ViewModels:
+   - Add [ObservableProperty] to CardDetailViewModel
+   - Update ToCard() and FromCard() methods
+
+5. Update Views:
+   - Add TextBox or control to CardDetailView.axaml
+   - Bind to new property
+
+Example SchemaUpdater addition:
+```csharp
+public static async Task EnsureColumnExistsAsync(CardListerDbContext context, string tableName, string columnName, string columnType)
+{
+    var sql = $"PRAGMA table_info({tableName})";
+    var columns = await context.Database.SqlQueryRaw<TableInfo>(sql).ToListAsync();
+
+    if (!columns.Any(c => c.name == columnName))
+    {
+        await context.Database.ExecuteSqlRawAsync(
+            $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnType}");
+    }
+}
+```
+```
+
+## Understanding the Current Codebase
+
+### Key Architecture Patterns
+
+**MVVM Pattern:**
+- Views (XAML) bind to ViewModels (C#)
+- ViewModels use CommunityToolkit.Mvvm source generators
+- `[ObservableProperty]` generates INotifyPropertyChanged
+- `[RelayCommand]` generates ICommand implementations
+
+**Dependency Injection:**
+- All services registered in App.axaml.cs
+- ViewModels receive dependencies via constructor injection
+- Services use interface-based design for testability
+
+**Navigation:**
+- MainWindowViewModel.CurrentPage holds active ViewModel
+- ViewLocator resolves View from ViewModel by naming convention
+- Sidebar buttons call NavigateToPage() command
+
+### Data Flow Examples
+
+**Scanning a Card:**
+1. User drops image → ScanView updates ImagePath binding
+2. User clicks "Scan Card" → ScanCardCommand executes
+3. ScanViewModel calls OpenRouterScannerService.ScanCardAsync()
+4. Service sends image to OpenRouter API
+5. Response parsed into ScannedCardData
+6. If variation verification enabled, calls VariationVerifierService
+7. Results populate CardDetailViewModel properties
+8. User reviews → clicks "Save" → SaveCardCommand
+9. CardRepository.InsertCardAsync() saves to database
+10. ChecklistLearningService updates checklist if needed
+
+**Exporting to Whatnot:**
+1. ExportViewModel loads Ready cards from repository
+2. User clicks "Upload Images" → UploadImagesCommand
+3. ImgBBUploadService uploads each image with progress tracking
+4. Image URLs stored in database
+5. User clicks "Export CSV" → ExportCsvCommand
+6. CsvExportService validates cards, generates Whatnot CSV
+7. File dialog saves CSV to user location
+
+### Database Location
+
+- **Development:** `%LOCALAPPDATA%\CardLister\cards.db`
+- **Logs:** `%LOCALAPPDATA%\CardLister\logs\`
+- **Settings:** `%LOCALAPPDATA%\CardLister\config.json`
+
+### Common Tasks
+
+**Running the app:**
+```bash
+dotnet run --project CardLister
+```
+
+**Building:**
+```bash
+dotnet build
+```
+
+**Publishing (Windows):**
+```bash
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+```
+
+**Checking current branch:**
+```bash
+git status
+# Currently on: feature/bulk-scan
+```
+
+## Troubleshooting Guide
+
+### Common Issues
+
+**1. View Not Found Error**
+- **Symptom:** "Could not find view for ViewModel"
+- **Cause:** ViewLocator can't map ViewModel to View
+- **Fix:** Ensure View name matches ViewModel name (replace "ViewModel" with "View")
+  - ✅ ScanViewModel → ScanView
+  - ❌ ScanViewModel → ScanningView
+
+**2. Binding Not Updating**
+- **Symptom:** UI doesn't reflect property changes
+- **Cause:** Property doesn't raise PropertyChanged
+- **Fix:** Use `[ObservableProperty]` on private field:
+  ```csharp
+  [ObservableProperty]
+  private string? _playerName;  // Generates PlayerName property
+  ```
+
+**3. Command Not Firing**
+- **Symptom:** Button click does nothing
+- **Cause:** CanExecute returns false or command not bound
+- **Fix:**
+  - Check CanExecute method logic
+  - Ensure dependent properties call OnPropertyChanged
+  - Verify XAML binding: `Command="{Binding ScanCardCommand}"`
+
+**4. OpenRouter API Fails**
+- **Symptom:** "Invalid API key" or timeout
+- **Cause:** Wrong key, rate limit, or network issue
+- **Fix:**
+  - Check Settings → API key is correct
+  - Try different model (some have rate limits)
+  - Check OpenRouter dashboard for credits
+  - Review logs in `%LOCALAPPDATA%\CardLister\logs\`
+
+**5. Database Locked**
+- **Symptom:** "Database is locked" error
+- **Cause:** Multiple connections or unfinished transaction
+- **Fix:**
+  - Close app completely and restart
+  - Check for lingering processes in Task Manager
+  - Delete `cards.db-wal` and `cards.db-shm` files if app not running
+
+**6. CSV Export Validation Fails**
+- **Symptom:** "Card missing required fields"
+- **Cause:** Cards don't have all required Whatnot fields
+- **Fix:**
+  - Check ExportViewModel.ValidationIssues
+  - Ensure cards have: Title, Price, At least 1 image URL
+  - Update card in Inventory → Edit
+
+**7. Fuzzy Match False Positives**
+- **Symptom:** Wrong player or variation matched
+- **Cause:** Similarity threshold too low
+- **Fix:**
+  - Adjust thresholds in VariationVerifierService
+  - Player name: 0.85 (higher = stricter)
+  - Parallel: 0.7
+  - Or disable auto-apply and manually review
+
+**8. Slow Performance with Many Cards**
+- **Symptom:** UI freezes or slow loading
+- **Cause:** Loading too much data at once
+- **Fix:**
+  - Add pagination to InventoryView (future enhancement)
+  - Use status/sport filters to reduce dataset
+  - Check for missing database indexes
+
+### Debugging Tips
+
+**Enable Verbose Logging:**
+- Logs are in `%LOCALAPPDATA%\CardLister\logs\log-YYYYMMDD.txt`
+- Serilog configured in App.axaml.cs
+- Check logs for exceptions and API responses
+
+**Check DI Registration:**
+- All services must be registered in App.axaml.cs
+- Missing registration = NullReferenceException at runtime
+
+**Test Services Independently:**
+- Services are interface-based, easy to test
+- Can create console app to test service without UI
+
+**Database Inspection:**
+- Use DB Browser for SQLite to view cards.db
+- Check schema, data, and indexes
+
+## Reference: Service Responsibilities
 
 ### Step 3: Service Interfaces
 

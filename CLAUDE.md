@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CardLister is a C# / .NET 8 desktop application built with **Avalonia UI 11** and the **MVVM pattern** (CommunityToolkit.Mvvm). It helps sports card sellers scan card photos with AI vision (OpenRouter API), manage inventory in local SQLite, research pricing via Terapeak/eBay, and export Whatnot-compatible CSV files for bulk listing.
 
-**Current state:** Skeleton — basic Avalonia app structure with placeholder MainWindow. No database, services, or domain models implemented yet.
+**Current State:** ~80-90% MVP Complete — Fully functional end-to-end workflow with AI scanning, database management, pricing, export, and financial tracking. Currently working on the `feature/bulk-scan` branch to add batch scanning capabilities.
 
 ## Build & Run Commands
 
@@ -32,20 +32,25 @@ dotnet test
 
 ## Architecture
 
-**Single-project structure** (planned to expand to 3 projects: App, Core, Infrastructure):
+**Current: Single-project structure** (works well, 3-project refactor is planned but optional):
 
 ```
 CardLister/          # Avalonia desktop app (net8.0)
-├── Views/           # XAML views — no business logic in code-behind
-├── ViewModels/      # ObservableObject subclasses with [ObservableProperty] and [RelayCommand]
-├── Models/          # Domain entities (Card, PriceHistory, enums) — currently empty
-├── Assets/          # Icons and images
-├── ViewLocator.cs   # Maps ViewModels to Views by naming convention (replace "ViewModel" → "View")
-├── App.axaml.cs     # Application startup (DI container setup goes here)
+├── Views/           # 12 XAML views — no business logic in code-behind
+├── ViewModels/      # 14 ViewModels using [ObservableProperty] and [RelayCommand]
+├── Models/          # Domain entities (Card, PriceHistory, SetChecklist, enums)
+├── Services/        # 11 service interfaces + implementations
+├── Data/            # EF Core DbContext, repositories, migrations, seeders
+├── Converters/      # 8 value converters for XAML bindings
+├── Helpers/         # FuzzyMatcher, PriceCalculator, etc.
+├── Assets/          # Icons, images, seed data JSON
+├── Styles/          # AppStyles.axaml with consistent theming
+├── ViewLocator.cs   # Maps ViewModels to Views by naming convention
+├── App.axaml.cs     # DI container, logging, database initialization
 └── Program.cs       # Entry point
 ```
 
-**Planned 3-project layout** (per `Docs/01-PROJECT-PLAN.md`):
+**Future 3-project layout** (planned refactor for better testability):
 - `CardLister.App` — Avalonia views, converters, styles, DI wiring
 - `CardLister.Core` — ViewModels, models, service interfaces (no UI references)
 - `CardLister.Infrastructure` — EF Core DbContext, API clients, service implementations
@@ -72,8 +77,12 @@ The `ViewLocator` maps ViewModel types to View types by replacing `"ViewModel"` 
 | Avalonia | 11.3.11 | Cross-platform UI framework |
 | Avalonia.Themes.Fluent | 11.3.11 | Modern Fluent theme |
 | CommunityToolkit.Mvvm | 8.2.1 | MVVM source generators |
-
-**Planned additions:** EF Core SQLite, CsvHelper, Serilog, Microsoft.Extensions.DependencyInjection, Microsoft.Extensions.Http
+| Microsoft.EntityFrameworkCore.Sqlite | 8.0.11 | SQLite database with EF Core |
+| CsvHelper | 33.0.1 | CSV export for Whatnot |
+| Serilog | 8.0.0 | Structured logging to file |
+| Microsoft.Extensions.DependencyInjection | 8.0.1 | DI container |
+| Microsoft.Extensions.Http | 8.0.1 | HttpClient factory |
+| System.Text.Json | 8.0.5 | JSON serialization |
 
 ## Important Conventions
 
@@ -84,22 +93,84 @@ The `ViewLocator` maps ViewModel types to View types by replacing `"ViewModel"` 
 - All I/O operations must be `async Task`.
 - Avalonia `DataAnnotationsValidationPlugin` is disabled in `App.axaml.cs` to avoid conflicts with CommunityToolkit validation.
 
+## Implementation Status
+
+### ✅ Completed Features (Production Ready)
+
+**Core Workflow:**
+- ✅ AI vision scanning via OpenRouter (11 free models supported)
+- ✅ Variation verification against checklist database with fuzzy matching
+- ✅ Single-card and bulk scanning workflows
+- ✅ Inventory management (CRUD, filtering, bulk operations, search)
+- ✅ Pricing research with browser integration (Terapeak/eBay)
+- ✅ Whatnot CSV export with validation
+- ✅ ImgBB image hosting integration
+- ✅ Sales tracking and profitability reports
+- ✅ Financial reporting by date range
+
+**Advanced Features:**
+- ✅ Graded card support (PSA, BGS, CGC, CCG, SGC)
+- ✅ Checklist learning system (improves from saved cards)
+- ✅ Checklist CSV import and editing
+- ✅ Price staleness tracking with visual indicators
+- ✅ "Mark as Sold" workflow with profit calculation
+- ✅ Setup wizard for first-run configuration
+- ✅ Settings persistence (JSON)
+- ✅ Logging (Serilog to file)
+
+**Technical Implementation:**
+- ✅ 14 ViewModels with MVVM pattern
+- ✅ 12 Views with Avalonia UI
+- ✅ 11 services with interface-based DI
+- ✅ SQLite database with EF Core (88 fields per card)
+- ✅ Seed data system for checklists
+- ✅ 8 custom XAML value converters
+- ✅ Fuzzy matching for verification (0.85/0.7 thresholds)
+- ✅ Rate limiting for free-tier AI models
+
+### 🚧 Current Work
+
+- 🚧 **Bulk Scan feature** (feature/bulk-scan branch) — Multi-card batch scanning with front/back pairing
+
+### 📋 Future Roadmap
+
+**High Priority:**
+- ⏳ 3-project architecture refactor (App/Core/Infrastructure split)
+- ⏳ Unit and integration tests
+- ⏳ Automated price scraping (replace manual browser lookup)
+
+**Medium Priority:**
+- ⏳ Cloud sync / backup
+- ⏳ Additional export formats (eBay, COMC)
+- ⏳ Performance optimizations for large inventories (1000+ cards)
+- ⏳ Dark theme support
+
+**Low Priority:**
+- ⏳ Mobile companion app
+- ⏳ Barcode scanning
+- ⏳ Price alerts/notifications
+
+See `Docs/17-FUTURE-ROADMAP.md` for detailed planning.
+
 ## Planning Documents
 
-Comprehensive specs are in `Docs/`. Reference these when implementing features:
+Comprehensive specs are in `Docs/`. Most are now implemented, use as reference for modifications:
 
-| Doc | Content |
-|-----|---------|
-| `01-PROJECT-PLAN.md` | Architecture, tech stack, development phases |
-| `02-DATABASE-SCHEMA.md` | EF Core entities (Card, PriceHistory), enums |
-| `03-OPENROUTER-INTEGRATION.md` | AI vision API setup and prompts |
-| `04-WHATNOT-CSV-FORMAT.md` | Export CSV column mapping |
-| `05-PRICING-RESEARCH.md` | Terapeak/eBay URL construction |
-| `06-IMAGE-HOSTING.md` | ImgBB API integration |
-| `07-CLAUDE-CODE-GUIDE.md` | Step-by-step build prompts and troubleshooting |
-| `08-CARD-TERMINOLOGY.md` | Sports card domain reference |
-| `10-GUI-ARCHITECTURE.md` | Detailed Avalonia MVVM patterns, DI setup, view specs |
-| `13-INVENTORY-TRACKING.md` | Price staleness and financial tracking |
+| Doc | Status | Content |
+|-----|--------|---------|
+| `01-PROJECT-PLAN.md` | 📝 Updated | Architecture, tech stack, development phases |
+| `02-DATABASE-SCHEMA.md` | ✅ Implemented | EF Core entities (Card, PriceHistory, SetChecklist), enums |
+| `03-OPENROUTER-INTEGRATION.md` | ✅ Implemented | AI vision API setup and prompts (11 models) |
+| `04-WHATNOT-CSV-FORMAT.md` | ✅ Implemented | Export CSV column mapping |
+| `05-PRICING-RESEARCH.md` | ⚠️ Partial | Terapeak/eBay URL construction (browser links, no scraping) |
+| `06-IMAGE-HOSTING.md` | ✅ Implemented | ImgBB API integration |
+| `07-CLAUDE-CODE-GUIDE.md` | 📝 Updated | Working with existing codebase guide |
+| `08-CARD-TERMINOLOGY.md` | 📖 Reference | Sports card domain reference |
+| `10-GUI-ARCHITECTURE.md` | ✅ Implemented | Detailed Avalonia MVVM patterns, DI setup, view specs |
+| `13-INVENTORY-TRACKING.md` | ✅ Implemented | Price staleness and financial tracking |
+| `14-VARIATION-VERIFICATION.md` | ✅ Implemented | Checklist-based verification system |
+| `16-CHECKLIST-DATA-SPEC.md` | ✅ Implemented | Checklist data structure and seeding |
+| `17-FUTURE-ROADMAP.md` | 🆕 New | Future feature planning and priorities |
 
 ## Git Branching Workflow
 
