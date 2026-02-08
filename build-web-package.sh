@@ -7,7 +7,7 @@ echo "CardLister Web - Build Package"
 echo "================================"
 echo ""
 
-VERSION="2.0.1"
+VERSION="2.0.2"
 
 # Clean previous builds
 echo "Cleaning previous builds..."
