@@ -8,7 +8,7 @@ echo ================================
 echo.
 
 set OUTPUT_DIR=.\publish\CardLister-Web-Windows
-set VERSION=1.0.0
+set VERSION=2.0.1
 
 echo Cleaning previous builds...
 if exist publish rmdir /s /q publish
