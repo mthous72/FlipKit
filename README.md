@@ -30,10 +30,10 @@ For mobile access - scan cards with your phone's camera, manage inventory on-the
 
 | Platform | File | Usage |
 |----------|------|-------|
-| Windows (x64) | `CardLister-Web-Windows-v2.0.3.zip` | Extract and double-click `StartWeb.bat` |
-| macOS Intel | `CardLister-Web-macOS-Intel-v2.0.3.zip` | Extract and run `./start-web.sh` |
-| macOS Apple Silicon | `CardLister-Web-macOS-ARM-v2.0.3.zip` | Extract and run `./start-web.sh` |
-| Linux (x64) | `CardLister-Web-Linux-v2.0.3.tar.gz` | Extract and run `./start-web.sh` |
+| Windows (x64) | `CardLister-Web-Windows-v2.0.4.zip` | Extract and double-click `StartWeb.bat` |
+| macOS Intel | `CardLister-Web-macOS-Intel-v2.0.4.zip` | Extract and run `./start-web.sh` |
+| macOS Apple Silicon | `CardLister-Web-macOS-ARM-v2.0.4.zip` | Extract and run `./start-web.sh` |
+| Linux (x64) | `CardLister-Web-Linux-v2.0.4.tar.gz` | Extract and run `./start-web.sh` |
 
 **Web App Quick Start:**
 1. Download the package for your computer's OS (not your phone!)
