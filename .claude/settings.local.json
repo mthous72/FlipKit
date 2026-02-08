@@ -53,7 +53,9 @@
       "Bash(done)",
       "Bash(/tmp/test-web.sh:*)",
       "Bash(chmod:*)",
-      "Bash(/tmp/test-web.sh)"
+      "Bash(/tmp/test-web.sh)",
+      "Bash(entered, the app should have a big label that AI checking will not)",
+      "Bash(work unless they are applied.\"\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

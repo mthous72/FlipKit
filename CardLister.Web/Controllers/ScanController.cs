@@ -35,12 +35,6 @@ namespace CardLister.Web.Controllers
         // GET: Scan
         public IActionResult Index()
         {
-            var settings = _settingsService.Load();
-            if (string.IsNullOrWhiteSpace(settings.OpenRouterApiKey))
-            {
-                TempData["ErrorMessage"] = "Please configure your OpenRouter API key in Settings before scanning.";
-            }
-
             return View(new ScanUploadViewModel());
         }
 
