@@ -54,6 +54,13 @@
                             </a>
                         </li>
                     </ul>
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Settings" asp-action="Index">
+                                <i class="bi bi-gear"></i> Settings
+                            </a>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </nav>
@@ -93,13 +100,13 @@
         </div>
     }
 
-    <div class="container-fluid">
-        <main role="main" class="pb-3">
+    <div class="container-fluid" style="min-height: calc(100vh - 400px);">
+        <main role="main" class="pb-5 mb-5">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted mt-5 py-3">
+    <footer class="border-top footer text-muted mt-auto py-3" style="background-color: #f8f9fa;">
         <div class="container">
             <div class="row">
                 <div class="col-md-8">

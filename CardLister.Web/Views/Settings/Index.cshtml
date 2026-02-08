@@ -1,0 +1,164 @@
+@model CardLister.Web.Models.SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h2 class="mb-4">
+                <i class="bi bi-gear"></i> Settings
+                <span class="badge bg-secondary ms-2">Read-Only</span>
+            </h2>
+
+            <!-- Info Alert -->
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading">
+                    <i class="bi bi-info-circle"></i> Settings Are Read-Only in Web App
+                </h5>
+                <p class="mb-2">
+                    The Web application can <strong>view</strong> settings but cannot edit them.
+                </p>
+                <hr>
+                <p class="mb-0">
+                    <i class="bi bi-desktop"></i> <strong>To change settings:</strong> Open the <strong>CardLister Desktop application</strong> and go to Settings.
+                    Changes made there will automatically be reflected here.
+                </p>
+            </div>
+
+            <!-- API Keys -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-key"></i> API Keys
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">OpenRouter API Key</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control"
+                                       value="@(Model.HasOpenRouterKey ? "••••••••••••••••••••" : "Not configured")"
+                                       readonly>
+                                <span class="input-group-text">
+                                    @if (Model.HasOpenRouterKey)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                    }
+                                </span>
+                            </div>
+                            <small class="text-muted">Required for AI card scanning</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">ImgBB API Key</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control"
+                                       value="@(Model.HasImgBBKey ? "••••••••••••••••••••" : "Not configured")"
+                                       readonly>
+                                <span class="input-group-text">
+                                    @if (Model.HasImgBBKey)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-x-circle-fill text-warning"></i>
+                                    }
+                                </span>
+                            </div>
+                            <small class="text-muted">Optional - for image uploads</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Settings -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-robot"></i> AI Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Default AI Model</label>
+                        <input type="text" class="form-control" value="@Model.DefaultModel" readonly>
+                        <small class="text-muted">Model used for card scanning</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fee Settings -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-percent"></i> Fee Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Whatnot Fee %</label>
+                            <input type="text" class="form-control" value="@Model.WhatnotFeePercent%" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">eBay Fee %</label>
+                            <input type="text" class="form-control" value="@Model.EbayFeePercent%" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Shipping (PWE)</label>
+                            <input type="text" class="form-control" value="$@Model.DefaultShippingCostPwe" readonly>
+                            <small class="text-muted">Plain White Envelope</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Shipping (BMWT)</label>
+                            <input type="text" class="form-control" value="$@Model.DefaultShippingCostBmwt" readonly>
+                            <small class="text-muted">Bubble Mailer w/ Tracking</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Settings -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-sliders"></i> Other Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Price Staleness Threshold</label>
+                        <input type="text" class="form-control" value="@Model.PriceStalenessThresholdDays days" readonly>
+                        <small class="text-muted">Cards priced older than this are flagged for repricing</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legal Disclaimer -->
+            <div class="card border-warning">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Important Legal Notice
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>For Educational Use Only.</strong>
+                        CardLister is provided "AS IS" without warranties of any kind. No warranties are implied regarding the accuracy of AI card identification, pricing data, financial calculations, or any other information.
+                    </p>
+                    <p class="mb-0">
+                        <strong>Use at Your Own Risk.</strong>
+                        Always verify all card identifications, prices, and financial data independently. AI-generated content may contain errors. Not intended for professional accounting, tax, or financial advice.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
