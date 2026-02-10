@@ -32,7 +32,7 @@ namespace CardLister.Desktop.ViewModels
         [ObservableProperty] private bool _isEbaySeller;
         [ObservableProperty] private string _defaultShippingProfile = "4 oz";
         [ObservableProperty] private string _defaultCondition = "Near Mint";
-        [ObservableProperty] private string _defaultModel = "google/gemini-flash-1.5:free";
+        [ObservableProperty] private string _defaultModel = "meta-llama/llama-3.2-11b-vision-instruct:free";
 
         public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
 
