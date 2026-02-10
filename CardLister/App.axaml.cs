@@ -140,8 +140,74 @@ namespace CardLister.Desktop
                     DataContext = _services.GetRequiredService<MainWindowViewModel>()
                 };
 
-                desktop.ShutdownRequested += (_, _) =>
+                // Auto-sync on startup (if enabled)
+                Task.Run(async () =>
                 {
+                    try
+                    {
+                        var settingsService = _services.GetRequiredService<ISettingsService>();
+                        var syncService = _services.GetRequiredService<ISyncService>();
+                        var settings = settingsService.Load();
+
+                        if (settings.EnableSync && settings.AutoSyncOnStartup)
+                        {
+                            Log.Information("Auto-sync on startup enabled, syncing...");
+                            var result = await syncService.SyncAsync();
+                            if (result.Success)
+                            {
+                                Log.Information("Startup sync complete: pushed {Pushed}, pulled {Pulled}",
+                                    result.CardsPushed, result.CardsPulled);
+                            }
+                            else
+                            {
+                                Log.Warning("Startup sync failed: {Error}", result.ErrorMessage);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Startup sync failed");
+                    }
+                });
+
+                desktop.ShutdownRequested += async (_, e) =>
+                {
+                    try
+                    {
+                        var settingsService = _services.GetRequiredService<ISettingsService>();
+                        var syncService = _services.GetRequiredService<ISyncService>();
+                        var settings = settingsService.Load();
+
+                        if (settings.EnableSync && settings.AutoSyncOnExit)
+                        {
+                            Log.Information("Auto-sync on exit enabled, syncing...");
+
+                            // Defer shutdown to allow sync to complete
+                            var deferral = e.GetDeferral();
+                            try
+                            {
+                                var result = await syncService.SyncAsync();
+                                if (result.Success)
+                                {
+                                    Log.Information("Exit sync complete: pushed {Pushed}, pulled {Pulled}",
+                                        result.CardsPushed, result.CardsPulled);
+                                }
+                                else
+                                {
+                                    Log.Warning("Exit sync failed: {Error}", result.ErrorMessage);
+                                }
+                            }
+                            finally
+                            {
+                                deferral.Complete();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Exit sync failed");
+                    }
+
                     Log.Information("CardLister shutting down");
                     Log.CloseAndFlush();
                     if (_services is IDisposable disposable)
