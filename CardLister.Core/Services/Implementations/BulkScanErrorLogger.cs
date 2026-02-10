@@ -32,16 +32,17 @@ namespace CardLister.Core.Services
         {
             lock (_lockObject)
             {
+                // Create log file with timestamp
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                _currentLogFile = Path.Combine(_logDirectory, $"bulk-scan_{timestamp}.log");
+
                 _currentSession = new BulkScanSessionSummary
                 {
                     StartTime = DateTime.Now,
                     TotalCards = totalCards,
-                    Model = model
+                    Model = model,
+                    LogFilePath = _currentLogFile
                 };
-
-                // Create log file with timestamp
-                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-                _currentLogFile = Path.Combine(_logDirectory, $"bulk-scan_{timestamp}.log");
 
                 // Write header
                 var header = new StringBuilder();

@@ -173,6 +173,12 @@ namespace CardLister.Desktop.ViewModels
                 _logger.LogInformation("Bulk scan cancelled by user");
             }
 
+            var scanned = Items.Count(i => i.Status == BulkScanStatus.Scanned);
+            var errors = Items.Count(i => i.Status == BulkScanStatus.Error);
+
+            // Get log path BEFORE ending session (which clears the path)
+            var logPath = _errorLogger.GetCurrentLogFilePath();
+
             // End error tracking session and generate summary
             await _errorLogger.EndSessionAsync();
 
@@ -180,15 +186,11 @@ namespace CardLister.Desktop.ViewModels
             _scanCts = null;
             StatusMessage = null;
 
-            var scanned = Items.Count(i => i.Status == BulkScanStatus.Scanned);
-            var errors = Items.Count(i => i.Status == BulkScanStatus.Error);
-
             if (errors > 0)
             {
-                var logPath = _errorLogger.GetCurrentLogFilePath();
                 if (!string.IsNullOrEmpty(logPath))
                 {
-                    ErrorMessage = $"Scanned {scanned} cards, {errors} failed. Error log saved to:\n{logPath}";
+                    ErrorMessage = $"Scanned {scanned} cards, {errors} failed.\n\nError log saved to:\n{logPath}";
                 }
                 else
                 {

@@ -47,6 +47,7 @@ namespace CardLister.Core.Services
         public int SuccessCount { get; set; }
         public int ErrorCount { get; set; }
         public string Model { get; set; } = string.Empty;
+        public string? LogFilePath { get; set; }
         public List<BulkScanError> Errors { get; set; } = new();
     }
 
