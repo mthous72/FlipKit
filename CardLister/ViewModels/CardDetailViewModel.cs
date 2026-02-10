@@ -64,6 +64,11 @@ namespace CardLister.Desktop.ViewModels
         [ObservableProperty] private DateTime? _costDate;
         [ObservableProperty] private string? _costNotes;
 
+        // Pricing
+        [ObservableProperty] private decimal? _estimatedValue;
+        [ObservableProperty] private decimal? _listingPrice;
+        [ObservableProperty] private CardStatus _status = CardStatus.Draft;
+
         // Listing Settings
         [ObservableProperty] private int _quantity = 1;
         [ObservableProperty] private string _listingType = "Buy It Now";
@@ -107,6 +112,9 @@ namespace CardLister.Desktop.ViewModels
                 CostSource = CostSource,
                 CostDate = CostDate,
                 CostNotes = CostNotes,
+                EstimatedValue = EstimatedValue,
+                ListingPrice = ListingPrice,
+                Status = Status,
                 Quantity = Quantity,
                 ListingType = ListingType,
                 Offerable = Offerable,
@@ -147,6 +155,9 @@ namespace CardLister.Desktop.ViewModels
                 CostSource = card.CostSource,
                 CostDate = card.CostDate,
                 CostNotes = card.CostNotes,
+                EstimatedValue = card.EstimatedValue,
+                ListingPrice = card.ListingPrice,
+                Status = card.Status,
                 Quantity = card.Quantity,
                 ListingType = card.ListingType,
                 Offerable = card.Offerable,

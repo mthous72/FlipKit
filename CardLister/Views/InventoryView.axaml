@@ -16,10 +16,10 @@
         <conv:FilePathToBitmapConverter x:Key="FilePathToBitmapConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="24">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" ColumnDefinitions="*,Auto" Margin="24">
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,16">
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <TextBlock Text="My Cards" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding TotalCount, StringFormat='({0} total)'}"
@@ -32,7 +32,7 @@
         </StackPanel>
 
         <!-- Filter Bar -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
+        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
             <TextBox Text="{Binding SearchText}" Watermark="Search players, brands, teams..."
                      Width="250"/>
             <ComboBox ItemsSource="{Binding SportOptions}" SelectedItem="{Binding SelectedSport}"
@@ -48,7 +48,7 @@
         </StackPanel>
 
         <!-- DataGrid (virtualization enabled by default for smooth scrolling) -->
-        <DataGrid Grid.Row="2"
+        <DataGrid Grid.Row="2" Grid.Column="0"
                   ItemsSource="{Binding FilteredCards}"
                   SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                   AutoGenerateColumns="False"
@@ -100,7 +100,7 @@
         </DataGrid>
 
         <!-- Action Footer -->
-        <Border Grid.Row="3" Margin="0,12,0,0"
+        <Border Grid.Row="3" Grid.Column="0" Margin="0,12,0,0"
                 Background="{DynamicResource SystemChromeLowColor}"
                 CornerRadius="6" Padding="16,10">
             <StackPanel Orientation="Horizontal" Spacing="24">
@@ -140,7 +140,7 @@
         </Border>
 
         <!-- Export Footer -->
-        <Border Grid.Row="4" Margin="0,6,0,0"
+        <Border Grid.Row="4" Grid.Column="0" Margin="0,6,0,0"
                 Background="{DynamicResource SystemChromeLowColor}"
                 CornerRadius="6" Padding="16,10">
             <StackPanel Spacing="6">
@@ -230,6 +230,144 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+        </Border>
+
+        <!-- Edit Panel (Side Panel) -->
+        <Border Grid.Row="0" Grid.RowSpan="5" Grid.Column="1"
+                Width="420" Margin="12,0,0,0"
+                IsVisible="{Binding IsEditPanelOpen}"
+                Background="{DynamicResource SystemChromeLowColor}"
+                BorderBrush="{DynamicResource SystemBaseLowColor}"
+                BorderThickness="1" CornerRadius="8">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- Panel Header -->
+                <Border Grid.Row="0" Background="{DynamicResource SystemChromeMediumLowColor}"
+                        CornerRadius="8,8,0,0" Padding="16,12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Quick Edit" FontSize="18" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding EditingCard.PlayerName}" FontSize="13" Opacity="0.7" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="✕" Command="{Binding CloseEditPanelCommand}"
+                                Width="32" Height="32" Padding="0"
+                                FontSize="16" VerticalAlignment="Top"/>
+                    </Grid>
+                </Border>
+
+                <!-- Edit Form (Scrollable) -->
+                <ScrollViewer Grid.Row="1" Padding="16">
+                    <StackPanel Spacing="12" DataContext="{Binding EditingCard}"
+                                x:DataType="vm:CardDetailViewModel">
+
+                        <!-- Player Name -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Player Name *" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBox Text="{Binding PlayerName}" Watermark="Required"/>
+                        </StackPanel>
+
+                        <!-- Year / Brand / Parallel -->
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Year" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding Year}" Watermark="2024"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Card #" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding CardNumber}" Watermark="123"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Spacing="4">
+                                <TextBlock Text="Grade" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding GradeValue}" Watermark="10"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Brand / Parallel -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Brand" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding Brand}" Watermark="Prizm"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Parallel" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding ParallelName}" Watermark="Silver"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Team / Serial -->
+                        <Grid ColumnDefinitions="*,100" ColumnSpacing="8">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Team" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding Team}" Watermark="Team name"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Serial #" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding SerialNumbered}" Watermark="/99"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Checkboxes -->
+                        <StackPanel Spacing="6">
+                            <CheckBox IsChecked="{Binding IsRookie}" Content="Rookie Card" FontSize="12"/>
+                            <CheckBox IsChecked="{Binding IsAuto}" Content="Autograph" FontSize="12"/>
+                            <CheckBox IsChecked="{Binding IsRelic}" Content="Relic/Memorabilia" FontSize="12"/>
+                        </StackPanel>
+
+                        <!-- Pricing -->
+                        <Separator/>
+                        <TextBlock Text="Pricing" FontSize="14" FontWeight="SemiBold"/>
+
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <StackPanel Grid.Column="0" Spacing="4">
+                                <TextBlock Text="Cost Basis" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding CostBasis}" Watermark="5.00"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Spacing="4">
+                                <TextBlock Text="Listing Price" FontWeight="SemiBold" FontSize="12"/>
+                                <TextBox Text="{Binding ListingPrice}" Watermark="12.00"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Status -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Status" FontWeight="SemiBold" FontSize="12"/>
+                            <ComboBox SelectedItem="{Binding Status}" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="Draft"/>
+                                <ComboBoxItem Content="Priced"/>
+                                <ComboBoxItem Content="Ready"/>
+                                <ComboBoxItem Content="Listed"/>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <!-- Notes -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Notes" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBox Text="{Binding Notes}" TextWrapping="Wrap"
+                                     AcceptsReturn="True" MinHeight="60" Watermark="Additional notes..."/>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Save/Cancel Footer -->
+                <Border Grid.Row="2" Background="{DynamicResource SystemChromeMediumLowColor}"
+                        CornerRadius="0,0,8,8" Padding="16,12">
+                    <StackPanel Spacing="8">
+                        <!-- Messages -->
+                        <TextBlock Text="{Binding EditSuccessMessage}" Foreground="Green" FontSize="12"
+                                   IsVisible="{Binding EditSuccessMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        <TextBlock Text="{Binding EditErrorMessage}" Foreground="Red" FontSize="12" TextWrapping="Wrap"
+                                   IsVisible="{Binding EditErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                        <!-- Buttons -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Button Grid.Column="0" Content="Save Changes" Command="{Binding SaveEditCommand}"
+                                    Classes="accent" HorizontalAlignment="Stretch" Padding="12,8"/>
+                            <Button Grid.Column="1" Content="Close" Command="{Binding CloseEditPanelCommand}"
+                                    Padding="12,8"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

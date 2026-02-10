@@ -62,6 +62,12 @@ namespace CardLister.Desktop.ViewModels
         [ObservableProperty] private string? _exportError;
         [ObservableProperty] private int _selectedCount;
 
+        // Edit Panel (side panel for quick editing)
+        [ObservableProperty] private bool _isEditPanelOpen;
+        [ObservableProperty] private CardDetailViewModel? _editingCard;
+        [ObservableProperty] private string? _editSuccessMessage;
+        [ObservableProperty] private string? _editErrorMessage;
+
         public Card? SelectedCard => SelectedItem?.Card ?? FilteredCards.FirstOrDefault(c => c.IsSelected)?.Card;
         public bool HasSelectedItem => SelectedItem != null || FilteredCards.Any(c => c.IsSelected);
 
@@ -100,10 +106,81 @@ namespace CardLister.Desktop.ViewModels
         }
 
         [RelayCommand(CanExecute = nameof(HasSelectedItem))]
-        private async Task EditSelectedAsync()
+        private void EditSelected()
         {
             if (SelectedCard == null) return;
-            await _navigationService.NavigateToEditCardAsync(SelectedCard.Id);
+
+            // Open edit panel instead of navigating away
+            EditingCard = CardDetailViewModel.FromCard(SelectedCard);
+            MergeCustomGradingCompanies(EditingCard);
+            IsEditPanelOpen = true;
+            EditSuccessMessage = null;
+            EditErrorMessage = null;
+        }
+
+        [RelayCommand]
+        private async Task SaveEditAsync()
+        {
+            if (EditingCard == null || SelectedCard == null) return;
+
+            var savedCardId = SelectedCard.Id;
+
+            try
+            {
+                var card = EditingCard.ToCard();
+                card.Id = SelectedCard.Id; // Preserve ID
+                card.ImagePathFront = SelectedCard.ImagePathFront;
+                card.ImagePathBack = SelectedCard.ImagePathBack;
+                card.CreatedAt = SelectedCard.CreatedAt;
+                card.UpdatedAt = DateTime.UtcNow;
+
+                await _cardRepository.UpdateCardAsync(card);
+
+                // Reload cards to update the display (maintains selection)
+                LoadCardsAsync();
+
+                // Restore selection to the saved card (preserves scroll position)
+                // Give LoadCardsAsync a moment to complete
+                await Task.Delay(100);
+                var updatedCard = FilteredCards.FirstOrDefault(sc => sc.Card.Id == savedCardId);
+                if (updatedCard != null)
+                {
+                    SelectedItem = updatedCard;
+                }
+
+                EditSuccessMessage = $"✓ Saved {card.PlayerName}";
+                EditErrorMessage = null;
+
+                // Keep panel open for rapid editing, but clear success message after delay
+                _ = Task.Delay(2000).ContinueWith(_ => EditSuccessMessage = null);
+
+                _logger.LogInformation("Updated card {CardId} from edit panel", card.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save card edit");
+                EditErrorMessage = $"Save failed: {ex.Message}";
+                EditSuccessMessage = null;
+            }
+        }
+
+        [RelayCommand]
+        private void CloseEditPanel()
+        {
+            IsEditPanelOpen = false;
+            EditingCard = null;
+            EditSuccessMessage = null;
+            EditErrorMessage = null;
+        }
+
+        private void MergeCustomGradingCompanies(CardDetailViewModel vm)
+        {
+            var settings = _settingsService.Load();
+            foreach (var custom in settings.CustomGradingCompanies)
+            {
+                if (!vm.GradingCompanyOptions.Contains(custom, StringComparer.OrdinalIgnoreCase))
+                    vm.GradingCompanyOptions.Add(custom);
+            }
         }
 
         [RelayCommand]
