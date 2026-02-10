@@ -32,9 +32,9 @@ namespace CardLister.Desktop.ViewModels
         [ObservableProperty] private bool _isEbaySeller;
         [ObservableProperty] private string _defaultShippingProfile = "4 oz";
         [ObservableProperty] private string _defaultCondition = "Near Mint";
-        [ObservableProperty] private string _defaultModel = "nvidia/nemotron-nano-12b-v2-vl:free";
+        [ObservableProperty] private string _defaultModel = "google/gemini-flash-1.5:free";
 
-        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.FreeVisionModels);
+        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
 
         // Card Scanning
         [ObservableProperty] private bool _enableVariationVerification = true;

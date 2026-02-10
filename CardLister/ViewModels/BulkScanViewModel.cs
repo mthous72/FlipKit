@@ -38,7 +38,7 @@ namespace CardLister.Desktop.ViewModels
         [ObservableProperty] private string _selectedModel = string.Empty;
         [ObservableProperty] private int _maxConcurrentScans = 1;
 
-        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.FreeVisionModels);
+        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
 
         // Computed property: is the selected model a free model?
         public bool IsSelectedModelFree => SelectedModel.Contains(":free");

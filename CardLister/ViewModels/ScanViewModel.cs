@@ -36,7 +36,7 @@ namespace CardLister.Desktop.ViewModels
         // Model selection
         [ObservableProperty] private string _selectedModel = string.Empty;
 
-        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.FreeVisionModels);
+        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
 
         public ScanViewModel(
             IScannerService scannerService,

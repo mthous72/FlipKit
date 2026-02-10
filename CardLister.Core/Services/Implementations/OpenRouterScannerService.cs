@@ -18,20 +18,29 @@ namespace CardLister.Core.Services
     {
         private const string ApiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
+        // Free vision models (verified working as of Feb 2025)
         public static readonly string[] FreeVisionModels = new[]
         {
-            "nvidia/nemotron-nano-12b-v2-vl:free",
-            "qwen/qwen2.5-vl-72b-instruct:free",
-            "qwen/qwen2.5-vl-32b-instruct:free",
-            "meta-llama/llama-4-maverick:free",
-            "meta-llama/llama-4-scout:free",
-            "google/gemma-3-27b-it:free",
-            "mistralai/mistral-small-3.1-24b-instruct:free",
-            "moonshotai/kimi-vl-a3b-thinking:free",
+            "google/gemini-flash-1.5:free",
+            "google/gemini-flash-1.5-8b:free",
+            "meta-llama/llama-3.2-90b-vision-instruct:free",
             "meta-llama/llama-3.2-11b-vision-instruct:free",
-            "google/gemma-3-12b-it:free",
-            "google/gemma-3-4b-it:free"
+            "qwen/qvq-72b-preview:free",
+            "x-ai/grok-2-vision-1212:free"
         };
+
+        // Premium vision models (paid, higher quality)
+        public static readonly string[] PaidVisionModels = new[]
+        {
+            "anthropic/claude-3.5-sonnet",
+            "anthropic/claude-3-opus",
+            "openai/gpt-4o",
+            "openai/gpt-4o-mini",
+            "google/gemini-pro-1.5"
+        };
+
+        // All vision models (free + paid)
+        public static readonly string[] AllVisionModels = FreeVisionModels.Concat(PaidVisionModels).ToArray();
 
         private const string ScanPromptBody = @"
 Return ONLY a JSON object with these exact fields (use null for unknown values):
