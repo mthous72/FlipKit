@@ -67,9 +67,10 @@ These features are implemented and functional today:
 - **Tax Report Export** -- Export sold cards as a CSV with sale date, cost basis, fees, and net profit for record-keeping.
 - **Reports** -- View sold card summary with total revenue, cost basis, fees, and net profit. Monthly breakdown and top sellers list.
 - **Listing Title Optimization** -- SEO-optimized title templates for different platforms (Whatnot, eBay, COMC, Generic). Customize title format per platform using placeholders like `{Year} {Brand} {Player} {Parallel}`. Search query templates optimize pricing research by excluding overly specific fields. Export platform selector lets you choose which template to use per-export. Based on WTSCards research showing different platforms weight fields differently for search ranking.
-- **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, and verification preferences. Includes full title and search template customization with validation, preview, and reset options.
+- **Tailscale Sync** -- Access your card inventory from multiple computers on your private Tailscale network. Run a simple sync server on your main computer, and remote computers automatically sync their local database via secure, encrypted connection. Features timestamp-based conflict resolution (newest wins), auto-sync on startup/exit, and manual sync button. Zero cost, no cloud hosting needed - your data stays on your private network. Perfect for accessing cards from a laptop while traveling or managing inventory from multiple locations.
+- **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, verification preferences, and Tailscale sync. Includes full title and search template customization with validation, preview, and reset options.
 - **Setup Wizard** -- First-run walkthrough for entering API keys and setting preferences.
-- **Local-First Data** -- All data is stored on your machine in SQLite. API keys are stored in your local app data folder, never in the repo.
+- **Local-First Data** -- All data is stored on your machine in SQLite. API keys are stored in your local app data folder, never in the repo. Optional Tailscale sync keeps data synchronized across your computers via private network.
 
 ### Web Application Features (v2.1.0)
 
