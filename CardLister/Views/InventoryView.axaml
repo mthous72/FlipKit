@@ -47,7 +47,7 @@
                        VerticalAlignment="Center" Opacity="0.6" FontSize="12"/>
         </StackPanel>
 
-        <!-- DataGrid -->
+        <!-- DataGrid (virtualization enabled by default for smooth scrolling) -->
         <DataGrid Grid.Row="2"
                   ItemsSource="{Binding FilteredCards}"
                   SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
