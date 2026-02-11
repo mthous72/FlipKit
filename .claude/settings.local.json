@@ -59,14 +59,16 @@
       "WebFetch(domain:openrouter.ai)",
       "Bash(git restore:*)",
       "Bash(build-web-package.bat)",
-      "Bash(cmd /c \"cd /d C:\\\\Users\\\\Houston~1\\\\source\\\\repos\\\\CardLister && build-web-package.bat\")",
-      "Bash(\"C:\\\\Users\\\\Houston Smlr Laptop\\\\source\\\\repos\\\\CardLister\\\\build-web-package.bat\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\Houston~1\\\\source\\\\repos\\\\FlipKit && build-web-package.bat\")",
+      "Bash(\"C:\\\\Users\\\\Houston Smlr Laptop\\\\source\\\\repos\\\\FlipKit\\\\build-web-package.bat\")",
       "Bash(dotnet publish:*)",
       "Bash(python -m json.tool:*)",
       "Bash(dotnet new:*)",
       "Bash(dotnet sln:*)",
       "Bash(dotnet add reference:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(gh:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

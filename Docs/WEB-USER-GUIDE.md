@@ -1,18 +1,18 @@
-# CardLister Web Application - User Guide
+# FlipKit Web Application - User Guide
 
 **Version:** 1.0 (Web MVP)
 **Last Updated:** February 7, 2026
 
 ---
 
-## What is CardLister Web?
+## What is FlipKit Web?
 
-CardLister Web is a mobile-friendly companion to the CardLister Desktop application. Access your card inventory, scan new cards, and manage listings from any device with a web browser - perfect for on-the-go card shopping at shows or quick price checks from your phone.
+FlipKit Web is a mobile-friendly companion to the FlipKit Desktop application. Access your card inventory, scan new cards, and manage listings from any device with a web browser - perfect for on-the-go card shopping at shows or quick price checks from your phone.
 
 ### Key Features
 
 - 📱 **Mobile Camera Scanning** - Use your phone's camera to scan cards directly
-- 🔄 **Shared Database** - Seamless sync with CardLister Desktop app
+- 🔄 **Shared Database** - Seamless sync with FlipKit Desktop app
 - 💰 **Price Research** - Quick access to eBay and Terapeak pricing tools
 - 📦 **Inventory Management** - Browse, search, edit, and delete cards
 - 📤 **CSV Export** - Generate Whatnot-compatible bulk uploads
@@ -20,7 +20,7 @@ CardLister Web is a mobile-friendly companion to the CardLister Desktop applicat
 
 ### Requirements
 
-- CardLister Desktop app running on your computer
+- FlipKit Desktop app running on your computer
 - Web browser (Chrome, Edge, Firefox, Safari)
 - Same local network (Wi-Fi) for mobile access
 
@@ -30,7 +30,7 @@ CardLister Web is a mobile-friendly companion to the CardLister Desktop applicat
 
 ### Accessing from Computer
 
-1. Ensure CardLister Desktop is running
+1. Ensure FlipKit Desktop is running
 2. Open your web browser
 3. Navigate to: **http://localhost:5000**
 
@@ -556,4 +556,4 @@ For issues or questions:
 
 **Happy selling from anywhere!** 🎉📱
 
-*This guide covers CardLister Web v1.0 (February 2026). Features may change in future updates.*
+*This guide covers FlipKit Web v1.0 (February 2026). Features may change in future updates.*

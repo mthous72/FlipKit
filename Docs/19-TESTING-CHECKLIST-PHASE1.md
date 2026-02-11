@@ -1,7 +1,7 @@
 # Phase 1 Testing Checklist - Desktop App Refactoring
 
 ## Overview
-Phase 1 refactored the CardLister desktop app from a single-project monolith to a 2-project architecture (Core + Desktop). This testing checklist ensures no functionality was broken during the refactoring.
+Phase 1 refactored the FlipKit desktop app from a single-project monolith to a 2-project architecture (Core + Desktop). This testing checklist ensures no functionality was broken during the refactoring.
 
 ## Build Status
 ✅ **Build: 0 Errors, 0 Warnings**
@@ -13,18 +13,18 @@ Phase 1 refactored the CardLister desktop app from a single-project monolith to 
 ## Pre-Testing Setup
 
 ### 1. Database Backup
-- [ ] Locate existing database: `%APPDATA%\CardLister\cards.db`
+- [ ] Locate existing database: `%APPDATA%\FlipKit\cards.db`
 - [ ] Create backup copy before testing
 - [ ] Note: Database should work unchanged (schema is identical)
 
 ### 2. Settings Backup
-- [ ] Locate settings file: `%APPDATA%\CardLister\settings.json`
+- [ ] Locate settings file: `%APPDATA%\FlipKit\settings.json`
 - [ ] Create backup copy
 - [ ] Note: Settings format is unchanged
 
 ### 3. Launch Application
-- [ ] Run: `dotnet run --project CardLister.Desktop`
-- [ ] OR: Double-click `CardLister.Desktop.exe` after `dotnet build`
+- [ ] Run: `dotnet run --project FlipKit.Desktop`
+- [ ] OR: Double-click `FlipKit.Desktop.exe` after `dotnet build`
 - [ ] Verify app window appears without crashes
 
 ---
@@ -254,7 +254,7 @@ Phase 1 refactored the CardLister desktop app from a single-project monolith to 
    - [ ] Verify changed setting persisted
 
 3. **API Key Security:**
-   - [ ] Settings file at `%APPDATA%\CardLister\settings.json`
+   - [ ] Settings file at `%APPDATA%\FlipKit\settings.json`
    - [ ] Open in text editor
    - [ ] API keys stored in plain JSON (as expected)
 
@@ -384,7 +384,7 @@ Phase 1 refactored the CardLister desktop app from a single-project monolith to 
 
 ### Not a Bug
 1. **Static Services property removed:** This is intentional - we refactored to instance field
-2. **Namespace changes:** All namespaces now CardLister.Desktop.* or CardLister.Core.* (intentional)
+2. **Namespace changes:** All namespaces now FlipKit.Desktop.* or FlipKit.Core.* (intentional)
 3. **ViewModelBase location:** Still in Desktop project (not moved to Core) - by design
 
 ---

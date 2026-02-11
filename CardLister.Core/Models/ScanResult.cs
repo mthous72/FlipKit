@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace CardLister.Core.Models
+namespace FlipKit.Core.Models
 {
     public class ScanResult
     {

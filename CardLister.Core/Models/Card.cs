@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models.Enums;
 
-namespace CardLister.Core.Models
+namespace FlipKit.Core.Models
 {
     public class Card
     {

@@ -14,7 +14,7 @@
 
 ### Before (Single Project Monolith)
 ```
-CardLister/
+FlipKit/
 ├── Models/        (17 files - tightly coupled)
 ├── Data/          (5 files - desktop only)
 ├── Services/      (28 files - mixed concerns)
@@ -25,8 +25,8 @@ CardLister/
 
 ### After (2-Project Clean Architecture)
 ```
-CardLister.sln
-├── CardLister.Core/              ← 55% Reusable
+FlipKit.sln
+├── FlipKit.Core/              ← 55% Reusable
 │   ├── Models/                   (17 files)
 │   ├── Data/                     (5 files)
 │   ├── Services/Interfaces/      (12 interfaces)
@@ -34,7 +34,7 @@ CardLister.sln
 │   ├── Services/ApiModels/       (4 models)
 │   └── Helpers/                  (2 utilities)
 │
-└── CardLister.Desktop/           ← 45% UI-Specific
+└── FlipKit.Desktop/           ← 45% UI-Specific
     ├── Views/                    (12 XAML + 12 code-behind)
     ├── ViewModels/               (14 ViewModels - DI)
     ├── Converters/               (8 converters)
@@ -55,7 +55,7 @@ CardLister.sln
 ```bash
 git show b3c4098 --stat
 ```
-- Created `CardLister.Core` class library
+- Created `FlipKit.Core` class library
 - Moved Models, Data, Services, Helpers to Core
 - Added NuGet packages (EF Core, Serilog, etc.)
 - **Result:** Core builds independently with 0 errors
@@ -64,7 +64,7 @@ git show b3c4098 --stat
 ```bash
 git show 6eb7cdb --stat
 ```
-- Renamed `CardLister` → `CardLister.Desktop`
+- Renamed `FlipKit` → `FlipKit.Desktop`
 - Updated all namespaces and using statements
 - Deleted ~40 duplicate files
 - Fixed XAML assembly references
@@ -184,20 +184,20 @@ git show 713e045 --stat
 ### Namespace Changes
 | Old | New |
 |-----|-----|
-| `CardLister.Models` | `CardLister.Core.Models` |
-| `CardLister.Data` | `CardLister.Core.Data` |
-| `CardLister.Services` | `CardLister.Core.Services` |
-| `CardLister.Helpers` | `CardLister.Core.Helpers` |
-| `CardLister.ViewModels` | `CardLister.Desktop.ViewModels` |
-| `CardLister.Views` | `CardLister.Desktop.Views` |
+| `FlipKit.Models` | `FlipKit.Core.Models` |
+| `FlipKit.Data` | `FlipKit.Core.Data` |
+| `FlipKit.Services` | `FlipKit.Core.Services` |
+| `FlipKit.Helpers` | `FlipKit.Core.Helpers` |
+| `FlipKit.ViewModels` | `FlipKit.Desktop.ViewModels` |
+| `FlipKit.Views` | `FlipKit.Desktop.Views` |
 
 ### Assembly Names
-- Old: `CardLister.dll`
-- New: `CardLister.Desktop.dll` + `CardLister.Core.dll`
+- Old: `FlipKit.dll`
+- New: `FlipKit.Desktop.dll` + `FlipKit.Core.dll`
 
 ### XAML Changes
-- Old: `avares://CardLister/...`
-- New: `avares://CardLister.Desktop/...`
+- Old: `avares://FlipKit/...`
+- New: `avares://FlipKit.Desktop/...`
 
 **Impact:** None for end users, only affects developers/builds
 
@@ -206,8 +206,8 @@ git show 713e045 --stat
 ## Testing Status
 
 ### Build Verification ✅
-- [x] CardLister.Core builds independently
-- [x] CardLister.Desktop builds with Core reference
+- [x] FlipKit.Core builds independently
+- [x] FlipKit.Desktop builds with Core reference
 - [x] Solution builds: `dotnet build` succeeds
 - [x] 0 compiler errors
 - [x] 0 compiler warnings
@@ -270,7 +270,7 @@ git checkout feature/web-app-migration
 dotnet build
 
 # Run
-dotnet run --project CardLister.Desktop
+dotnet run --project FlipKit.Desktop
 ```
 
 ---
@@ -281,8 +281,8 @@ dotnet run --project CardLister.Desktop
 Phase 1 laid the groundwork. Now we can build the web app!
 
 **Phase 2 Tasks:**
-1. Create `CardLister.Web` ASP.NET Core MVC project
-2. Reference `CardLister.Core` (already done!)
+1. Create `FlipKit.Web` ASP.NET Core MVC project
+2. Reference `FlipKit.Core` (already done!)
 3. Implement web-specific services:
    - `WebFileUploadService` (IFileDialogService)
    - `JavaScriptBrowserService` (IBrowserService)
@@ -321,19 +321,19 @@ Phase 1 laid the groundwork. Now we can build the web app!
 
 ### Key Architecture Files
 ```
-CardLister.Core/Services/Interfaces/INavigationService.cs
-CardLister.Desktop/Services/AvaloniaNavigationService.cs
-CardLister.Desktop/App.axaml.cs (DI container setup)
-CardLister.Desktop/ViewModels/MainWindowViewModel.cs
-CardLister.Desktop/ViewModels/EditCardViewModel.cs
-CardLister.Desktop/ViewModels/InventoryViewModel.cs
+FlipKit.Core/Services/Interfaces/INavigationService.cs
+FlipKit.Desktop/Services/AvaloniaNavigationService.cs
+FlipKit.Desktop/App.axaml.cs (DI container setup)
+FlipKit.Desktop/ViewModels/MainWindowViewModel.cs
+FlipKit.Desktop/ViewModels/EditCardViewModel.cs
+FlipKit.Desktop/ViewModels/InventoryViewModel.cs
 ```
 
 ### Build Configuration
 ```
-CardLister.sln
-CardLister.Core/CardLister.Core.csproj
-CardLister.Desktop/CardLister.Desktop.csproj
+FlipKit.sln
+FlipKit.Core/FlipKit.Core.csproj
+FlipKit.Desktop/FlipKit.Desktop.csproj
 ```
 
 ---

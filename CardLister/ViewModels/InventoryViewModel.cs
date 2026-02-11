@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
-using CardLister.Core.Helpers;
-using CardLister.Core.Services;
-using CardLister.Desktop.Models;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Services;
+using FlipKit.Desktop.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 
-namespace CardLister.Desktop.ViewModels
+namespace FlipKit.Desktop.ViewModels
 {
     public partial class InventoryViewModel : ViewModelBase
     {

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Enums = CardLister.Core.Models.Enums;
+using Enums = FlipKit.Core.Models.Enums;
 
-namespace CardLister.Desktop.ViewModels
+namespace FlipKit.Desktop.ViewModels
 {
     public partial class CardDetailViewModel : ObservableObject
     {

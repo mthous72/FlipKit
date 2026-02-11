@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using CardLister.Models;
-using CardLister.Models.Enums;
-using CardLister.Services;
+using FlipKit.Models;
+using FlipKit.Models.Enums;
+using FlipKit.Services;
 
 namespace ScreenshotTool
 {

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using CardLister.Core.Helpers;
-using CardLister.Core.Models;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Models;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class PricerService : IPricerService
     {

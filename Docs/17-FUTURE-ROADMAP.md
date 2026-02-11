@@ -1,8 +1,8 @@
-# CardLister Future Roadmap
+# FlipKit Future Roadmap
 
 ## Document Purpose
 
-This document outlines planned future enhancements, architectural improvements, and long-term vision for CardLister. As of February 2026, the MVP is ~80-90% complete with full end-to-end functionality. This roadmap guides continued development.
+This document outlines planned future enhancements, architectural improvements, and long-term vision for FlipKit. As of February 2026, the MVP is ~80-90% complete with full end-to-end functionality. This roadmap guides continued development.
 
 ---
 
@@ -56,12 +56,12 @@ This document outlines planned future enhancements, architectural improvements, 
 **Effort:** Medium (2-3 weeks)
 **Benefits:** Better testability, cleaner separation of concerns
 
-**Current:** Single CardLister.csproj with all code
+**Current:** Single FlipKit.csproj with all code
 **Target:** Three projects with clean boundaries
 
 **New Structure:**
 ```
-CardLister.App/           # Avalonia UI layer
+FlipKit.App/           # Avalonia UI layer
 ├── Views/               # XAML views
 ├── Converters/          # Value converters
 ├── Styles/              # Themes and styles
@@ -69,13 +69,13 @@ CardLister.App/           # Avalonia UI layer
 ├── App.axaml.cs         # DI setup, startup
 └── ViewLocator.cs       # ViewModel → View mapping
 
-CardLister.Core/         # Business logic (no UI refs)
+FlipKit.Core/         # Business logic (no UI refs)
 ├── ViewModels/          # All ViewModels
 ├── Models/              # Domain entities
 ├── Services/            # Service interfaces only
 └── Helpers/             # Pure logic helpers
 
-CardLister.Infrastructure/  # External integrations
+FlipKit.Infrastructure/  # External integrations
 ├── Data/                   # EF Core, repositories
 ├── Services/               # Service implementations
 ├── ApiModels/              # API DTOs
@@ -102,7 +102,7 @@ CardLister.Infrastructure/  # External integrations
 
 **Test Projects:**
 ```
-CardLister.Core.Tests/
+FlipKit.Core.Tests/
 ├── ViewModels/          # ViewModel unit tests
 │   ├── ScanViewModelTests.cs
 │   ├── InventoryViewModelTests.cs
@@ -112,7 +112,7 @@ CardLister.Core.Tests/
 └── Services/            # Mock-based tests
     └── CardRepositoryTests.cs
 
-CardLister.Infrastructure.Tests/
+FlipKit.Infrastructure.Tests/
 ├── Data/
 │   └── CardRepositoryIntegrationTests.cs
 └── Services/
@@ -515,7 +515,7 @@ Recommendation: [Build now / Later / Never]
 
 ## Conclusion
 
-CardLister has achieved MVP status with a solid foundation. The roadmap focuses on:
+FlipKit has achieved MVP status with a solid foundation. The roadmap focuses on:
 
 1. **Short-term:** Complete bulk scanning, refactor architecture, add tests
 2. **Medium-term:** Automated pricing, cloud sync, more export formats

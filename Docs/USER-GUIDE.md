@@ -1,15 +1,15 @@
-# CardLister User Guide
+# FlipKit User Guide
 
 **Version:** 1.0
 **Date:** February 2026
-**Author:** CardLister Project
-**Website:** https://github.com/mthous72/CardLister
+**Author:** FlipKit Project
+**Website:** https://github.com/mthous72/FlipKit
 
 ---
 
 ## Table of Contents
 
-1. [What is CardLister?](#what-is-cardlister)
+1. [What is FlipKit?](#what-is-flipkit)
 2. [Getting Started](#getting-started)
 3. [Initial Setup](#initial-setup)
 4. [Scanning Cards](#scanning-cards)
@@ -24,9 +24,9 @@
 
 ---
 
-## What is CardLister?
+## What is FlipKit?
 
-CardLister is a free, open-source desktop application designed for sports card sellers who need to list cards on platforms like Whatnot, eBay, and COMC. It uses AI vision to automatically identify card details from photos, helps you research pricing, and generates bulk upload CSV files.
+FlipKit is a free, open-source desktop application designed for sports card sellers who need to list cards on platforms like Whatnot, eBay, and COMC. It uses AI vision to automatically identify card details from photos, helps you research pricing, and generates bulk upload CSV files.
 
 ### Key Features
 
@@ -55,30 +55,30 @@ CardLister is a free, open-source desktop application designed for sports card s
 
 **📸 SCREENSHOT PLACEHOLDER: `download-page.png`**
 **Instructions:**
-- Open https://github.com/mthous72/CardLister/releases in your browser
+- Open https://github.com/mthous72/FlipKit/releases in your browser
 - Show the latest release page with download links
 - Capture the full browser window
 - **Expected elements:** Windows/Mac/Linux download links, release notes
 
-CardLister is distributed as a self-contained executable - no .NET runtime installation required.
+FlipKit is distributed as a self-contained executable - no .NET runtime installation required.
 
 **Windows:**
-1. Download `CardLister-win-x64.zip`
+1. Download `FlipKit-win-x64.zip`
 2. Extract all files to a folder (right-click → Extract All)
-3. Double-click `CardLister.exe` to launch
+3. Double-click `FlipKit.exe` to launch
 
 **macOS:**
-1. Download `CardLister-osx-x64.zip` (Intel) or `CardLister-osx-arm64.zip` (Apple Silicon)
+1. Download `FlipKit-osx-x64.zip` (Intel) or `FlipKit-osx-arm64.zip` (Apple Silicon)
 2. Extract all files to the same folder
 3. Open Terminal, navigate to the folder
-4. Run `chmod +x CardLister` to make it executable
-5. Run `./CardLister` to launch
+4. Run `chmod +x FlipKit` to make it executable
+5. Run `./FlipKit` to launch
 
 **Linux:**
-1. Download `CardLister-linux-x64.zip`
+1. Download `FlipKit-linux-x64.zip`
 2. Extract all files
-3. Run `chmod +x CardLister`
-4. Run `./CardLister`
+3. Run `chmod +x FlipKit`
+4. Run `./FlipKit`
 
 ### First Launch - Setup Wizard
 
@@ -86,10 +86,10 @@ On first launch, you'll see the Setup Wizard to configure your API keys.
 
 **📸 SCREENSHOT PLACEHOLDER: `setup-wizard-welcome.png`**
 **Instructions:**
-- Launch CardLister for the first time
+- Launch FlipKit for the first time
 - The Setup Wizard should appear automatically
 - Capture the welcome screen
-- **Expected elements:** "Welcome to CardLister" heading, "Get Started" button
+- **Expected elements:** "Welcome to FlipKit" heading, "Get Started" button
 
 **📸 SCREENSHOT PLACEHOLDER: `setup-wizard-api-keys.png`**
 **Instructions:**
@@ -103,7 +103,7 @@ The Setup Wizard will guide you through entering:
 2. **ImgBB API Key** (optional, for image hosting)
 3. **eBay Developer Credentials** (optional, for automated pricing)
 
-Click "Test Connection" to verify each API key works, then click "Finish" to start using CardLister.
+Click "Test Connection" to verify each API key works, then click "Finish" to start using FlipKit.
 
 ---
 
@@ -119,10 +119,10 @@ OpenRouter provides access to 11 free AI vision models with automatic fallback o
 2. Sign up for a free account
 3. Create a new API key
 4. Copy the key (starts with `sk-or-v1-...`)
-5. Paste into CardLister Settings → OpenRouter API Key
+5. Paste into FlipKit Settings → OpenRouter API Key
 6. Click "Test" to verify connection
 
-**Cost:** $0 - CardLister uses free models by default
+**Cost:** $0 - FlipKit uses free models by default
 
 #### ImgBB API Key (Optional)
 
@@ -131,7 +131,7 @@ ImgBB provides free image hosting for card photos that can be used in Whatnot li
 1. Go to https://api.imgbb.com/
 2. Sign up for a free account
 3. Copy your API key
-4. Paste into CardLister Settings → ImgBB API Key
+4. Paste into FlipKit Settings → ImgBB API Key
 5. Click "Test" to verify connection
 
 **Cost:** $0 - Free tier includes unlimited uploads
@@ -144,7 +144,7 @@ eBay's official API provides automated active listing comps for pricing research
 2. Create a developer account (free)
 3. Create a Production application
 4. Copy the **Client ID** (App ID) and **Client Secret** (Cert ID)
-5. Paste into CardLister Settings → eBay Browse API section
+5. Paste into FlipKit Settings → eBay Browse API section
 
 **⚠️ IMPORTANT:** Before using eBay API, you MUST complete the "Marketplace Account Deletion Notification" opt-out process in your eBay Developer account:
 - Log in to developer.ebay.com
@@ -158,7 +158,7 @@ eBay's official API provides automated active listing comps for pricing research
 
 **📸 SCREENSHOT PLACEHOLDER: `settings-api-keys.png`**
 **Instructions:**
-- Open CardLister
+- Open FlipKit
 - Click "Settings" in the left navigation
 - Scroll to show all three API key sections (OpenRouter, ImgBB, eBay)
 - Enter dummy keys or blur real keys for privacy
@@ -360,7 +360,7 @@ The Pricing page helps you research market values and set listing prices.
   - Pricing section with multiple options
   - "Save and Next" button at bottom
 
-CardLister guides you through unpriced cards one at a time:
+FlipKit guides you through unpriced cards one at a time:
 1. View card details and photo
 2. Research pricing (automated or manual)
 3. Enter market value and listing price
@@ -428,7 +428,7 @@ For cards without automated matches, or to verify automated pricing, use manual 
 1. **Click "Open Terapeak"** or **"Open eBay Sold"** - Opens browser with pre-filled search
 2. **Review sold listings** - Look at recent sales (last 30-90 days)
 3. **Calculate median/average** - Mental math or spreadsheet
-4. **Return to CardLister** - Enter your researched value
+4. **Return to FlipKit** - Enter your researched value
 
 Search queries are automatically built from card details using customizable templates (configured in Settings).
 
@@ -447,7 +447,7 @@ Search queries are automatically built from card details using customizable temp
   - Cost Notes field (optional)
 
 1. **Market Value** - What the card typically sells for (median of research)
-2. **Suggested Price** - CardLister calculates: `Market Value × 1.15` to cover fees
+2. **Suggested Price** - FlipKit calculates: `Market Value × 1.15` to cover fees
 3. **Listing Price** - Your final asking price (edit as needed)
 4. **Net After Fees** - Auto-calculated: `Listing Price - (Listing Price × Fee %)`
 
@@ -658,7 +658,7 @@ Each platform uses a different title template optimized for that marketplace's s
 2. **Check cards to export** - Select using checkboxes
 3. **Return to Export view** - Selected cards appear in preview
 
-CardLister validates each card before export:
+FlipKit validates each card before export:
 - ✅ Has listing price
 - ✅ Has player name
 - ⚠️ Missing image URL (optional warning)
@@ -909,7 +909,7 @@ We covered this in the [Initial Setup](#initial-setup) section. The Settings pag
   - Template preview box
   - "Reset to Default" buttons
 
-CardLister uses platform-specific title templates optimized for each marketplace's search algorithm. Templates use placeholders like `{Year}`, `{Brand}`, `{Player}`, etc.
+FlipKit uses platform-specific title templates optimized for each marketplace's search algorithm. Templates use placeholders like `{Year}`, `{Brand}`, `{Player}`, etc.
 
 **Default templates:**
 - **Whatnot:** `{Year} {Brand} {Player} {Parallel} {Attributes} {Grade}`
@@ -949,7 +949,7 @@ After making changes:
 1. **Click "Save Settings"** - Saves to `config.json` in your app data folder
 2. **Success message appears** - "Settings saved!"
 
-Settings are stored locally: `%LocalAppData%\CardLister\config.json` (Windows)
+Settings are stored locally: `%LocalAppData%\FlipKit\config.json` (Windows)
 
 ---
 
@@ -1051,14 +1051,14 @@ Don't upload images too early - you might reprice or decide not to list.
 
 **Solutions:**
 - Wait 4 seconds between scans (free models rate limited)
-- CardLister auto-rotates through 11 models on rate limits
+- FlipKit auto-rotates through 11 models on rate limits
 - For faster scanning, use paid API credits and increase Max Concurrent Scans
 
 ### Verification Issues
 
 **Problem:** "No checklist found for this set"
 
-**This is normal** - CardLister has 97 seeded checklists (2017-2024 major releases). Older sets and niche brands aren't covered yet.
+**This is normal** - FlipKit has 97 seeded checklists (2017-2024 major releases). Older sets and niche brands aren't covered yet.
 
 **Solutions:**
 - Proceed without verification (card still saves)
@@ -1141,15 +1141,15 @@ Don't upload images too early - you might reprice or decide not to list.
 **Problem:** "Database locked" or "Database is read-only"
 
 **Solutions:**
-- Close all other CardLister instances
-- Check file permissions on `%LocalAppData%\CardLister\cards.db`
-- Restart CardLister
+- Close all other FlipKit instances
+- Check file permissions on `%LocalAppData%\FlipKit\cards.db`
+- Restart FlipKit
 - If persists, backup database and try deleting the `-wal` and `-shm` files
 
 **Database location:**
-- Windows: `C:\Users\[YourName]\AppData\Local\CardLister\cards.db`
-- macOS: `~/Library/Application Support/CardLister/cards.db`
-- Linux: `~/.local/share/CardLister/cards.db`
+- Windows: `C:\Users\[YourName]\AppData\Local\FlipKit\cards.db`
+- macOS: `~/Library/Application Support/FlipKit/cards.db`
+- Linux: `~/.local/share/FlipKit/cards.db`
 
 ### General Issues
 
@@ -1158,21 +1158,21 @@ Don't upload images too early - you might reprice or decide not to list.
 **Solutions:**
 - Check Windows Defender / antivirus isn't blocking
 - Verify all files extracted from ZIP (especially `.dll` files)
-- Right-click CardLister.exe → Properties → Unblock
+- Right-click FlipKit.exe → Properties → Unblock
 - Try running as Administrator
 
 **Problem:** App won't launch (macOS)
 
 **Solutions:**
-- Run `chmod +x CardLister` in Terminal
-- Right-click CardLister → Open (bypasses Gatekeeper first time)
-- Go to System Preferences → Security → Allow CardLister
+- Run `chmod +x FlipKit` in Terminal
+- Right-click FlipKit → Open (bypasses Gatekeeper first time)
+- Go to System Preferences → Security → Allow FlipKit
 - For Apple Silicon: Make sure you downloaded `-arm64` version
 
 **Problem:** Lost settings or data
 
 **Solutions:**
-- Check `%LocalAppData%\CardLister\` folder - all data is there
+- Check `%LocalAppData%\FlipKit\` folder - all data is there
 - `config.json` - settings backup
 - `cards.db` - database backup
 - Copy these files to new computer to migrate
@@ -1183,22 +1183,22 @@ Don't upload images too early - you might reprice or decide not to list.
 
 ### Resources
 
-- **GitHub Repository:** https://github.com/mthous72/CardLister
-- **Issue Tracker:** https://github.com/mthous72/CardLister/issues
-- **Releases:** https://github.com/mthous72/CardLister/releases
+- **GitHub Repository:** https://github.com/mthous72/FlipKit
+- **Issue Tracker:** https://github.com/mthous72/FlipKit/issues
+- **Releases:** https://github.com/mthous72/FlipKit/releases
 
 ### Reporting Bugs
 
 When reporting issues, please include:
 1. **OS and version** (Windows 11, macOS Sonoma, etc.)
-2. **CardLister version** (from Settings → About)
+2. **FlipKit version** (from Settings → About)
 3. **Steps to reproduce** the issue
 4. **Error messages** (if any)
 5. **Screenshots** (if applicable)
 
 ### Contributing
 
-CardLister is open source! Contributions welcome:
+FlipKit is open source! Contributions welcome:
 - **Checklist data** - Add missing sets from pre-2017 or niche brands
 - **Bug fixes** - Fix issues you encounter
 - **Feature requests** - Suggest improvements
@@ -1222,7 +1222,7 @@ CardLister is open source! Contributions welcome:
 
 ## Appendix: Supported Card Checklists
 
-CardLister ships with 97 pre-seeded checklists:
+FlipKit ships with 97 pre-seeded checklists:
 
 **Football (48 sets):**
 - Panini Prizm (2017-2024)
@@ -1249,4 +1249,4 @@ For sets not in this list, AI scanning still works but verification won't catch 
 
 **End of User Guide**
 
-*This guide reflects CardLister version 1.0 (February 2026). Features and UI may change in future updates.*
+*This guide reflects FlipKit version 1.0 (February 2026). Features and UI may change in future updates.*

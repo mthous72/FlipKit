@@ -1,11 +1,11 @@
 using System;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Services;
+using FlipKit.Core.Models;
+using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace CardLister.Desktop.ViewModels
+namespace FlipKit.Desktop.ViewModels
 {
     public partial class SetupWizardViewModel : ViewModelBase
     {

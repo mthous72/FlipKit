@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
-using CardLister.Core.Services;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
-using CardLister.Web.Models;
+using FlipKit.Core.Services;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Web.Models;
 using System.Linq;
 
-namespace CardLister.Web.Controllers
+namespace FlipKit.Web.Controllers
 {
     /// <summary>
     /// Inventory management controller for viewing, editing, and deleting cards.

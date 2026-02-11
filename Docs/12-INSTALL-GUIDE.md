@@ -35,13 +35,13 @@ Whatnot needs your card images hosted online. ImgBB does this for free.
 ### Step 1: Download Card Lister
 
 1. Download the Card Lister file for your computer:
-   - **Windows:** `CardLister-win-x64.zip`
-   - **Mac (Apple Silicon):** `CardLister-osx-arm64.zip`
-   - **Mac (Intel):** `CardLister-osx-x64.zip`
+   - **Windows:** `FlipKit-win-x64.zip`
+   - **Mac (Apple Silicon):** `FlipKit-osx-arm64.zip`
+   - **Mac (Intel):** `FlipKit-osx-x64.zip`
 2. Unzip/extract the folder
 3. Move the folder somewhere permanent, like:
-   - Windows: `C:\Users\YourName\CardLister`
-   - Mac: `/Users/YourName/Applications/CardLister`
+   - Windows: `C:\Users\YourName\FlipKit`
+   - Mac: `/Users/YourName/Applications/FlipKit`
 
 **That's it for installation. No Python, no extra downloads, no command prompt.**
 
@@ -75,13 +75,13 @@ Whatnot needs your card images hosted online. ImgBB does this for free.
 ### Step 3: Start Card Lister
 
 **For Windows:**
-1. Open the CardLister folder
-2. Double-click `CardLister.exe`
+1. Open the FlipKit folder
+2. Double-click `FlipKit.exe`
 3. The app window opens directly — no browser needed!
 
 **For Mac:**
-1. Open the CardLister folder
-2. Double-click `CardLister`
+1. Open the FlipKit folder
+2. Double-click `FlipKit`
 3. If Mac blocks it: Right-click → Open → click "Open" in the dialog
 4. The app window opens directly
 
@@ -156,7 +156,7 @@ When Card Lister opens for the first time:
 - Click "Run anyway"
 - This happens because the app isn't signed with a certificate (it's safe)
 
-### Mac says "CardLister can't be opened"
+### Mac says "FlipKit can't be opened"
 - Right-click the app → "Open" → click "Open" in the dialog
 - Or: System Settings → Privacy & Security → scroll down → click "Open Anyway"
 
@@ -191,7 +191,7 @@ Just close the window like any other app. Your cards are saved automatically —
 When a new version is available:
 
 1. Download the new version
-2. Replace your CardLister folder with the new one
+2. Replace your FlipKit folder with the new one
 3. Your card database and settings are preserved (stored separately in your user data folder)
 4. Start Card Lister as usual
 
@@ -200,8 +200,8 @@ When a new version is available:
 ## Keeping Your Data Safe
 
 Your card data is stored in your user data folder:
-- **Windows:** `C:\Users\YourName\AppData\Local\CardLister\`
-- **Mac:** `/Users/YourName/Library/Application Support/CardLister/`
+- **Windows:** `C:\Users\YourName\AppData\Local\FlipKit\`
+- **Mac:** `/Users/YourName/Library/Application Support/FlipKit/`
 
 **To back up your data:**
 1. Open Card Lister → Settings → Click "Backup Data"

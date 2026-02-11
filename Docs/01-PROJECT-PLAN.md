@@ -2,7 +2,7 @@
 
 ## Current Status (February 2026)
 
-**🎉 MVP Complete (~80-90%)** — CardLister is a fully functional desktop application with end-to-end workflow from scanning to sale tracking.
+**🎉 MVP Complete (~80-90%)** — FlipKit is a fully functional desktop application with end-to-end workflow from scanning to sale tracking.
 
 **Latest Milestone:** Working on `feature/bulk-scan` branch to add batch scanning capabilities.
 
@@ -122,11 +122,11 @@ Build a cross-platform desktop application using **C# / .NET 8+ with Avalonia UI
 ## Solution Structure
 
 ```
-CardLister/
-├── CardLister.sln
+FlipKit/
+├── FlipKit.sln
 │
 ├── src/
-│   ├── CardLister.App/                    # Avalonia application entry point
+│   ├── FlipKit.App/                    # Avalonia application entry point
 │   │   ├── App.axaml                      # Application resources & styles
 │   │   ├── App.axaml.cs                   # Startup, DI container setup
 │   │   ├── Program.cs                     # Main entry point
@@ -156,7 +156,7 @@ CardLister/
 │   │       ├── BoolToVisibilityConverter.cs
 │   │       └── CurrencyFormatConverter.cs
 │   │
-│   ├── CardLister.Core/                   # ViewModels + business logic (no UI references)
+│   ├── FlipKit.Core/                   # ViewModels + business logic (no UI references)
 │   │   ├── ViewModels/
 │   │   │   ├── MainWindowViewModel.cs     # Navigation, active page tracking
 │   │   │   ├── ScanViewModel.cs           # Image upload + AI scan + save
@@ -192,9 +192,9 @@ CardLister/
 │   │       ├── TitleGenerator.cs          # Whatnot listing title format
 │   │       └── PriceAgeHelper.cs          # Fresh/Aging/Stale logic
 │   │
-│   └── CardLister.Infrastructure/         # Concrete service implementations
+│   └── FlipKit.Infrastructure/         # Concrete service implementations
 │       ├── Data/
-│       │   ├── CardListerDbContext.cs      # EF Core DbContext
+│       │   ├── FlipKitDbContext.cs      # EF Core DbContext
 │       │   ├── CardRepository.cs          # ICardRepository implementation
 │       │   └── Migrations/               # EF Core migrations
 │       │
@@ -214,8 +214,8 @@ CardLister/
 │           └── ImgBBResponse.cs
 │
 ├── tests/
-│   ├── CardLister.Core.Tests/             # ViewModel + business logic unit tests
-│   └── CardLister.Infrastructure.Tests/   # Service integration tests
+│   ├── FlipKit.Core.Tests/             # ViewModel + business logic unit tests
+│   └── FlipKit.Infrastructure.Tests/   # Service integration tests
 │
 ├── images/                                # Default local card image storage
 │   ├── front/
@@ -445,17 +445,17 @@ public partial class ScanViewModel : ObservableObject
 ## NuGet Packages
 
 ```xml
-<!-- CardLister.App -->
+<!-- FlipKit.App -->
 <PackageReference Include="Avalonia" Version="11.*" />
 <PackageReference Include="Avalonia.Desktop" Version="11.*" />
 <PackageReference Include="Avalonia.Themes.Fluent" Version="11.*" />
 <PackageReference Include="Avalonia.Fonts.Inter" Version="11.*" />
 <PackageReference Include="Avalonia.Diagnostics" Version="11.*" Condition="'$(Configuration)' == 'Debug'" />
 
-<!-- CardLister.Core -->
+<!-- FlipKit.Core -->
 <PackageReference Include="CommunityToolkit.Mvvm" Version="8.*" />
 
-<!-- CardLister.Infrastructure -->
+<!-- FlipKit.Infrastructure -->
 <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.*" />
 <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.*" />
 <PackageReference Include="CsvHelper" Version="33.*" />
@@ -630,8 +630,8 @@ dotnet publish -c Release -r linux-x64 --self-contained -p:PublishSingleFile=tru
 ### What the user gets
 
 ```
-CardLister/
-├── CardLister.exe          ← Double-click to run (Windows)
+FlipKit/
+├── FlipKit.exe          ← Double-click to run (Windows)
 ├── cards.db                ← Created on first run
 ├── config.json             ← Created by setup wizard
 ├── images/                 ← Local card photos

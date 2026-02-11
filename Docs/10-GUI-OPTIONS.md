@@ -37,7 +37,7 @@ The app runs **locally on the user's computer** and opens in their web browser. 
 User API keys are stored locally in a config file:
 
 ```
-CardLister/
+FlipKit/
 ├── app.py
 ├── config.json        ← User's API keys stored here
 ├── cards.db           ← Card inventory
@@ -261,7 +261,7 @@ whatnot-card-lister/
 Users download a folder containing everything they need:
 
 ```
-CardLister/
+FlipKit/
 ├── app.py                 # Main application
 ├── requirements.txt       # Python dependencies
 ├── install.bat           # Windows: double-click to install deps

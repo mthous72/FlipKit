@@ -1,7 +1,7 @@
-using CardLister.Core.Data;
-using CardLister.Core.Helpers;
-using CardLister.Core.Services;
-using CardLister.Web.Services;
+using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Services;
+using FlipKit.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -33,10 +33,10 @@ if (dataMode == DataAccessMode.Local)
     Console.WriteLine($"Data access mode: LOCAL (Direct SQLite)");
 
     // Use the same database path as Desktop app
-    var dbPath = CardListerDbContext.GetDbPath();
+    var dbPath = FlipKitDbContext.GetDbPath();
     Console.WriteLine($"Database path: {dbPath}");
 
-    builder.Services.AddDbContext<CardListerDbContext>(options =>
+    builder.Services.AddDbContext<FlipKitDbContext>(options =>
         options.UseSqlite($"Data Source={dbPath}"));
     builder.Services.AddScoped<ICardRepository, CardRepository>();
 }
@@ -70,7 +70,7 @@ var app = builder.Build();
 // Initialize database (only in local mode)
 if (dataMode == DataAccessMode.Local)
 {
-    var dbPath = CardListerDbContext.GetDbPath();
+    var dbPath = FlipKitDbContext.GetDbPath();
 
     // Enable WAL mode for shared database
     using (var connection = new SqliteConnection($"Data Source={dbPath}"))
@@ -84,7 +84,7 @@ if (dataMode == DataAccessMode.Local)
     // Initialize database (create tables, seed data)
     using (var scope = app.Services.CreateScope())
     {
-        var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
         db.Database.EnsureCreated();
         await SchemaUpdater.EnsureVerificationTablesAsync(db);
         await ChecklistSeeder.SeedIfEmptyAsync(db);

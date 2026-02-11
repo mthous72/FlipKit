@@ -1,4 +1,4 @@
-namespace CardLister.Core.Models
+namespace FlipKit.Core.Models
 {
     public class ChecklistImportResult
     {

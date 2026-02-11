@@ -1,11 +1,11 @@
 using System;
 using System.Threading.Tasks;
-using CardLister.Core.Services;
+using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CardLister.Desktop.ViewModels
+namespace FlipKit.Desktop.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {

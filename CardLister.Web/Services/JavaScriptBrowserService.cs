@@ -1,7 +1,7 @@
-using CardLister.Core.Services;
+using FlipKit.Core.Services;
 using Microsoft.AspNetCore.Http;
 
-namespace CardLister.Web.Services
+namespace FlipKit.Web.Services
 {
     /// <summary>
     /// Web implementation of IBrowserService.

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace CardLister.Core.Helpers
+namespace FlipKit.Core.Helpers
 {
     public static class FuzzyMatcher
     {

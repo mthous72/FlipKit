@@ -1,4 +1,4 @@
-# Phase 2 Completion Summary: CardLister Web Application
+# Phase 2 Completion Summary: FlipKit Web Application
 
 **Branch:** `feature/web-app-migration`
 **Date:** February 7, 2026
@@ -7,23 +7,23 @@
 
 ## Overview
 
-Phase 2 successfully created the **CardLister.Web** ASP.NET Core MVC application with full feature parity to the Avalonia Desktop app. The web application enables mobile access to all core functionality: scanning, inventory management, pricing research, CSV export, and analytics reporting.
+Phase 2 successfully created the **FlipKit.Web** ASP.NET Core MVC application with full feature parity to the Avalonia Desktop app. The web application enables mobile access to all core functionality: scanning, inventory management, pricing research, CSV export, and analytics reporting.
 
 ## What Was Built
 
 ### 1. Project Foundation (Commit 09c9b7f)
 
 **Files Created:**
-- `CardLister.Web/CardLister.Web.csproj` - ASP.NET Core 8.0 MVC project
-- `CardLister.Web/Program.cs` - DI container with WAL mode database setup
-- `CardLister.Web/Services/WebFileUploadService.cs` - IFileDialogService implementation
-- `CardLister.Web/Services/JavaScriptBrowserService.cs` - IBrowserService with response headers
-- `CardLister.Web/Services/MvcNavigationService.cs` - INavigationService stub
-- `CardLister.Web/Services/JsonSettingsService.cs` - Shared settings service
-- `CardLister.Web/Controllers/HomeController.cs` - Dashboard with card statistics
-- `CardLister.Web/Models/DashboardViewModel.cs` - 8 properties (card counts, financials)
-- `CardLister.Web/Views/Home/Index.cshtml` - Bootstrap 5 dashboard
-- `CardLister.Web/Views/Shared/_Layout.cshtml` - Navigation bar with 7 menu items
+- `FlipKit.Web/FlipKit.Web.csproj` - ASP.NET Core 8.0 MVC project
+- `FlipKit.Web/Program.cs` - DI container with WAL mode database setup
+- `FlipKit.Web/Services/WebFileUploadService.cs` - IFileDialogService implementation
+- `FlipKit.Web/Services/JavaScriptBrowserService.cs` - IBrowserService with response headers
+- `FlipKit.Web/Services/MvcNavigationService.cs` - INavigationService stub
+- `FlipKit.Web/Services/JsonSettingsService.cs` - Shared settings service
+- `FlipKit.Web/Controllers/HomeController.cs` - Dashboard with card statistics
+- `FlipKit.Web/Models/DashboardViewModel.cs` - 8 properties (card counts, financials)
+- `FlipKit.Web/Views/Home/Index.cshtml` - Bootstrap 5 dashboard
+- `FlipKit.Web/Views/Shared/_Layout.cshtml` - Navigation bar with 7 menu items
 
 **Key Features:**
 - ✅ Shared SQLite database with Desktop app using WAL mode
@@ -46,16 +46,16 @@ using (var connection = new SqliteConnection($"Data Source={dbPath}")) {
 ### 2. Inventory Controller (Commit 855c559)
 
 **Files Created:**
-- `CardLister.Web/Controllers/InventoryController.cs` (280 lines)
+- `FlipKit.Web/Controllers/InventoryController.cs` (280 lines)
   - `Index` - List with search/filter/pagination
   - `Details` - Read-only card view
   - `Edit` (GET/POST) - Full card editing
   - `Delete` (POST) - Soft delete with confirmation
-- `CardLister.Web/Models/InventoryListViewModel.cs` - Pagination + filters
-- `CardLister.Web/Models/CardDetailsViewModel.cs` (150 lines) - 40+ properties with DataAnnotations
-- `CardLister.Web/Views/Inventory/Index.cshtml` (230 lines) - Table with badges, filters, modal
-- `CardLister.Web/Views/Inventory/Details.cshtml` (180 lines) - Multi-section card display
-- `CardLister.Web/Views/Inventory/Edit.cshtml` (260 lines) - Comprehensive grouped form
+- `FlipKit.Web/Models/InventoryListViewModel.cs` - Pagination + filters
+- `FlipKit.Web/Models/CardDetailsViewModel.cs` (150 lines) - 40+ properties with DataAnnotations
+- `FlipKit.Web/Views/Inventory/Index.cshtml` (230 lines) - Table with badges, filters, modal
+- `FlipKit.Web/Views/Inventory/Details.cshtml` (180 lines) - Multi-section card display
+- `FlipKit.Web/Views/Inventory/Edit.cshtml` (260 lines) - Comprehensive grouped form
 
 **Key Features:**
 - ✅ Full CRUD operations on cards
@@ -75,17 +75,17 @@ using (var connection = new SqliteConnection($"Data Source={dbPath}")) {
 ### 3. Scan Controller (Commit 7f35830)
 
 **Files Created:**
-- `CardLister.Web/Controllers/ScanController.cs` (230 lines)
+- `FlipKit.Web/Controllers/ScanController.cs` (230 lines)
   - `Index` (GET) - Upload form with model selection
   - `Upload` (POST) - Handle IFormFile, call AI scan, verification
   - `Results` (GET) - Display scan results from TempData
   - `Save` (POST) - Save card to inventory
   - `Discard` (POST) - Clean up temp files
-- `CardLister.Web/Models/ScanUploadViewModel.cs` - 8 AI models (free + paid)
-- `CardLister.Web/Models/ScanResultViewModel.cs` - ScannedCard, verification, images
-- `CardLister.Web/Views/Scan/Index.cshtml` (120 lines) - Mobile camera support
-- `CardLister.Web/Views/Scan/Results.cshtml` (250 lines) - Multi-section results
-- `CardLister.Web/wwwroot/uploads/.gitignore` - Ignore uploaded images
+- `FlipKit.Web/Models/ScanUploadViewModel.cs` - 8 AI models (free + paid)
+- `FlipKit.Web/Models/ScanResultViewModel.cs` - ScannedCard, verification, images
+- `FlipKit.Web/Views/Scan/Index.cshtml` (120 lines) - Mobile camera support
+- `FlipKit.Web/Views/Scan/Results.cshtml` (250 lines) - Multi-section results
+- `FlipKit.Web/wwwroot/uploads/.gitignore` - Ignore uploaded images
 
 **Key Features:**
 - ✅ Mobile camera integration via `<input accept="image/*" capture="environment">`
@@ -110,15 +110,15 @@ using (var connection = new SqliteConnection($"Data Source={dbPath}")) {
 ### 4. Pricing Controller (Commit 9c38cbe)
 
 **Files Created:**
-- `CardLister.Web/Controllers/PricingController.cs` (220 lines)
+- `FlipKit.Web/Controllers/PricingController.cs` (220 lines)
   - `Index` - List cards needing pricing
   - `Research` - Research page with external links
   - `Save` (POST) - Save pricing data
   - `CalculateSuggested` (POST) - AJAX endpoint for suggested price
-- `CardLister.Web/Models/PricingListViewModel.cs` - List of cards
-- `CardLister.Web/Models/PricingResearchViewModel.cs` - Research tools + pricing
-- `CardLister.Web/Views/Pricing/Index.cshtml` (90 lines) - Table with "Research Price" button
-- `CardLister.Web/Views/Pricing/Research.cshtml` (290 lines) - Research UI with calculator
+- `FlipKit.Web/Models/PricingListViewModel.cs` - List of cards
+- `FlipKit.Web/Models/PricingResearchViewModel.cs` - Research tools + pricing
+- `FlipKit.Web/Views/Pricing/Index.cshtml` (90 lines) - Table with "Research Price" button
+- `FlipKit.Web/Views/Pricing/Research.cshtml` (290 lines) - Research UI with calculator
 
 **Key Features:**
 - ✅ eBay active comps via eBay Browse API
@@ -147,16 +147,16 @@ function calculateProfit() {
 ### 5. Export Controller (Commit f0a1993)
 
 **Files Created:**
-- `CardLister.Web/Controllers/ExportController.cs` (180 lines)
+- `FlipKit.Web/Controllers/ExportController.cs` (180 lines)
   - `Index` - List ready/priced cards
   - `MarkAsReady` (POST) - Mark card as ready status
   - `GenerateCsv` (POST) - Generate and download Whatnot CSV
   - `Preview` - Preview export data for single card
   - `ValidateCard` (POST) - AJAX validation endpoint
-- `CardLister.Web/Models/ExportListViewModel.cs` - ReadyCards, PricedCards lists
-- `CardLister.Web/Models/ExportPreviewViewModel.cs` - Card, title, description, errors
-- `CardLister.Web/Views/Export/Index.cshtml` (220 lines) - Two sections (ready/priced)
-- `CardLister.Web/Views/Export/Preview.cshtml` (230 lines) - Export data preview
+- `FlipKit.Web/Models/ExportListViewModel.cs` - ReadyCards, PricedCards lists
+- `FlipKit.Web/Models/ExportPreviewViewModel.cs` - Card, title, description, errors
+- `FlipKit.Web/Views/Export/Index.cshtml` (220 lines) - Two sections (ready/priced)
+- `FlipKit.Web/Views/Export/Preview.cshtml` (230 lines) - Export data preview
 
 **Key Features:**
 - ✅ Separate lists for Ready and Priced cards
@@ -175,17 +175,17 @@ function calculateProfit() {
 ### 6. Reports Controller (Commit 9fd05fc)
 
 **Files Created:**
-- `CardLister.Web/Controllers/ReportsController.cs` (200 lines)
+- `FlipKit.Web/Controllers/ReportsController.cs` (200 lines)
   - `Index` - Main dashboard with inventory/financial stats
   - `Sales` - Sales report with date range filtering
   - `Financial` - Profitability analysis by sport
-- `CardLister.Web/Models/ReportsViewModel.cs` - Inventory + financial summaries
-- `CardLister.Web/Models/SalesReportViewModel.cs` - Date-filtered sales
-- `CardLister.Web/Models/FinancialReportViewModel.cs` - Profitability breakdown
-- `CardLister.Web/Models/SportProfitability.cs` - Helper class for sport metrics
-- `CardLister.Web/Views/Reports/Index.cshtml` (280 lines) - Visual dashboard
-- `CardLister.Web/Views/Reports/Sales.cshtml` (220 lines) - Sales table with filters
-- `CardLister.Web/Views/Reports/Financial.cshtml` (270 lines) - Profitability tables
+- `FlipKit.Web/Models/ReportsViewModel.cs` - Inventory + financial summaries
+- `FlipKit.Web/Models/SalesReportViewModel.cs` - Date-filtered sales
+- `FlipKit.Web/Models/FinancialReportViewModel.cs` - Profitability breakdown
+- `FlipKit.Web/Models/SportProfitability.cs` - Helper class for sport metrics
+- `FlipKit.Web/Views/Reports/Index.cshtml` (280 lines) - Visual dashboard
+- `FlipKit.Web/Views/Reports/Sales.cshtml` (220 lines) - Sales table with filters
+- `FlipKit.Web/Views/Reports/Financial.cshtml` (270 lines) - Profitability tables
 
 **Key Features:**
 - ✅ Inventory statistics (total, by status, by sport)
@@ -216,8 +216,8 @@ function calculateProfit() {
 
 **Database Path:**
 ```
-%APPDATA%\CardLister\cards.db
-C:\Users\<User>\AppData\Roaming\CardLister\cards.db
+%APPDATA%\FlipKit\cards.db
+C:\Users\<User>\AppData\Roaming\FlipKit\cards.db
 ```
 
 ### Service Abstraction Strategy
@@ -256,7 +256,7 @@ C:\Users\<User>\AppData\Roaming\CardLister\cards.db
 ### Build Verification
 
 ```bash
-dotnet build CardLister.Web/CardLister.Web.csproj
+dotnet build FlipKit.Web/FlipKit.Web.csproj
 # Result: Build succeeded with 0 errors, 9 warnings (nullability only)
 ```
 
@@ -316,7 +316,7 @@ dotnet build CardLister.Web/CardLister.Web.csproj
 
 ### Controllers (6 files, ~1,300 lines)
 ```
-CardLister.Web/Controllers/
+FlipKit.Web/Controllers/
 ├── HomeController.cs (80 lines)
 ├── InventoryController.cs (280 lines)
 ├── ScanController.cs (230 lines)
@@ -327,7 +327,7 @@ CardLister.Web/Controllers/
 
 ### View Models (10 files, ~600 lines)
 ```
-CardLister.Web/Models/
+FlipKit.Web/Models/
 ├── DashboardViewModel.cs (30 lines)
 ├── InventoryListViewModel.cs (40 lines)
 ├── CardDetailsViewModel.cs (150 lines)
@@ -344,7 +344,7 @@ CardLister.Web/Models/
 
 ### Views (13 files, ~1,900 lines)
 ```
-CardLister.Web/Views/
+FlipKit.Web/Views/
 ├── Shared/
 │   └── _Layout.cshtml (120 lines)
 ├── Home/
@@ -370,7 +370,7 @@ CardLister.Web/Views/
 
 ### Services (4 files, ~200 lines)
 ```
-CardLister.Web/Services/
+FlipKit.Web/Services/
 ├── WebFileUploadService.cs (40 lines)
 ├── JavaScriptBrowserService.cs (30 lines)
 ├── MvcNavigationService.cs (30 lines)
@@ -379,8 +379,8 @@ CardLister.Web/Services/
 
 ### Configuration (2 files)
 ```
-CardLister.Web/
-├── CardLister.Web.csproj (25 lines)
+FlipKit.Web/
+├── FlipKit.Web.csproj (25 lines)
 └── Program.cs (130 lines)
 ```
 
@@ -392,7 +392,7 @@ CardLister.Web/
 * 9c38cbe Phase 2: Add Pricing controller for research and pricing
 * 7f35830 Phase 2: Add Scan controller for AI card scanning
 * 855c559 Phase 2: Add Inventory controller with full CRUD operations
-* 09c9b7f Phase 2: Create CardLister.Web foundation with shared database
+* 09c9b7f Phase 2: Create FlipKit.Web foundation with shared database
 ```
 
 **Total:**

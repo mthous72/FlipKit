@@ -7,12 +7,12 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
-using CardLister.Core.Services.ApiModels;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services.ApiModels;
 using Microsoft.Extensions.Logging;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class OpenRouterScannerService : IScannerService
     {
@@ -274,7 +274,7 @@ Return ONLY the JSON, no other text or markdown.";
                 Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
             };
             httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
-            httpRequest.Headers.Add("X-Title", "CardLister");
+            httpRequest.Headers.Add("X-Title", "FlipKit");
 
             var response = await _httpClient.SendAsync(httpRequest);
             var responseBody = await response.Content.ReadAsStringAsync();

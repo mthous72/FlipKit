@@ -1,4 +1,4 @@
-# CardLister Web - Deployment Guide
+# FlipKit Web - Deployment Guide
 
 **Version:** 1.0
 **Last Updated:** February 7, 2026
@@ -21,7 +21,7 @@
 
 ## Overview
 
-CardLister Web is an ASP.NET Core 8.0 MVC application designed to run on your local computer and be accessed from mobile devices on the same Wi-Fi network. It shares a SQLite database with the CardLister Desktop (Avalonia) application.
+FlipKit Web is an ASP.NET Core 8.0 MVC application designed to run on your local computer and be accessed from mobile devices on the same Wi-Fi network. It shares a SQLite database with the FlipKit Desktop (Avalonia) application.
 
 ### Architecture
 
@@ -31,7 +31,7 @@ CardLister Web is an ASP.NET Core 8.0 MVC application designed to run on your lo
 │  (Avalonia)     │  │
 └─────────────────┘  │
                      ├──→ SQLite Database (WAL mode)
-┌─────────────────┐  │    %APPDATA%\CardLister\cards.db
+┌─────────────────┐  │    %APPDATA%\FlipKit\cards.db
 │   Web App       │──┘
 │  (ASP.NET MVC)  │
 └─────────────────┘
@@ -96,8 +96,8 @@ CardLister Web is an ASP.NET Core 8.0 MVC application designed to run on your lo
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/mthous72/CardLister.git
-   cd CardLister
+   git clone https://github.com/mthous72/FlipKit.git
+   cd FlipKit
    ```
 
 2. **Build Project**
@@ -108,7 +108,7 @@ CardLister Web is an ASP.NET Core 8.0 MVC application designed to run on your lo
 
 3. **Run Web App**
    ```bash
-   cd CardLister.Web
+   cd FlipKit.Web
    dotnet run
    ```
 
@@ -126,16 +126,16 @@ CardLister Web is an ASP.NET Core 8.0 MVC application designed to run on your lo
 **Steps:**
 
 1. **Download Release**
-   - Go to https://github.com/mthous72/CardLister/releases
-   - Download `CardLister.Web-vX.X.X.zip`
+   - Go to https://github.com/mthous72/FlipKit/releases
+   - Download `FlipKit.Web-vX.X.X.zip`
 
 2. **Extract Files**
-   - Extract to folder (e.g., `C:\CardLister\Web`)
+   - Extract to folder (e.g., `C:\FlipKit\Web`)
 
 3. **Run Application**
    ```bash
-   cd C:\CardLister\Web
-   dotnet CardLister.Web.dll
+   cd C:\FlipKit\Web
+   dotnet FlipKit.Web.dll
    ```
 
 4. **Access Application**
@@ -173,18 +173,18 @@ Look for `inet` address on your Wi-Fi interface (e.g., `192.168.1.100`)
 4. Protocol: TCP, Specific local ports: `5000`
 5. Action: Allow the connection
 6. Profile: Private, Domain (do NOT check Public for security)
-7. Name: "CardLister Web"
+7. Name: "FlipKit Web"
 8. Click Finish
 
 **Or via PowerShell (Run as Administrator):**
 ```powershell
-New-NetFirewallRule -DisplayName "CardLister Web" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow -Profile Private
+New-NetFirewallRule -DisplayName "FlipKit Web" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow -Profile Private
 ```
 
 **macOS:**
 ```bash
 # macOS firewall typically allows localhost access by default
-# If firewall is enabled, add CardLister.Web to allowed apps in System Preferences → Security & Privacy → Firewall
+# If firewall is enabled, add FlipKit.Web to allowed apps in System Preferences → Security & Privacy → Firewall
 ```
 
 **Linux (ufw):**
@@ -196,7 +196,7 @@ sudo ufw allow 5000/tcp
 
 **Option A: Use Launch Settings (Development)**
 
-Edit `CardLister.Web/Properties/launchSettings.json`:
+Edit `FlipKit.Web/Properties/launchSettings.json`:
 ```json
 {
   "profiles": {
@@ -276,21 +276,21 @@ Use `sc.exe` or NSSM (Non-Sucking Service Manager) to run as Windows service.
 3. **Install Service:**
    ```powershell
    cd C:\Tools\nssm\win64
-   .\nssm.exe install CardListerWeb "C:\Program Files\dotnet\dotnet.exe" "C:\CardLister\Web\CardLister.Web.dll"
-   .\nssm.exe set CardListerWeb AppDirectory "C:\CardLister\Web"
-   .\nssm.exe set CardListerWeb AppEnvironmentExtra ASPNETCORE_URLS=http://0.0.0.0:5000
-   .\nssm.exe start CardListerWeb
+   .\nssm.exe install FlipKitWeb "C:\Program Files\dotnet\dotnet.exe" "C:\FlipKit\Web\FlipKit.Web.dll"
+   .\nssm.exe set FlipKitWeb AppDirectory "C:\FlipKit\Web"
+   .\nssm.exe set FlipKitWeb AppEnvironmentExtra ASPNETCORE_URLS=http://0.0.0.0:5000
+   .\nssm.exe start FlipKitWeb
    ```
 
 4. **Verify Service:**
    ```powershell
-   Get-Service CardListerWeb
+   Get-Service FlipKitWeb
    ```
 
 **Remove Service:**
 ```powershell
-.\nssm.exe stop CardListerWeb
-.\nssm.exe remove CardListerWeb confirm
+.\nssm.exe stop FlipKitWeb
+.\nssm.exe remove FlipKitWeb confirm
 ```
 
 ### Option 2: IIS (Internet Information Services)
@@ -308,20 +308,20 @@ For Windows Server or advanced scenarios.
 
 2. **Publish Application:**
    ```bash
-   dotnet publish -c Release -o C:\inetpub\CardListerWeb
+   dotnet publish -c Release -o C:\inetpub\FlipKitWeb
    ```
 
 3. **Create Application Pool:**
    - Open IIS Manager
-   - Create new Application Pool: "CardListerWeb"
+   - Create new Application Pool: "FlipKitWeb"
    - .NET CLR Version: No Managed Code
    - Managed Pipeline Mode: Integrated
 
 4. **Create Website:**
-   - Add Website: "CardLister Web"
-   - Physical path: `C:\inetpub\CardListerWeb`
+   - Add Website: "FlipKit Web"
+   - Physical path: `C:\inetpub\FlipKitWeb`
    - Binding: http, port 5000, IP: All Unassigned
-   - Application Pool: CardListerWeb
+   - Application Pool: FlipKitWeb
 
 5. **Configure Permissions:**
    - Grant IIS_IUSRS read access to website folder
@@ -336,20 +336,20 @@ For Linux servers.
 **Create Service File:**
 
 ```bash
-sudo nano /etc/systemd/system/cardlisterweb.service
+sudo nano /etc/systemd/system/flipkitweb.service
 ```
 
 **Content:**
 ```ini
 [Unit]
-Description=CardLister Web Application
+Description=FlipKit Web Application
 After=network.target
 
 [Service]
 Type=notify
-User=cardlister
-WorkingDirectory=/opt/CardLister/Web
-ExecStart=/usr/bin/dotnet /opt/CardLister/Web/CardLister.Web.dll
+User=flipkit
+WorkingDirectory=/opt/FlipKit/Web
+ExecStart=/usr/bin/dotnet /opt/FlipKit/Web/FlipKit.Web.dll
 Restart=on-failure
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=ASPNETCORE_URLS=http://0.0.0.0:5000
@@ -361,9 +361,9 @@ WantedBy=multi-user.target
 **Enable and Start:**
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable cardlisterweb
-sudo systemctl start cardlisterweb
-sudo systemctl status cardlisterweb
+sudo systemctl enable flipkitweb
+sudo systemctl start flipkitweb
+sudo systemctl status flipkitweb
 ```
 
 ### Option 4: Docker (Advanced)
@@ -378,28 +378,28 @@ EXPOSE 5000
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY ["CardLister.Web/CardLister.Web.csproj", "CardLister.Web/"]
-COPY ["CardLister.Core/CardLister.Core.csproj", "CardLister.Core/"]
-RUN dotnet restore "CardLister.Web/CardLister.Web.csproj"
+COPY ["FlipKit.Web/FlipKit.Web.csproj", "FlipKit.Web/"]
+COPY ["FlipKit.Core/FlipKit.Core.csproj", "FlipKit.Core/"]
+RUN dotnet restore "FlipKit.Web/FlipKit.Web.csproj"
 COPY . .
-WORKDIR "/src/CardLister.Web"
-RUN dotnet build "CardLister.Web.csproj" -c Release -o /app/build
+WORKDIR "/src/FlipKit.Web"
+RUN dotnet build "FlipKit.Web.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "CardLister.Web.csproj" -c Release -o /app/publish
+RUN dotnet publish "FlipKit.Web.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "CardLister.Web.dll"]
+ENTRYPOINT ["dotnet", "FlipKit.Web.dll"]
 ```
 
 **Build and Run:**
 ```bash
-docker build -t cardlister-web .
-docker run -d -p 5000:5000 --name cardlister-web \
-  -v /path/to/cardlister-data:/app/data \
-  cardlister-web
+docker build -t flipkit-web .
+docker run -d -p 5000:5000 --name flipkit-web \
+  -v /path/to/flipkit-data:/app/data \
+  flipkit-web
 ```
 
 ---
@@ -409,28 +409,28 @@ docker run -d -p 5000:5000 --name cardlister-web \
 ### Database Location
 
 By default, the database is stored at:
-- **Windows:** `C:\Users\[YourName]\AppData\Roaming\CardLister\cards.db`
-- **macOS:** `~/Library/Application Support/CardLister/cards.db`
-- **Linux:** `~/.local/share/CardLister/cards.db`
+- **Windows:** `C:\Users\[YourName]\AppData\Roaming\FlipKit\cards.db`
+- **macOS:** `~/Library/Application Support/FlipKit/cards.db`
+- **Linux:** `~/.local/share/FlipKit/cards.db`
 
 **To change location:**
 
-Edit `CardLister.Web/Program.cs`:
+Edit `FlipKit.Web/Program.cs`:
 ```csharp
 var dbPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-    "CardLister", "cards.db");
+    "FlipKit", "cards.db");
 
 // Change to custom path:
-var dbPath = @"C:\CustomPath\CardLister\cards.db";
+var dbPath = @"C:\CustomPath\FlipKit\cards.db";
 ```
 
 ### Settings Location
 
 Settings are stored in:
-- **Windows:** `C:\Users\[YourName]\AppData\Roaming\CardLister\settings.json`
-- **macOS:** `~/Library/Application Support/CardLister/settings.json`
-- **Linux:** `~/.local/share/CardLister/settings.json`
+- **Windows:** `C:\Users\[YourName]\AppData\Roaming\FlipKit\settings.json`
+- **macOS:** `~/Library/Application Support/FlipKit/settings.json`
+- **Linux:** `~/.local/share/FlipKit/settings.json`
 
 **Important:** Settings are managed through the Desktop app. The web app reads settings but does not provide a settings UI.
 
@@ -468,7 +468,7 @@ export ASPNETCORE_URLS="http://0.0.0.0:8080"
 **Allow Port 5000 (Private Network Only):**
 
 ```powershell
-New-NetFirewallRule -DisplayName "CardLister Web" `
+New-NetFirewallRule -DisplayName "FlipKit Web" `
   -Direction Inbound `
   -LocalPort 5000 `
   -Protocol TCP `
@@ -478,19 +478,19 @@ New-NetFirewallRule -DisplayName "CardLister Web" `
 
 **Remove Rule:**
 ```powershell
-Remove-NetFirewallRule -DisplayName "CardLister Web"
+Remove-NetFirewallRule -DisplayName "FlipKit Web"
 ```
 
 **Check if Rule Exists:**
 ```powershell
-Get-NetFirewallRule -DisplayName "CardLister Web"
+Get-NetFirewallRule -DisplayName "FlipKit Web"
 ```
 
 ### Important Security Notes
 
 - ⚠️ **Never allow port 5000 on Public network profile**
 - ⚠️ **Do not expose to internet** (no port forwarding on router)
-- ⚠️ **Local network only** - CardLister Web has no authentication
+- ⚠️ **Local network only** - FlipKit Web has no authentication
 - ✅ Use Private network profile for home/office Wi-Fi only
 
 ---
@@ -608,14 +608,14 @@ Event Viewer → Windows Logs → Security → Filter for Event ID 5157 (blocked
 **Verify WAL mode:**
 
 ```bash
-sqlite3 "%APPDATA%\CardLister\cards.db" "PRAGMA journal_mode;"
+sqlite3 "%APPDATA%\FlipKit\cards.db" "PRAGMA journal_mode;"
 # Should return: wal
 ```
 
 **If not WAL:**
 
 ```bash
-sqlite3 "%APPDATA%\CardLister\cards.db" "PRAGMA journal_mode = WAL;"
+sqlite3 "%APPDATA%\FlipKit\cards.db" "PRAGMA journal_mode = WAL;"
 ```
 
 ### Performance Issues
@@ -641,12 +641,12 @@ sqlite3 "%APPDATA%\CardLister\cards.db" "PRAGMA journal_mode = WAL;"
 
 Windows:
 ```powershell
-Copy-Item "$env:APPDATA\CardLister\cards.db*" -Destination "C:\Backups\CardLister\$(Get-Date -Format 'yyyy-MM-dd')\"
+Copy-Item "$env:APPDATA\FlipKit\cards.db*" -Destination "C:\Backups\FlipKit\$(Get-Date -Format 'yyyy-MM-dd')\"
 ```
 
 macOS/Linux:
 ```bash
-cp -r ~/Library/Application\ Support/CardLister/cards.db* ~/Backups/CardLister/$(date +%Y-%m-%d)/
+cp -r ~/Library/Application\ Support/FlipKit/cards.db* ~/Backups/FlipKit/$(date +%Y-%m-%d)/
 ```
 
 **Restore from backup:**
@@ -661,7 +661,7 @@ cp -r ~/Library/Application\ Support/CardLister/cards.db* ~/Backups/CardLister/$
 ```bash
 git pull origin master
 dotnet build
-dotnet run --project CardLister.Web
+dotnet run --project FlipKit.Web
 ```
 
 **From release:**
@@ -681,7 +681,7 @@ dotnet run --project CardLister.Web
 Add Serilog (if not already configured):
 ```csharp
 builder.Host.UseSerilog((context, config) => {
-    config.WriteTo.File("Logs/cardlister-web-.txt", rollingInterval: RollingInterval.Day);
+    config.WriteTo.File("Logs/flipkit-web-.txt", rollingInterval: RollingInterval.Day);
 });
 ```
 
@@ -719,7 +719,7 @@ builder.Host.UseSerilog((context, config) => {
 
 For deployment issues:
 1. Check this guide
-2. Review GitHub Issues: https://github.com/mthous72/CardLister/issues
+2. Review GitHub Issues: https://github.com/mthous72/FlipKit/issues
 3. Report new issues with:
    - OS and .NET version
    - Deployment method
@@ -730,4 +730,4 @@ For deployment issues:
 
 **End of Deployment Guide**
 
-*This guide covers CardLister Web v1.0 (February 2026). Deployment procedures may change in future versions.*
+*This guide covers FlipKit Web v1.0 (February 2026). Deployment procedures may change in future versions.*

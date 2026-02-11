@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 
-namespace CardLister.Desktop.Converters
+namespace FlipKit.Desktop.Converters
 {
     public class CurrencyFormatConverter : IValueConverter
     {

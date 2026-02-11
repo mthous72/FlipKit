@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CardLister.Core.Services.ApiModels
+namespace FlipKit.Core.Services.ApiModels
 {
     public class ImgBBResponse
     {

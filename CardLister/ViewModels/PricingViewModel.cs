@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CardLister.Core.Helpers;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
-using CardLister.Core.Services;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace CardLister.Desktop.ViewModels
+namespace FlipKit.Desktop.ViewModels
 {
     public partial class PricingViewModel : ViewModelBase
     {

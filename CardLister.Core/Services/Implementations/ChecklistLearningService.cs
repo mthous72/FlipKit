@@ -5,14 +5,14 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Data;
-using CardLister.Core.Helpers;
-using CardLister.Core.Models;
+using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class ChecklistLearningService : IChecklistLearningService
     {
@@ -41,7 +41,7 @@ namespace CardLister.Core.Services
                     return;
 
                 using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
 
                 var sport = card.Sport?.ToString();
                 var checklist = await db.SetChecklists.FirstOrDefaultAsync(s =>
@@ -194,7 +194,7 @@ namespace CardLister.Core.Services
                 }
 
                 using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
 
                 var existing = await db.SetChecklists.FirstOrDefaultAsync(s =>
                     s.Manufacturer == imported.Manufacturer &&
@@ -291,7 +291,7 @@ namespace CardLister.Core.Services
         public async Task ExportChecklistAsync(int checklistId, string outputPath)
         {
             using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
 
             var checklist = await db.SetChecklists.FindAsync(checklistId);
             if (checklist == null)
@@ -377,28 +377,28 @@ namespace CardLister.Core.Services
         public async Task<List<SetChecklist>> GetAllChecklistsAsync()
         {
             using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
             return await db.SetChecklists.OrderBy(s => s.Manufacturer).ThenBy(s => s.Brand).ThenBy(s => s.Year).ToListAsync();
         }
 
         public async Task<SetChecklist?> GetChecklistByIdAsync(int id)
         {
             using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
             return await db.SetChecklists.FindAsync(id);
         }
 
         public async Task<List<MissingChecklist>> GetMissingChecklistsAsync()
         {
             using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
             return await db.MissingChecklists.OrderByDescending(m => m.HitCount).ToListAsync();
         }
 
         public async Task DeleteChecklistAsync(int id)
         {
             using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
             var checklist = await db.SetChecklists.FindAsync(id);
             if (checklist != null)
             {

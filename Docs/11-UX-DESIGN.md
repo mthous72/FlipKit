@@ -320,7 +320,7 @@ Accessed via ⚙️ icon in header:
 │  ────                                                        │
 │                                                              │
 │  Cards in database: 47                                       │
-│  Database location: /Users/you/CardLister/cards.db          │
+│  Database location: /Users/you/FlipKit/cards.db          │
 │                                                              │
 │  [ 📂 Open Data Folder ]  [ 🗑️ Clear All Data ]             │
 │                                                              │

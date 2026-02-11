@@ -2,11 +2,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
-namespace CardLister.Core.Data
+namespace FlipKit.Core.Data
 {
     public static class SchemaUpdater
     {
-        public static async Task EnsureVerificationTablesAsync(CardListerDbContext db)
+        public static async Task EnsureVerificationTablesAsync(FlipKitDbContext db)
         {
             await db.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS set_checklists (
@@ -46,7 +46,7 @@ namespace CardLister.Core.Data
             await EnsureSoldPriceRecordsTableAsync(db);
         }
 
-        private static async Task EnsureAutoGradeColumnAsync(CardListerDbContext db)
+        private static async Task EnsureAutoGradeColumnAsync(FlipKitDbContext db)
         {
             var conn = db.Database.GetDbConnection();
             await conn.OpenAsync();
@@ -68,7 +68,7 @@ namespace CardLister.Core.Data
             }
         }
 
-        public static async Task EnsureChecklistLearningColumnsAsync(CardListerDbContext db)
+        public static async Task EnsureChecklistLearningColumnsAsync(FlipKitDbContext db)
         {
             var conn = db.Database.GetDbConnection();
             await conn.OpenAsync();
@@ -93,7 +93,7 @@ namespace CardLister.Core.Data
             }
         }
 
-        private static async Task EnsureSoldPriceRecordsTableAsync(CardListerDbContext db)
+        private static async Task EnsureSoldPriceRecordsTableAsync(FlipKitDbContext db)
         {
             await db.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS sold_price_records (

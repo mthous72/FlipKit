@@ -4,11 +4,11 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using Microsoft.Extensions.Logging;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     /// <summary>
     /// API-based implementation of ICardRepository for remote access via Tailscale.

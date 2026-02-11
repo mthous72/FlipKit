@@ -1,4 +1,4 @@
-namespace CardLister.Core.Models.Enums
+namespace FlipKit.Core.Models.Enums
 {
     public enum Sport
     {

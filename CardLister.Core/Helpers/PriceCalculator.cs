@@ -1,6 +1,6 @@
 using System;
 
-namespace CardLister.Core.Helpers
+namespace FlipKit.Core.Helpers
 {
     public static class PriceCalculator
     {

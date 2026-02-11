@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
-using CardLister.Core.Models;
+using FlipKit.Core.Models;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     /// <summary>
     /// Service for generating listing titles from customizable templates.

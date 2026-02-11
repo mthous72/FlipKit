@@ -1,9 +1,9 @@
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models.Enums;
 
-namespace CardLister.Desktop.Converters
+namespace FlipKit.Desktop.Converters
 {
     public class StatusToBadgeConverter : IValueConverter
     {

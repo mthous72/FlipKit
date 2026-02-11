@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using CardLister.Web.Models;
-using CardLister.Core.Services;
-using CardLister.Core.Models.Enums;
+using FlipKit.Web.Models;
+using FlipKit.Core.Services;
+using FlipKit.Core.Models.Enums;
 
-namespace CardLister.Web.Controllers;
+namespace FlipKit.Web.Controllers;
 
 public class HomeController : Controller
 {

@@ -27,7 +27,7 @@ The app is a **native cross-platform desktop application** built with Avalonia U
 | XAML ecosystem | ✅ Shared skills with WPF/MAUI | ❌ Different paradigm | ✅ Origin of XAML |
 
 **How it works:**
-1. User double-clicks `CardLister.exe` (Windows) or `CardLister.app` (Mac)
+1. User double-clicks `FlipKit.exe` (Windows) or `FlipKit.app` (Mac)
 2. Native window appears immediately
 3. First run → Setup Wizard guides API key configuration
 4. Everything runs on their machine, data stored locally in SQLite
@@ -48,7 +48,7 @@ public partial class App : Application
         var services = new ServiceCollection();
 
         // Database
-        services.AddDbContext<CardListerDbContext>(options =>
+        services.AddDbContext<FlipKitDbContext>(options =>
             options.UseSqlite($"Data Source={GetDbPath()}"));
 
         // Services
@@ -191,7 +191,7 @@ The `ViewLocator` automatically resolves the correct View for whatever ViewModel
 ## App File Structure
 
 ```
-CardLister.App/
+FlipKit.App/
 ├── App.axaml                          # Theme, resources, ViewLocator
 ├── App.axaml.cs                       # DI container, startup logic
 ├── Program.cs                         # Entry point
@@ -318,7 +318,7 @@ Step 3 — Preferences:
 User API keys stored in a local JSON config file:
 
 ```
-{AppDataFolder}/CardLister/
+{AppDataFolder}/FlipKit/
 ├── config.json             ← API keys and preferences
 ├── cards.db                ← Card inventory (SQLite)
 ├── images/                 ← Local card photos
@@ -354,7 +354,7 @@ User API keys stored in a local JSON config file:
 
 ## Service Interfaces
 
-All business logic is accessed through interfaces (defined in `CardLister.Core`):
+All business logic is accessed through interfaces (defined in `FlipKit.Core`):
 
 ```csharp
 public interface ICardRepository

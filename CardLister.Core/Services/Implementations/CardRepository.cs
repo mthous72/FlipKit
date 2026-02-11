@@ -2,18 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using CardLister.Core.Data;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Data;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class CardRepository : ICardRepository
     {
-        private readonly CardListerDbContext _db;
+        private readonly FlipKitDbContext _db;
 
-        public CardRepository(CardListerDbContext db)
+        public CardRepository(FlipKitDbContext db)
         {
             _db = db;
         }

@@ -5,17 +5,17 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Services;
+using FlipKit.Core.Models;
+using FlipKit.Core.Services;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using static CardLister.Core.Services.ChecklistLearningService;
+using static FlipKit.Core.Services.ChecklistLearningService;
 
-namespace CardLister.Core.Data
+namespace FlipKit.Core.Data
 {
     public static class ChecklistSeeder
     {
-        public static async Task SeedIfEmptyAsync(CardListerDbContext db)
+        public static async Task SeedIfEmptyAsync(FlipKitDbContext db)
         {
             var assembly = Assembly.GetExecutingAssembly();
             var resourceNames = assembly.GetManifestResourceNames()

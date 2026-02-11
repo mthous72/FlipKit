@@ -4,17 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Data;
-using CardLister.Core.Helpers;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class VariationVerifierService : IVariationVerifier
     {
-        private readonly CardListerDbContext _db;
+        private readonly FlipKitDbContext _db;
         private readonly IScannerService _scannerService;
         private readonly ISettingsService _settingsService;
 
@@ -22,7 +22,7 @@ namespace CardLister.Core.Services
         private const double ParallelFuzzyThreshold = 0.7;
 
         public VariationVerifierService(
-            CardListerDbContext db,
+            FlipKitDbContext db,
             IScannerService scannerService,
             ISettingsService settingsService)
         {

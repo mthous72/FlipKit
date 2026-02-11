@@ -1,4 +1,4 @@
-namespace CardLister.Core.Models.Enums
+namespace FlipKit.Core.Models.Enums
 {
     /// <summary>
     /// Represents different listing platforms with distinct SEO requirements

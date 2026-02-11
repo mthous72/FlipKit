@@ -45,7 +45,7 @@ A 3-stage pipeline that runs after the initial scan:
 
 ### New Service Interface
 
-Add to `CardLister.Core/Services/`:
+Add to `FlipKit.Core/Services/`:
 
 ```csharp
 // IVariationVerifier.cs
@@ -73,7 +73,7 @@ public interface IVariationVerifier
 
 ### New Models
 
-Add to `CardLister.Core/Models/`:
+Add to `FlipKit.Core/Models/`:
 
 ```csharp
 // VerificationResult.cs
@@ -126,7 +126,7 @@ public class ChecklistCard
 
 ### New Database Table
 
-Add to `CardListerDbContext.cs`:
+Add to `FlipKitDbContext.cs`:
 
 ```csharp
 public DbSet<SetChecklist> SetChecklists { get; set; }
@@ -149,7 +149,7 @@ modelBuilder.Entity<SetChecklist>(entity =>
 
 ### Infrastructure Implementation
 
-Add to `CardLister.Infrastructure/Services/`:
+Add to `FlipKit.Infrastructure/Services/`:
 
 ```csharp
 // VariationVerifierService.cs — implements IVariationVerifier
@@ -287,7 +287,7 @@ The app ships with a **bundled SQLite database of common set checklists** coveri
 | P2 | Panini Contenders, Phoenix 2022-2024 | Less common |
 | P2 | Upper Deck Hockey 2022-2024 | Hockey sellers |
 
-**Bundled data file:** `CardLister.App/Assets/checklists.db` — a separate read-only SQLite DB embedded as a resource.
+**Bundled data file:** `FlipKit.App/Assets/checklists.db` — a separate read-only SQLite DB embedded as a resource.
 
 ### Checklist Matching Algorithm
 
@@ -681,7 +681,7 @@ In XAML, this would be a collapsible `Expander` or a `StackPanel` that is visibl
 Ship a `checklists.db` file as an embedded resource. On first run, copy it to the app data directory alongside `cards.db`.
 
 ```
-{AppData}/CardLister/
+{AppData}/FlipKit/
 ├── cards.db              ← User's card inventory
 ├── checklists.db         ← Bundled set checklists (read-only copy)
 ├── config.json           ← User settings
@@ -722,7 +722,7 @@ Users can also manually trigger a checklist refresh for a specific set (future f
 
 ### String Matching
 
-Add to `CardLister.Core/Helpers/`:
+Add to `FlipKit.Core/Helpers/`:
 
 ```csharp
 // FuzzyMatcher.cs
@@ -860,9 +860,9 @@ Add to Settings UI:
 ## File Placement Summary
 
 ```
-CardLister/
+FlipKit/
 ├── src/
-│   ├── CardLister.Core/
+│   ├── FlipKit.Core/
 │   │   ├── Models/
 │   │   │   ├── ScanResult.cs              ← NEW
 │   │   │   ├── VisualCues.cs              ← NEW
@@ -877,16 +877,16 @@ CardLister/
 │   │       ├── FuzzyMatcher.cs            ← NEW
 │   │       └── ... (existing)
 │   │
-│   ├── CardLister.Infrastructure/
+│   ├── FlipKit.Infrastructure/
 │   │   ├── Services/
 │   │   │   ├── VariationVerifierService.cs    ← NEW
 │   │   │   ├── OpenRouterScannerService.cs    ← MODIFIED (new prompt, returns ScanResult)
 │   │   │   └── ... (existing)
 │   │   └── Data/
-│   │       ├── CardListerDbContext.cs          ← MODIFIED (add SetChecklist entity)
+│   │       ├── FlipKitDbContext.cs          ← MODIFIED (add SetChecklist entity)
 │   │       └── Migrations/                    ← NEW migration
 │   │
-│   └── CardLister.App/
+│   └── FlipKit.App/
 │       ├── Assets/
 │       │   └── checklists.db                  ← NEW (bundled data)
 │       └── Views/

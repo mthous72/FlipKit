@@ -4,12 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using CsvHelper;
 using CsvHelper.Configuration;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class CsvExportService : IExportService
     {

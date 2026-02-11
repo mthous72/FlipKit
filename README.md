@@ -1,8 +1,8 @@
-# CardLister
+# FlipKit
 
 A dual-platform application for sports card sellers that uses AI vision to scan card images, manage inventory, research pricing, and export Whatnot-compatible CSV files for bulk listing.
 
-**Two ways to use CardLister:**
+**Two ways to use FlipKit:**
 - **Desktop App** - Full-featured Windows/macOS application built with Avalonia UI (inventory, export, reports, settings)
 - **Web App** - Mobile-optimized interface for on-the-go card scanning and price research only
 
@@ -12,7 +12,7 @@ Built with **C# / .NET 8**, using **Avalonia UI 11** for desktop and **ASP.NET C
 
 ## Download
 
-Pre-built executables are available on the [Releases page](https://github.com/mthous72/CardLister/releases). No .NET runtime install needed -- these are fully self-contained.
+Pre-built executables are available on the [Releases page](https://github.com/mthous72/FlipKit/releases). No .NET runtime install needed -- these are fully self-contained.
 
 ### Desktop Application
 
@@ -20,9 +20,9 @@ For power users who want the full desktop experience with bulk scanning and adva
 
 | Platform | File |
 |----------|------|
-| Windows (x64) | `CardLister-win-x64.zip` -- extract and double-click `CardLister.exe` |
-| macOS Intel | `CardLister-osx-x64.zip` -- extract all files to same folder, run `./CardLister` from terminal |
-| macOS Apple Silicon (M1/M2/M3/M4) | `CardLister-osx-arm64.zip` -- extract all files to same folder, run `./CardLister` from terminal |
+| Windows (x64) | `FlipKit-win-x64.zip` -- extract and double-click `FlipKit.exe` |
+| macOS Intel | `FlipKit-osx-x64.zip` -- extract all files to same folder, run `./FlipKit` from terminal |
+| macOS Apple Silicon (M1/M2/M3/M4) | `FlipKit-osx-arm64.zip` -- extract all files to same folder, run `./FlipKit` from terminal |
 
 ### Web Application
 
@@ -30,10 +30,10 @@ For mobile access - scan cards with your phone's camera and quick price research
 
 | Platform | File | Usage |
 |----------|------|-------|
-| Windows (x64) | `CardLister-Web-v2.1.0.zip` | Extract and double-click `StartWeb.bat` |
-| macOS Intel | `CardLister-Web-macOS-Intel-v2.1.0.zip` | Extract and run `./start-web.sh` |
-| macOS Apple Silicon | `CardLister-Web-macOS-ARM-v2.1.0.zip` | Extract and run `./start-web.sh` |
-| Linux (x64) | `CardLister-Web-Linux-v2.1.0.tar.gz` | Extract and run `./start-web.sh` |
+| Windows (x64) | `FlipKit-Web-v2.1.0.zip` | Extract and double-click `StartWeb.bat` |
+| macOS Intel | `FlipKit-Web-macOS-Intel-v2.1.0.zip` | Extract and run `./start-web.sh` |
+| macOS Apple Silicon | `FlipKit-Web-macOS-ARM-v2.1.0.zip` | Extract and run `./start-web.sh` |
+| Linux (x64) | `FlipKit-Web-Linux-v2.1.0.tar.gz` | Extract and run `./start-web.sh` |
 
 **Web App Quick Start:**
 1. Download the package for your computer's OS (not your phone!)
@@ -69,7 +69,7 @@ These features are implemented and functional today:
 - **Tax Report Export** -- Export sold cards as a CSV with sale date, cost basis, fees, and net profit for record-keeping.
 - **Reports** -- View sold card summary with total revenue, cost basis, fees, and net profit. Monthly breakdown and top sellers list.
 - **Listing Title Optimization** -- SEO-optimized title templates for different platforms (Whatnot, eBay, COMC, Generic). Customize title format per platform using placeholders like `{Year} {Brand} {Player} {Parallel}`. Search query templates optimize pricing research by excluding overly specific fields. Export platform selector lets you choose which template to use per-export. Based on WTSCards research showing different platforms weight fields differently for search ranking.
-- **Smart Hybrid Data Access** -- Access your card inventory from anywhere on your private Tailscale network with automatic local/remote detection. The app intelligently chooses between fast local database access (when on the same computer) or API-based access (when remote) with zero configuration. Run the optional CardLister.Api server on your main computer to enable remote access from laptops or mobile devices. Works seamlessly across Desktop and Web apps. Zero cost, no cloud hosting - your data stays on your private Tailscale network.
+- **Smart Hybrid Data Access** -- Access your card inventory from anywhere on your private Tailscale network with automatic local/remote detection. The app intelligently chooses between fast local database access (when on the same computer) or API-based access (when remote) with zero configuration. Run the optional FlipKit.Api server on your main computer to enable remote access from laptops or mobile devices. Works seamlessly across Desktop and Web apps. Zero cost, no cloud hosting - your data stays on your private Tailscale network.
 - **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, verification preferences, and Tailscale sync. Includes full title and search template customization with validation, preview, and reset options.
 - **Setup Wizard** -- First-run walkthrough for entering API keys and setting preferences.
 - **Local-First Data** -- All data is stored on your machine in SQLite. API keys are stored in your local app data folder, never in the repo. Optional Tailscale sync keeps data synchronized across your computers via private network.
@@ -104,7 +104,7 @@ Here's what's rough or missing in the desktop application:
 - **No drag-and-drop** -- Images must be added via the file browser. No clipboard paste either.
 - **Batch scanning is new** -- The bulk scan feature was just added and may have rough edges with large batches (50+ cards).
 - **No automated tests** -- The codebase has no unit or integration tests yet.
-- **macOS builds are untested** -- The macOS executables cross-compile from Windows but haven't been tested on actual Mac hardware. They may need `chmod +x CardLister` and Gatekeeper approval.
+- **macOS builds are untested** -- The macOS executables cross-compile from Windows but haven't been tested on actual Mac hardware. They may need `chmod +x FlipKit` and Gatekeeper approval.
 - **No auto-update** -- You'll need to download new releases manually.
 - **Basic UI polish** -- Uses Avalonia's Fluent theme defaults. No custom icons, splash screen, or loading animations.
 - **AI accuracy varies** -- Free vision models are decent but not perfect (~70-80% accuracy on variations). The verification pipeline helps, but edge cases will slip through.
@@ -191,22 +191,22 @@ Future enhancements for the web application:
 The codebase uses a **3-project architecture** for maximum code reuse and separation of concerns:
 
 ```
-CardLister.sln
+FlipKit.sln
 │
-├── CardLister.Core/              # Shared business logic (net8.0 library)
+├── FlipKit.Core/              # Shared business logic (net8.0 library)
 │   ├── Models/                   # Domain entities (Card, PriceHistory, enums)
 │   ├── Services/                 # Service interfaces + implementations
 │   ├── Data/                     # EF Core DbContext, migrations, seeders
 │   └── Helpers/                  # Shared utilities (FuzzyMatcher, etc.)
 │
-├── CardLister.Desktop/           # Desktop application (Avalonia)
+├── FlipKit.Desktop/           # Desktop application (Avalonia)
 │   ├── ViewModels/               # MVVM ViewModels (CommunityToolkit.Mvvm)
 │   ├── Views/                    # Avalonia XAML views
 │   ├── Converters/               # XAML value converters
 │   ├── Services/                 # Desktop-specific services (file dialogs, etc.)
 │   └── Styles/                   # Avalonia styles
 │
-├── CardLister.Web/               # Web application (ASP.NET Core MVC)
+├── FlipKit.Web/               # Web application (ASP.NET Core MVC)
 │   ├── Controllers/              # MVC controllers (Home, Scan, Inventory, etc.)
 │   ├── Views/                    # Razor views with Bootstrap 5
 │   ├── ViewModels/               # DTOs for views
@@ -216,7 +216,7 @@ CardLister.sln
 └── Docs/                         # Design specs and planning documents
 ```
 
-**Code Reuse:** ~55% of the codebase is shared via `CardLister.Core`, including all business logic, database access, AI scanning, pricing, export, and validation.
+**Code Reuse:** ~55% of the codebase is shared via `FlipKit.Core`, including all business logic, database access, AI scanning, pricing, export, and validation.
 
 ## Building from Source
 
@@ -228,15 +228,15 @@ CardLister.sln
 
 **Desktop App:**
 ```bash
-git clone https://github.com/mthous72/CardLister.git
-cd CardLister
-dotnet run --project CardLister
+git clone https://github.com/mthous72/FlipKit.git
+cd FlipKit
+dotnet run --project FlipKit
 ```
 
 **Web App:**
 ```bash
-cd CardLister
-dotnet run --project CardLister.Web
+cd FlipKit
+dotnet run --project FlipKit.Web
 # Open browser to http://localhost:5000
 ```
 
@@ -245,13 +245,13 @@ dotnet run --project CardLister.Web
 **Desktop App:**
 ```bash
 # Windows
-dotnet publish CardLister -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish FlipKit -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 
 # macOS Intel
-dotnet publish CardLister -c Release -r osx-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish FlipKit -c Release -r osx-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 
 # macOS Apple Silicon
-dotnet publish CardLister -c Release -r osx-arm64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish FlipKit -c Release -r osx-arm64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
 **Web App (Use build scripts for complete packages with launcher scripts and documentation):**
@@ -266,16 +266,16 @@ bash build-web-package.sh
 **Or manually publish Web App:**
 ```bash
 # Windows
-dotnet publish CardLister.Web/CardLister.Web.csproj -c Release -r win-x64 --self-contained -o publish/web-win
+dotnet publish FlipKit.Web/FlipKit.Web.csproj -c Release -r win-x64 --self-contained -o publish/web-win
 
 # macOS Intel
-dotnet publish CardLister.Web/CardLister.Web.csproj -c Release -r osx-x64 --self-contained -o publish/web-macos-intel
+dotnet publish FlipKit.Web/FlipKit.Web.csproj -c Release -r osx-x64 --self-contained -o publish/web-macos-intel
 
 # macOS ARM
-dotnet publish CardLister.Web/CardLister.Web.csproj -c Release -r osx-arm64 --self-contained -o publish/web-macos-arm
+dotnet publish FlipKit.Web/FlipKit.Web.csproj -c Release -r osx-arm64 --self-contained -o publish/web-macos-arm
 
 # Linux
-dotnet publish CardLister.Web/CardLister.Web.csproj -c Release -r linux-x64 --self-contained -o publish/web-linux
+dotnet publish FlipKit.Web/FlipKit.Web.csproj -c Release -r linux-x64 --self-contained -o publish/web-linux
 ```
 
 ## Configuration
@@ -289,8 +289,8 @@ dotnet publish CardLister.Web/CardLister.Web.csproj -c Release -r linux-x64 --se
 - **ImgBB API key** ([get one here](https://api.imgbb.com/)) -- Optional. Only needed if you want to upload images for Whatnot listings.
 
 **File Locations:**
-- **Settings:** `%APPDATA%\CardLister\settings.json` (Windows) or `~/Library/Application Support/CardLister/settings.json` (macOS/Linux)
-- **Database:** `%APPDATA%\CardLister\cards.db` (Windows) or `~/Library/Application Support/CardLister/cards.db` (macOS) or `~/.local/share/CardLister/cards.db` (Linux)
+- **Settings:** `%APPDATA%\FlipKit\settings.json` (Windows) or `~/Library/Application Support/FlipKit/settings.json` (macOS/Linux)
+- **Database:** `%APPDATA%\FlipKit\cards.db` (Windows) or `~/Library/Application Support/FlipKit/cards.db` (macOS) or `~/.local/share/FlipKit/cards.db` (Linux)
 
 **Shared Between Apps:** Desktop and Web apps use the same settings.json and cards.db files, so your API keys and inventory are automatically synced. Nothing is sent anywhere except the API calls you initiate.
 
@@ -304,7 +304,7 @@ dotnet publish CardLister.Web/CardLister.Web.csproj -c Release -r linux-x64 --se
 
 This is an early-stage project and contributions are welcome. If you're a sports card seller, a .NET/Avalonia developer, or just interested in AI-powered tools, here are some ways to help:
 
-- **Report bugs** -- [Open an issue](https://github.com/mthous72/CardLister/issues) with steps to reproduce
+- **Report bugs** -- [Open an issue](https://github.com/mthous72/FlipKit/issues) with steps to reproduce
 - **Test on macOS** -- The Mac builds haven't been verified on real hardware yet. If you have a Mac, try it out and let us know what happens
 - **Add checklist data** -- The variation verification pipeline is only as good as its data. If you know a set well, help us build out the checklist database
 - **Improve AI prompts** -- If the scanner consistently misidentifies a particular type of card, share examples so we can refine the prompts
@@ -316,7 +316,7 @@ This is an early-stage project and contributions are welcome. If you're a sports
 
 **EDUCATIONAL AND INFORMATIONAL USE ONLY**
 
-CardLister is provided for **educational and informational purposes only**. This software is not intended to provide professional accounting, financial, tax, or business advice.
+FlipKit is provided for **educational and informational purposes only**. This software is not intended to provide professional accounting, financial, tax, or business advice.
 
 **NO WARRANTIES**
 
@@ -329,7 +329,7 @@ This software is provided "AS IS" without warranty of any kind, either express o
 
 **USE AT YOUR OWN RISK**
 
-By using CardLister, you acknowledge and agree that:
+By using FlipKit, you acknowledge and agree that:
 - You are solely responsible for verifying all card identifications, prices, and financial calculations
 - You should independently verify all data before making business decisions or filing taxes
 - The developers and contributors assume no liability for any losses, damages, or errors resulting from use of this software
@@ -339,7 +339,7 @@ By using CardLister, you acknowledge and agree that:
 
 **THIRD-PARTY SERVICES**
 
-CardLister integrates with third-party APIs (OpenRouter, ImgBB, eBay) that have their own terms of service. Users are responsible for:
+FlipKit integrates with third-party APIs (OpenRouter, ImgBB, eBay) that have their own terms of service. Users are responsible for:
 - Obtaining and maintaining valid API keys
 - Complying with each service provider's terms and conditions
 - Any costs or rate limits imposed by these services
@@ -347,7 +347,7 @@ CardLister integrates with third-party APIs (OpenRouter, ImgBB, eBay) that have 
 
 **FINANCIAL AND TAX REPORTING**
 
-CardLister's financial reports and profit calculations are **estimates only** and should not be used as the sole basis for:
+FlipKit's financial reports and profit calculations are **estimates only** and should not be used as the sole basis for:
 - Tax filing or reporting
 - Business financial statements
 - Legal or regulatory compliance
@@ -371,7 +371,7 @@ Use this software at your own risk. Always maintain backups of your data.
 
 MIT
 
-Copyright (c) 2026 CardLister Contributors
+Copyright (c) 2026 FlipKit Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 

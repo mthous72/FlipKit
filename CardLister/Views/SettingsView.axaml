@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:CardLister.Desktop.ViewModels"
+             xmlns:vm="using:FlipKit.Desktop.ViewModels"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="900"
-             x:Class="CardLister.Desktop.Views.SettingsView"
+             x:Class="FlipKit.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
 
     <ScrollViewer Padding="24">
@@ -295,7 +295,7 @@
                 <StackPanel Spacing="12">
                     <TextBlock Text="Data Access Mode" FontSize="18" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
-                        CardLister automatically detects whether to use local database (fast, direct access) or remote API (Tailscale network access).
+                        FlipKit automatically detects whether to use local database (fast, direct access) or remote API (Tailscale network access).
                     </TextBlock>
 
                     <!-- Current Mode Status -->
@@ -324,12 +324,12 @@
                             <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.8">
                                 • <Run FontWeight="SemiBold">Empty/Localhost:</Run> Uses local SQLite database (fast, direct)
                                 <LineBreak/>
-                                • <Run FontWeight="SemiBold">Tailscale IP:</Run> Uses remote API via CardLister.Api server
+                                • <Run FontWeight="SemiBold">Tailscale IP:</Run> Uses remote API via FlipKit.Api server
                                 <LineBreak/>
                                 <LineBreak/>
                                 <Run FontWeight="SemiBold">To access remotely:</Run>
                                 <LineBreak/>
-                                1. Run CardLister.Api on main computer: cd CardLister.Api &amp;&amp; dotnet run
+                                1. Run FlipKit.Api on main computer: cd FlipKit.Api &amp;&amp; dotnet run
                                 <LineBreak/>
                                 2. Get Tailscale IP: tailscale ip -4
                                 <LineBreak/>
@@ -357,7 +357,7 @@
                     <TextBlock Text="⚠️ Important Legal Notice" FontSize="16" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
                         <Run FontWeight="Bold">For Educational Use Only.</Run>
-                        CardLister is provided "AS IS" without warranties of any kind. No warranties are implied regarding the accuracy of AI card identification, pricing data, financial calculations, or any other information.
+                        FlipKit is provided "AS IS" without warranties of any kind. No warranties are implied regarding the accuracy of AI card identification, pricing data, financial calculations, or any other information.
                     </TextBlock>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
                         <Run FontWeight="Bold">Use at Your Own Risk.</Run>

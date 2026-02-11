@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using Avalonia;
 
-namespace CardLister.Desktop
+namespace FlipKit.Desktop
 {
     internal sealed class Program
     {

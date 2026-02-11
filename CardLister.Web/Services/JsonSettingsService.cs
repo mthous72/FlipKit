@@ -3,14 +3,14 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Services;
+using FlipKit.Core.Models;
+using FlipKit.Core.Services;
 
-namespace CardLister.Web.Services
+namespace FlipKit.Web.Services
 {
     /// <summary>
     /// JSON-based settings service for web application.
-    /// Reads/writes settings to %LOCALAPPDATA%\CardLister\config.json
+    /// Reads/writes settings to %LOCALAPPDATA%\FlipKit\config.json
     /// (shared with desktop app).
     /// NOTE: This is duplicated from Desktop - should be moved to Core in future refactor.
     /// </summary>
@@ -18,7 +18,7 @@ namespace CardLister.Web.Services
     {
         private static readonly string ConfigFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CardLister");
+            "FlipKit");
 
         private static readonly string ConfigPath = Path.Combine(ConfigFolder, "config.json");
 

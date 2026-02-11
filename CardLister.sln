@@ -1,15 +1,15 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36705.20
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardLister.Desktop", "CardLister\CardLister.Desktop.csproj", "{CAD43101-904A-4436-86F1-229F3F216681}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlipKit.Desktop", "FlipKit\FlipKit.Desktop.csproj", "{CAD43101-904A-4436-86F1-229F3F216681}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardLister.Core", "CardLister.Core\CardLister.Core.csproj", "{C99B4D6C-76D8-42EE-ACD3-FABFF3C0A3C1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlipKit.Core", "FlipKit.Core\FlipKit.Core.csproj", "{C99B4D6C-76D8-42EE-ACD3-FABFF3C0A3C1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardLister.Web", "CardLister.Web\CardLister.Web.csproj", "{151BC616-BB00-44A0-B82F-76018A170AB3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlipKit.Web", "FlipKit.Web\FlipKit.Web.csproj", "{151BC616-BB00-44A0-B82F-76018A170AB3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardLister.Api", "CardLister.Api\CardLister.Api.csproj", "{EA891751-F0B9-46A1-BE0F-0632969A4D8B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlipKit.Api", "FlipKit.Api\FlipKit.Api.csproj", "{EA891751-F0B9-46A1-BE0F-0632969A4D8B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CardLister.Core.Models;
+using FlipKit.Core.Models;
 
-namespace CardLister.Desktop.Models
+namespace FlipKit.Desktop.Models
 {
     public partial class SelectableCard : ObservableObject
     {

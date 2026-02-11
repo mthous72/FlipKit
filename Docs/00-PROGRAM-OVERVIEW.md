@@ -538,7 +538,7 @@ Each step has:
 │   ─────────                                                              │
 │                                                                          │
 │   Cards saved: 47                                                        │
-│   Database location: C:\Users\You\CardLister\cards.db                   │
+│   Database location: C:\Users\You\FlipKit\cards.db                   │
 │                                                                          │
 │   [ 📂 Open Folder ]    [ 💾 Backup Data ]    [ 🗑️ Clear All Data ]      │
 │                                                                          │

@@ -1,7 +1,7 @@
 using System;
-using CardLister.Core.Models;
+using FlipKit.Core.Models;
 
-namespace CardLister.Core.Helpers
+namespace FlipKit.Core.Helpers
 {
     /// <summary>
     /// Determines the optimal data access mode based on configuration.

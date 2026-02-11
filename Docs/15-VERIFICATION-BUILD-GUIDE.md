@@ -12,7 +12,7 @@ Step-by-step prompts for Claude Code to implement the variation verification pip
 
 **Prompt for Claude Code:**
 ```
-Read 14-VARIATION-VERIFICATION.md for context. Now create the following new model files in CardLister.Core/Models/:
+Read 14-VARIATION-VERIFICATION.md for context. Now create the following new model files in FlipKit.Core/Models/:
 
 1. ScanResult.cs:
    - Card property (Card type)
@@ -69,7 +69,7 @@ Read 14-VARIATION-VERIFICATION.md for context. Now create the following new mode
    - Team (string)
    - IsRookie (bool)
 
-Make sure all classes are in the CardLister.Core.Models namespace.
+Make sure all classes are in the FlipKit.Core.Models namespace.
 ```
 
 ---
@@ -78,7 +78,7 @@ Make sure all classes are in the CardLister.Core.Models namespace.
 
 **Prompt for Claude Code:**
 ```
-Create CardLister.Core/Helpers/FuzzyMatcher.cs — a static utility class for string matching used by the verification pipeline.
+Create FlipKit.Core/Helpers/FuzzyMatcher.cs — a static utility class for string matching used by the verification pipeline.
 
 Methods:
 
@@ -115,7 +115,7 @@ Methods:
    - Standard dynamic programming implementation
    - Private helper method
 
-Include XML doc comments on all public methods. Namespace: CardLister.Core.Helpers.
+Include XML doc comments on all public methods. Namespace: FlipKit.Core.Helpers.
 ```
 
 ---
@@ -124,7 +124,7 @@ Include XML doc comments on all public methods. Namespace: CardLister.Core.Helpe
 
 **Prompt for Claude Code:**
 ```
-Update CardLister.Core/Services/IScannerService.cs:
+Update FlipKit.Core/Services/IScannerService.cs:
 
 Change the return type of ScanCardAsync from Card to ScanResult:
 
@@ -134,7 +134,7 @@ Before:
 After:
   Task<ScanResult> ScanCardAsync(string imagePath, string? model = null);
 
-Make sure to add the using statement for ScanResult from CardLister.Core.Models.
+Make sure to add the using statement for ScanResult from FlipKit.Core.Models.
 ```
 
 ---
@@ -143,7 +143,7 @@ Make sure to add the using statement for ScanResult from CardLister.Core.Models.
 
 **Prompt for Claude Code:**
 ```
-Update CardLister.Infrastructure/Services/OpenRouterScannerService.cs to:
+Update FlipKit.Infrastructure/Services/OpenRouterScannerService.cs to:
 
 1. Return ScanResult instead of Card
 
@@ -222,7 +222,7 @@ Return ONLY the JSON, no other text or markdown.
 
 **Prompt for Claude Code:**
 ```
-Create CardLister.Core/Services/IVariationVerifier.cs with these methods:
+Create FlipKit.Core/Services/IVariationVerifier.cs with these methods:
 
 1. VerifyCardAsync(Card card, string imagePath) → Task<VerificationResult>
    - Main entry point: runs the full verification pipeline
@@ -239,7 +239,7 @@ Create CardLister.Core/Services/IVariationVerifier.cs with these methods:
    - Sends targeted questions to the vision model
    - Updates the verification result with answers
 
-Namespace: CardLister.Core.Services
+Namespace: FlipKit.Core.Services
 ```
 
 ---
@@ -248,10 +248,10 @@ Namespace: CardLister.Core.Services
 
 **Prompt for Claude Code:**
 ```
-Create CardLister.Infrastructure/Services/VariationVerifierService.cs implementing IVariationVerifier.
+Create FlipKit.Infrastructure/Services/VariationVerifierService.cs implementing IVariationVerifier.
 
 Constructor dependencies:
-- CardListerDbContext (for checklist queries)
+- FlipKitDbContext (for checklist queries)
 - IScannerService (for confirmation pass — sending targeted questions)
 - ISettingsService (for checking if verification is enabled)
 
@@ -292,7 +292,7 @@ Private helper methods:
 - BuildConfirmationPrompt(ScanResult, VerificationResult) → string
 - CalculateOverallConfidence(VerificationResult) → VerificationConfidence
 
-Use FuzzyMatcher from CardLister.Core.Helpers for all string comparisons.
+Use FuzzyMatcher from FlipKit.Core.Helpers for all string comparisons.
 ```
 
 ---
@@ -301,7 +301,7 @@ Use FuzzyMatcher from CardLister.Core.Helpers for all string comparisons.
 
 **Prompt for Claude Code:**
 ```
-Update CardLister.Infrastructure/Data/CardListerDbContext.cs:
+Update FlipKit.Infrastructure/Data/FlipKitDbContext.cs:
 
 1. Add: public DbSet<SetChecklist> SetChecklists { get; set; }
 
@@ -312,8 +312,8 @@ Update CardLister.Infrastructure/Data/CardListerDbContext.cs:
    - KnownVariations property: use HasConversion with JsonSerializer to store as JSON text
 
 3. Create a new EF Core migration:
-   cd CardLister.Infrastructure
-   dotnet ef migrations add AddSetChecklists --startup-project ../CardLister.App
+   cd FlipKit.Infrastructure
+   dotnet ef migrations add AddSetChecklists --startup-project ../FlipKit.App
 
 This table will store cached set checklist data. The Cards and KnownVariations columns are JSON strings in SQLite.
 ```
@@ -324,7 +324,7 @@ This table will store cached set checklist data. The Cards and KnownVariations c
 
 **Prompt for Claude Code:**
 ```
-Update CardLister.Core/ViewModels/ScanViewModel.cs to integrate the verification pipeline:
+Update FlipKit.Core/ViewModels/ScanViewModel.cs to integrate the verification pipeline:
 
 1. Add new constructor dependency: IVariationVerifier
 
@@ -374,7 +374,7 @@ Keep the existing save flow unchanged — verification happens between scan and 
 
 **Prompt for Claude Code:**
 ```
-Update CardLister.App/Views/ScanView.axaml to add a verification results panel.
+Update FlipKit.App/Views/ScanView.axaml to add a verification results panel.
 
 Add a new section below the card details form (above the Save button):
 
@@ -410,13 +410,13 @@ Use Avalonia Fluent theme styles. Keep it clean and non-overwhelming — the pan
 
 **Prompt for Claude Code:**
 ```
-Update CardLister.App/App.axaml.cs to register the new verification service:
+Update FlipKit.App/App.axaml.cs to register the new verification service:
 
 In the ConfigureServices section, add:
   services.AddTransient<IVariationVerifier, VariationVerifierService>();
 
 Make sure the VariationVerifierService gets its dependencies:
-  - CardListerDbContext (already registered)
+  - FlipKitDbContext (already registered)
   - IScannerService (already registered)
   - ISettingsService (already registered)
 
@@ -462,12 +462,12 @@ Place this section after the API Connections section but before Preferences.
 ```
 Create a data seeding mechanism for the bundled checklist data.
 
-1. Create CardLister.Infrastructure/Data/ChecklistSeeder.cs:
-   - Static method: SeedFromBundledData(CardListerDbContext context)
+1. Create FlipKit.Infrastructure/Data/ChecklistSeeder.cs:
+   - Static method: SeedFromBundledData(FlipKitDbContext context)
    - Checks if SetChecklists table is empty
    - If empty, loads data from embedded JSON resource and inserts
 
-2. Create the bundled data file CardLister.App/Assets/checklist_seed.json:
+2. Create the bundled data file FlipKit.App/Assets/checklist_seed.json:
    - JSON array of SetChecklist objects
    - Start with these high-priority sets (use realistic but abbreviated data):
 

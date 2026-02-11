@@ -8,7 +8,7 @@
 
 ## Overview
 
-Created automated build scripts to package the CardLister Web application as self-contained, ready-to-distribute archives for all major platforms. Users can download, extract, and run the web app without installing .NET separately.
+Created automated build scripts to package the FlipKit Web application as self-contained, ready-to-distribute archives for all major platforms. Users can download, extract, and run the web app without installing .NET separately.
 
 ---
 
@@ -19,31 +19,31 @@ Created automated build scripts to package the CardLister Web application as sel
 **Purpose:** Creates a self-contained Windows package with integrated launcher.
 
 **Output:**
-- `publish/CardLister-Web-Windows-v1.0.0.zip` (52 MB)
+- `publish/FlipKit-Web-Windows-v1.0.0.zip` (52 MB)
 - Contains:
-  - `CardLister.Web.exe` - Main executable
+  - `FlipKit.Web.exe` - Main executable
   - `StartWeb.bat` - One-click launcher script
   - `README.md` - Quick start instructions
   - `Docs/` - WEB-USER-GUIDE.md and DEPLOYMENT-GUIDE.md
   - All .NET 8 runtime files (self-contained)
-  - All dependencies (CardLister.Core, CsvHelper, EF Core, etc.)
+  - All dependencies (FlipKit.Core, CsvHelper, EF Core, etc.)
 
 **How It Works:**
 ```batch
-dotnet publish CardLister.Web\CardLister.Web.csproj ^
+dotnet publish FlipKit.Web\FlipKit.Web.csproj ^
   -c Release ^
   -r win-x64 ^
   --self-contained true ^
   -p:PublishSingleFile=false ^
   -p:PublishReadyToRun=true ^
-  -o publish\CardLister-Web-Windows
+  -o publish\FlipKit-Web-Windows
 ```
 
 **Launcher Script (`StartWeb.bat`):**
 - Sets `ASPNETCORE_URLS=http://0.0.0.0:5000`
 - Sets `ASPNETCORE_ENVIRONMENT=Production`
 - Automatically opens browser to `http://localhost:5000`
-- Starts `CardLister.Web.exe`
+- Starts `FlipKit.Web.exe`
 
 **User Experience:**
 1. Download ZIP from GitHub Releases
@@ -58,12 +58,12 @@ dotnet publish CardLister.Web\CardLister.Web.csproj ^
 **Purpose:** Creates self-contained packages for macOS (Intel and ARM) and Linux.
 
 **Output:**
-- `publish/CardLister-Web-macOS-Intel-v1.0.0.zip`
-- `publish/CardLister-Web-macOS-ARM-v1.0.0.zip`
-- `publish/CardLister-Web-Linux-v1.0.0.tar.gz`
+- `publish/FlipKit-Web-macOS-Intel-v1.0.0.zip`
+- `publish/FlipKit-Web-macOS-ARM-v1.0.0.zip`
+- `publish/FlipKit-Web-Linux-v1.0.0.tar.gz`
 
 Each package contains:
-- Platform-specific executable (`CardLister.Web`)
+- Platform-specific executable (`FlipKit.Web`)
 - `start-web.sh` - Launcher script with auto-browser-open
 - `README.md` - Platform-specific instructions
 - `Docs/` - Complete user and deployment guides
@@ -88,7 +88,7 @@ dotnet publish -c Release -r linux-x64 --self-contained true
   - macOS: Uses `open http://localhost:5000`
   - Linux: Uses `xdg-open http://localhost:5000`
 - Sets executable permissions automatically
-- Starts `./CardLister.Web`
+- Starts `./FlipKit.Web`
 
 **User Experience:**
 1. Download appropriate archive (Intel/ARM/Linux)
@@ -99,7 +99,7 @@ dotnet publish -c Release -r linux-x64 --self-contained true
 **First-time Setup:**
 ```bash
 chmod +x start-web.sh
-chmod +x CardLister.Web
+chmod +x FlipKit.Web
 ```
 (Included in README instructions)
 
@@ -110,9 +110,9 @@ chmod +x CardLister.Web
 ### Common to All Platforms
 
 **Executable:**
-- `CardLister.Web.exe` (Windows) or `CardLister.Web` (macOS/Linux)
+- `FlipKit.Web.exe` (Windows) or `FlipKit.Web` (macOS/Linux)
 - Self-contained .NET 8 runtime
-- CardLister.Core.dll
+- FlipKit.Core.dll
 - All NuGet dependencies
 
 **Launcher Scripts:**
@@ -134,8 +134,8 @@ chmod +x CardLister.Web
 
 **Configuration:**
 - `appsettings.json` - Production configuration
-- Database path: `%APPDATA%\CardLister\cards.db` (Windows) or `~/Library/Application Support/CardLister/cards.db` (macOS) or `~/.local/share/CardLister/cards.db` (Linux)
-- Shared with CardLister Desktop if installed
+- Database path: `%APPDATA%\FlipKit\cards.db` (Windows) or `~/Library/Application Support/FlipKit/cards.db` (macOS) or `~/.local/share/FlipKit/cards.db` (Linux)
+- Shared with FlipKit Desktop if installed
 
 ---
 
@@ -176,11 +176,11 @@ ls -lh *.zip *.tar.gz
 
 **Test locally:**
 ```bash
-cd CardLister-Web-Windows
+cd FlipKit-Web-Windows
 ./StartWeb.bat
 
 # Or on macOS/Linux
-cd CardLister-Web-macOS-Intel
+cd FlipKit-Web-macOS-Intel
 ./start-web.sh
 ```
 
@@ -188,12 +188,12 @@ cd CardLister-Web-macOS-Intel
 
 1. Navigate to repository → Releases → Draft a new release
 2. Create new tag: `v1.0.0` (or next version)
-3. Release title: `CardLister Web v1.0.0`
+3. Release title: `FlipKit Web v1.0.0`
 4. Upload all packages:
-   - `CardLister-Web-Windows-v1.0.0.zip`
-   - `CardLister-Web-macOS-Intel-v1.0.0.zip`
-   - `CardLister-Web-macOS-ARM-v1.0.0.zip`
-   - `CardLister-Web-Linux-v1.0.0.tar.gz`
+   - `FlipKit-Web-Windows-v1.0.0.zip`
+   - `FlipKit-Web-macOS-Intel-v1.0.0.zip`
+   - `FlipKit-Web-macOS-ARM-v1.0.0.zip`
+   - `FlipKit-Web-Linux-v1.0.0.tar.gz`
 5. Copy release notes from Phase 3 completion summary
 6. Publish release
 
@@ -219,17 +219,17 @@ cd CardLister-Web-macOS-Intel
 1. Windows Defender Firewall → Advanced Settings
 2. Inbound Rules → New Rule
 3. Port → TCP → 5000 → Allow → Private
-4. Name: "CardLister Web"
+4. Name: "FlipKit Web"
 
 **Via PowerShell (Administrator):**
 ```powershell
-New-NetFirewallRule -DisplayName "CardLister Web" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow -Profile Private
+New-NetFirewallRule -DisplayName "FlipKit Web" -Direction Inbound -LocalPort 5000 -Protocol TCP -Action Allow -Profile Private
 ```
 
 ### macOS
 
 **System Preferences → Security & Privacy → Firewall:**
-- Allow CardLister.Web to accept incoming connections
+- Allow FlipKit.Web to accept incoming connections
 - Or disable firewall for local network (Private Wi-Fi)
 
 ### Linux (ufw)
@@ -407,7 +407,7 @@ Before distributing packages:
 
 ## Conclusion
 
-Distribution packaging is complete for CardLister Web v1.0.0. Build scripts create production-ready, self-contained packages for all major platforms. Users can download, extract, and run the web app in seconds without technical setup.
+Distribution packaging is complete for FlipKit Web v1.0.0. Build scripts create production-ready, self-contained packages for all major platforms. Users can download, extract, and run the web app in seconds without technical setup.
 
 The packages are ready for GitHub Releases distribution and can be tested immediately on local machines.
 

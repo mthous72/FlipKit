@@ -8,8 +8,8 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
-using CardLister.ViewModels;
-using CardLister.Views;
+using FlipKit.ViewModels;
+using FlipKit.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +19,7 @@ namespace ScreenshotTool
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("CardLister Screenshot Tool - Demo Mode");
+            Console.WriteLine("FlipKit Screenshot Tool - Demo Mode");
             Console.WriteLine("======================================\n");
 
             var outputDir = Path.Combine(Directory.GetCurrentDirectory(), "screenshots");
@@ -69,18 +69,18 @@ namespace ScreenshotTool
             services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
 
             // Mock services
-            services.AddSingleton<CardLister.Services.ICardRepository, MockCardRepository>();
-            services.AddSingleton<CardLister.Services.ISettingsService, MockSettingsService>();
-            services.AddSingleton<CardLister.Services.IScannerService, MockScannerService>();
-            services.AddSingleton<CardLister.Services.IPricerService, MockPricerService>();
-            services.AddSingleton<CardLister.Services.IExportService, MockExportService>();
-            services.AddSingleton<CardLister.Services.IBrowserService, MockBrowserService>();
-            services.AddSingleton<CardLister.Services.IFileDialogService, MockFileDialogService>();
-            services.AddSingleton<CardLister.Services.IImageUploadService, MockImageUploadService>();
-            services.AddSingleton<CardLister.Services.IVariationVerifier, MockVariationVerifier>();
-            services.AddSingleton<CardLister.Services.IChecklistLearningService, MockChecklistLearningService>();
-            services.AddSingleton<CardLister.Services.ISoldPriceService, MockSoldPriceService>();
-            services.AddSingleton<CardLister.Services.IEbayBrowseService, MockEbayBrowseService>();
+            services.AddSingleton<FlipKit.Services.ICardRepository, MockCardRepository>();
+            services.AddSingleton<FlipKit.Services.ISettingsService, MockSettingsService>();
+            services.AddSingleton<FlipKit.Services.IScannerService, MockScannerService>();
+            services.AddSingleton<FlipKit.Services.IPricerService, MockPricerService>();
+            services.AddSingleton<FlipKit.Services.IExportService, MockExportService>();
+            services.AddSingleton<FlipKit.Services.IBrowserService, MockBrowserService>();
+            services.AddSingleton<FlipKit.Services.IFileDialogService, MockFileDialogService>();
+            services.AddSingleton<FlipKit.Services.IImageUploadService, MockImageUploadService>();
+            services.AddSingleton<FlipKit.Services.IVariationVerifier, MockVariationVerifier>();
+            services.AddSingleton<FlipKit.Services.IChecklistLearningService, MockChecklistLearningService>();
+            services.AddSingleton<FlipKit.Services.ISoldPriceService, MockSoldPriceService>();
+            services.AddSingleton<FlipKit.Services.IEbayBrowseService, MockEbayBrowseService>();
 
             // ViewModels
             services.AddTransient<SettingsViewModel>();

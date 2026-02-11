@@ -14,6 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CardLister\CardLister.csproj" />
+    <ProjectReference Include="..\FlipKit\FlipKit.csproj" />
   </ItemGroup>
 </Project>

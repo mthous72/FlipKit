@@ -20,7 +20,7 @@
 
 | Page | URL | HTTP Status | Expected Content | Result |
 |------|-----|-------------|------------------|--------|
-| Home Dashboard | `/` | 200 | "CardLister" | ✓ PASS |
+| Home Dashboard | `/` | 200 | "FlipKit" | ✓ PASS |
 | Inventory Index | `/Inventory` | 200 | "Inventory" | ✓ PASS |
 | Scan Upload | `/Scan` | 200 | "Scan" | ✓ PASS |
 | Pricing Index | `/Pricing` | 200 | "Pricing" | ✓ PASS |
@@ -49,7 +49,7 @@
 
 **Verified:**
 - [x] Page loads with HTTP 200
-- [x] "CardLister" branding displayed
+- [x] "FlipKit" branding displayed
 - [x] Navigation bar present
 - [x] Card count metrics display (all zeros)
 - [x] Financial metrics display (all $0.00)

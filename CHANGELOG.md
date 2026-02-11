@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to CardLister will be documented in this file.
+All notable changes to FlipKit will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - **Tailscale Sync** - Multi-computer card access via private Tailscale network
-  - Simple REST API sync server (`CardLister.Api`) runs on main computer
+  - Simple REST API sync server (`FlipKit.Api`) runs on main computer
   - Automatic synchronization on startup and exit (optional)
   - Manual "Sync Now" button in Settings
   - Timestamp-based conflict resolution (newest UpdatedAt wins)

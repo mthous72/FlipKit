@@ -1,9 +1,9 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Input;
-using CardLister.Desktop.ViewModels;
+using FlipKit.Desktop.ViewModels;
 
-namespace CardLister.Desktop.Views
+namespace FlipKit.Desktop.Views
 {
     public partial class MainWindow : Window
     {

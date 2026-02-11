@@ -1,4 +1,4 @@
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public interface IBrowserService
     {

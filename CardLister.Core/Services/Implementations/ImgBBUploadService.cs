@@ -4,9 +4,9 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Services.ApiModels;
+using FlipKit.Core.Services.ApiModels;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class ImgBBUploadService : IImageUploadService
     {

@@ -1,6 +1,6 @@
-using CardLister.Core.Services;
+using FlipKit.Core.Services;
 
-namespace CardLister.Web.Models
+namespace FlipKit.Web.Models
 {
     /// <summary>
     /// View model for the scan upload page.

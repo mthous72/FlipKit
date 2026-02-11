@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CardLister.Core.Services;
+using FlipKit.Core.Services;
 
-namespace CardLister.Web.Services
+namespace FlipKit.Web.Services
 {
     /// <summary>
     /// Web implementation of IFileDialogService.

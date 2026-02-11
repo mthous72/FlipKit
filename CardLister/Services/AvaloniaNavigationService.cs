@@ -1,10 +1,10 @@
 using System;
 using System.Threading.Tasks;
-using CardLister.Core.Services;
-using CardLister.Desktop.ViewModels;
+using FlipKit.Core.Services;
+using FlipKit.Desktop.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CardLister.Desktop.Services
+namespace FlipKit.Desktop.Services
 {
     /// <summary>
     /// Avalonia-specific implementation of INavigationService.

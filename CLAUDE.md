@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CardLister is a C# / .NET 8 application suite for sports card sellers, consisting of:
+FlipKit is a C# / .NET 8 application suite for sports card sellers, consisting of:
 
-1. **CardLister.Desktop** - Avalonia UI 11 desktop app (Windows/Mac/Linux) with full feature set
-2. **CardLister.Web** - ASP.NET Core 8.0 MVC web app for mobile access (phone/tablet browsers)
-3. **CardLister.Core** - Shared business logic library (models, services, data access)
+1. **FlipKit.Desktop** - Avalonia UI 11 desktop app (Windows/Mac/Linux) with full feature set
+2. **FlipKit.Web** - ASP.NET Core 8.0 MVC web app for mobile access (phone/tablet browsers)
+3. **FlipKit.Core** - Shared business logic library (models, services, data access)
 
 Both apps share a single SQLite database with WAL mode for concurrent access, enabling seamless workflow between desktop power features and mobile convenience.
 
@@ -25,26 +25,26 @@ dotnet restore
 dotnet build
 
 # Run desktop app
-dotnet run --project CardLister.Desktop
+dotnet run --project FlipKit.Desktop
 
 # Build for release
 dotnet build -c Release
 
 # Publish self-contained Windows executable
-dotnet publish CardLister.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
+dotnet publish FlipKit.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
 **Web App:**
 ```bash
 # Run web app (development)
-cd CardLister.Web
+cd FlipKit.Web
 dotnet run
 
 # Run with specific URLs (for local network access)
 dotnet run --urls "http://0.0.0.0:5000"
 
 # Publish for deployment
-dotnet publish CardLister.Web -c Release -o ./publish
+dotnet publish FlipKit.Web -c Release -o ./publish
 ```
 
 **Both:**
@@ -53,7 +53,7 @@ dotnet publish CardLister.Web -c Release -o ./publish
 dotnet test
 
 # Build entire solution
-dotnet build CardLister.sln
+dotnet build FlipKit.sln
 ```
 
 ## Architecture
@@ -61,9 +61,9 @@ dotnet build CardLister.sln
 **Current: 3-Project Structure** (as of Phase 1 refactor):
 
 ```
-CardLister.sln
+FlipKit.sln
 │
-├── CardLister.Core/          # Shared business logic (net8.0 class library)
+├── FlipKit.Core/          # Shared business logic (net8.0 class library)
 │   ├── Models/                # Domain entities (Card, PriceHistory, SetChecklist, enums)
 │   ├── Services/
 │   │   ├── Interfaces/        # All service contracts
@@ -71,7 +71,7 @@ CardLister.sln
 │   ├── Data/                  # EF Core DbContext, migrations, seeders
 │   └── Helpers/               # FuzzyMatcher, PriceCalculator, etc.
 │
-├── CardLister.Desktop/       # Avalonia UI app (net8.0 WinExe)
+├── FlipKit.Desktop/       # Avalonia UI app (net8.0 WinExe)
 │   ├── Views/                 # 12 XAML views
 │   ├── ViewModels/            # 14 ViewModels with [ObservableProperty]
 │   ├── Services/              # Platform-specific (3 services)
@@ -86,7 +86,7 @@ CardLister.sln
 │   ├── App.axaml.cs
 │   └── Program.cs
 │
-└── CardLister.Web/           # ASP.NET Core MVC (net8.0 web app)
+└── FlipKit.Web/           # ASP.NET Core MVC (net8.0 web app)
     ├── Controllers/           # 6 controllers (Home, Inventory, Scan, Pricing, Export, Reports)
     ├── Models/                # ViewModels/DTOs for Razor views (12 files)
     ├── Views/
@@ -109,9 +109,9 @@ CardLister.sln
 ### Dependency Flow
 
 ```
-CardLister.Desktop ─┐
-                    ├─→ CardLister.Core ←─ Shared database (WAL mode)
-CardLister.Web ─────┘
+FlipKit.Desktop ─┐
+                    ├─→ FlipKit.Core ←─ Shared database (WAL mode)
+FlipKit.Web ─────┘
 ```
 
 Both Desktop and Web reference Core, but **never reference each other**.

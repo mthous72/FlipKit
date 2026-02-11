@@ -1,17 +1,17 @@
-using CardLister.Core.Data;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
-using CardLister.Core.Services;
+using FlipKit.Core.Data;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Get database path from environment or use default
 var dbPath = Environment.GetEnvironmentVariable("CARDLISTER_DB_PATH")
-    ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CardLister", "cards.db");
+    ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlipKit", "cards.db");
 
-// Add CardLister.Core services (API only provides data access)
-builder.Services.AddDbContext<CardListerDbContext>(options =>
+// Add FlipKit.Core services (API only provides data access)
+builder.Services.AddDbContext<FlipKitDbContext>(options =>
 {
     options.UseSqlite($"Data Source={dbPath}");
 });
@@ -39,7 +39,7 @@ app.UseCors();
 
 app.MapGet("/", () => Results.Ok(new
 {
-    Service = "CardLister API",
+    Service = "FlipKit API",
     Version = "1.0",
     Status = "Running",
     Message = "API is healthy and ready to serve requests",
@@ -311,7 +311,7 @@ app.MapPost("/api/sync/push", async (
 .WithName("PushSyncCards")
 .WithOpenApi();
 
-Console.WriteLine($"CardLister API Server");
+Console.WriteLine($"FlipKit API Server");
 Console.WriteLine($"Database: {dbPath}");
 Console.WriteLine($"Listening on: http://0.0.0.0:5000");
 Console.WriteLine($"Access via Tailscale IP on port 5000");

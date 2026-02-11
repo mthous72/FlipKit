@@ -8,13 +8,13 @@ The Tailscale Sync feature allows you to access your card inventory from multipl
 
 ```
 Main Computer (always on):
-├── CardLister Desktop App (local SQLite database)
-└── CardLister.Api (sync server on port 5000)
+├── FlipKit Desktop App (local SQLite database)
+└── FlipKit.Api (sync server on port 5000)
         ↓
     Tailscale Network (private, encrypted)
         ↓
 Remote Computer (laptop/travel):
-└── CardLister Desktop App (syncs via Tailscale)
+└── FlipKit Desktop App (syncs via Tailscale)
 ```
 
 ## Prerequisites
@@ -31,7 +31,7 @@ Open a terminal on your main computer (the one that's always on):
 
 ```bash
 # Navigate to the API project
-cd C:\Users\Houston Smlr Laptop\source\repos\CardLister\CardLister.Api
+cd C:\Users\Houston Smlr Laptop\source\repos\FlipKit\FlipKit.Api
 
 # Run the sync server
 dotnet run
@@ -39,8 +39,8 @@ dotnet run
 
 You should see output like:
 ```
-CardLister Sync API
-Database: C:\Users\Houston Smlr Laptop\AppData\Local\CardLister\cards.db
+FlipKit Sync API
+Database: C:\Users\Houston Smlr Laptop\AppData\Local\FlipKit\cards.db
 Listening on: http://0.0.0.0:5000
 Access via Tailscale IP on port 5000
 ```
@@ -61,7 +61,7 @@ Copy this IP address - you'll need it for the next step.
 
 ### Step 3: Configure Sync on Remote Computer
 
-1. Open CardLister Desktop on your remote computer
+1. Open FlipKit Desktop on your remote computer
 2. Go to **Settings** (in the navigation menu)
 3. Scroll down to the **Tailscale Sync** section
 4. Check **"Enable sync"**
@@ -120,7 +120,7 @@ Since you use one computer at a time, the sync uses a simple rule:
 ### Scenario 3: Auto-Sync on Startup
 
 1. On main computer: Add a card
-2. On remote computer: Close and reopen CardLister
+2. On remote computer: Close and reopen FlipKit
 3. **Expected**: New card appears automatically (check logs)
 
 ## Troubleshooting
@@ -149,7 +149,7 @@ Since you use one computer at a time, the sync uses a simple rule:
 **Solution**:
 1. Check the terminal where `dotnet run` was executed
 2. Look for error messages
-3. Restart: `cd CardLister.Api && dotnet run`
+3. Restart: `cd FlipKit.Api && dotnet run`
 
 ### Cards not appearing after sync
 
@@ -157,7 +157,7 @@ Since you use one computer at a time, the sync uses a simple rule:
 
 **Solutions**:
 1. Click **Refresh** in the inventory view
-2. Restart CardLister on remote computer
+2. Restart FlipKit on remote computer
 3. Check sync status: "Pushed: 0, Pulled: 0" means no changes to sync
 
 ### ImgBB images not loading
@@ -177,11 +177,11 @@ For production use, you may want the sync server to start automatically with Win
 
 1. Open Task Scheduler
 2. Create Basic Task:
-   - **Name**: CardLister Sync Server
+   - **Name**: FlipKit Sync Server
    - **Trigger**: At startup
    - **Action**: Start a program
    - **Program**: `dotnet`
-   - **Arguments**: `run --project "C:\Users\Houston Smlr Laptop\source\repos\CardLister\CardLister.Api\CardLister.Api.csproj"`
+   - **Arguments**: `run --project "C:\Users\Houston Smlr Laptop\source\repos\FlipKit\FlipKit.Api\FlipKit.Api.csproj"`
 3. Set to run whether user is logged in or not
 
 ### Option 2: NSSM (Non-Sucking Service Manager)
@@ -190,19 +190,19 @@ For production use, you may want the sync server to start automatically with Win
 # Download NSSM from https://nssm.cc/download
 
 # Publish the API
-dotnet publish CardLister.Api -c Release -o ./api-publish
+dotnet publish FlipKit.Api -c Release -o ./api-publish
 
 # Install as service
-nssm install CardListerSync "C:\path\to\api-publish\CardLister.Api.exe"
-nssm set CardListerSync Start SERVICE_AUTO_START
-nssm start CardListerSync
+nssm install FlipKitSync "C:\path\to\api-publish\FlipKit.Api.exe"
+nssm set FlipKitSync Start SERVICE_AUTO_START
+nssm start FlipKitSync
 ```
 
 ## Logs
 
 Sync operations are logged to:
 - **Main computer**: Console output where `dotnet run` is running
-- **Remote computer**: `%LOCALAPPDATA%\CardLister\logs\cardlister.log`
+- **Remote computer**: `%LOCALAPPDATA%\FlipKit\logs\flipkit.log`
 
 Search for "sync" in the logs to see sync activity.
 
@@ -238,7 +238,7 @@ Search for "sync" in the logs to see sync activity.
 
 If you encounter issues:
 1. Check server logs (terminal output)
-2. Check client logs (`%LOCALAPPDATA%\CardLister\logs\`)
+2. Check client logs (`%LOCALAPPDATA%\FlipKit\logs\`)
 3. Verify Tailscale connectivity: `tailscale status`
 4. Test server health: Open `http://100.64.1.5:5000/api/sync/status` in browser
 

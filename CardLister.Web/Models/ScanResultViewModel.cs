@@ -1,6 +1,6 @@
-using CardLister.Core.Models;
+using FlipKit.Core.Models;
 
-namespace CardLister.Web.Models
+namespace FlipKit.Web.Models
 {
     /// <summary>
     /// View model for displaying scan results with verification.

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public class BulkScanErrorLogger : IBulkScanErrorLogger
     {
@@ -22,7 +22,7 @@ namespace CardLister.Core.Services
 
             // Use AppData folder for logs
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            _logDirectory = Path.Combine(appDataPath, "CardLister", "BulkScanLogs");
+            _logDirectory = Path.Combine(appDataPath, "FlipKit", "BulkScanLogs");
 
             // Ensure directory exists
             Directory.CreateDirectory(_logDirectory);
@@ -47,7 +47,7 @@ namespace CardLister.Core.Services
                 // Write header
                 var header = new StringBuilder();
                 header.AppendLine("═══════════════════════════════════════════════════════════════");
-                header.AppendLine($"  CardLister Bulk Scan Error Log");
+                header.AppendLine($"  FlipKit Bulk Scan Error Log");
                 header.AppendLine("═══════════════════════════════════════════════════════════════");
                 header.AppendLine($"Session Start: {_currentSession.StartTime:yyyy-MM-dd HH:mm:ss}");
                 header.AppendLine($"Total Cards:   {totalCards}");

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace CardLister.Desktop.Views
+namespace FlipKit.Desktop.Views
 {
     public partial class ChecklistManagerView : UserControl
     {
@@ -12,7 +12,7 @@ namespace CardLister.Desktop.Views
 
         private void OnLoaded(object? sender, RoutedEventArgs e)
         {
-            if (DataContext is CardLister.Desktop.ViewModels.ChecklistManagerViewModel vm)
+            if (DataContext is FlipKit.Desktop.ViewModels.ChecklistManagerViewModel vm)
                 vm.LoadCommand.Execute(null);
         }
     }

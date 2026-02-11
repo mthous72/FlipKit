@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace CardLister.Desktop.Views
+namespace FlipKit.Desktop.Views
 {
     public partial class BulkScanView : UserControl
     {

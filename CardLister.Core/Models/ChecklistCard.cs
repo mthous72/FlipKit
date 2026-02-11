@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CardLister.Core.Models
+namespace FlipKit.Core.Models
 {
     public class ChecklistCard
     {

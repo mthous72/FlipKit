@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
-using CardLister.Core.Models.Enums;
-using CostSource = CardLister.Core.Models.Enums.CostSource;
+using FlipKit.Core.Models.Enums;
+using CostSource = FlipKit.Core.Models.Enums.CostSource;
 
-namespace CardLister.Web.Models
+namespace FlipKit.Web.Models
 {
     /// <summary>
     /// View model for viewing and editing card details.

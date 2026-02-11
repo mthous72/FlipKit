@@ -1,4 +1,4 @@
-namespace CardLister.Web.Models
+namespace FlipKit.Web.Models
 {
     public class SettingsViewModel
     {

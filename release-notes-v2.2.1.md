@@ -1,15 +1,33 @@
-# 🎯 What's New in v2.2.0
+# 🐛 Bug Fix Release: v2.2.1
 
-## Major Features
+## Critical Fix
+
+**Fixed Database Path Mismatch** - The web app was looking for the database in `AppData\Roaming` instead of `AppData\Local`, causing it to create a separate empty database. This prevented users from seeing their existing inventory when accessing the web app.
+
+### What Changed
+
+- Web app now uses the same database path as Desktop app (`%LOCALAPPDATA%\FlipKit\cards.db`)
+- Both apps now properly share the same SQLite database
+- Your inventory is now accessible from both Desktop and Web/Mobile interfaces
+
+### Who Should Update
+
+**If you downloaded v2.2.0** and found that your inventory was missing when using the web app, update to v2.2.1 immediately.
+
+If you haven't installed v2.2.0 yet, skip it and install v2.2.1 directly.
+
+---
+
+## Full v2.2.x Feature Set
+
+All features from v2.2.0 are included:
 
 **Smart Hybrid Data Access**
 - Automatic detection of local vs remote mode
 - Fast local SQLite access when on same computer
 - API-based access when remote via Tailscale
-- Zero configuration - works automatically!
 
 **Full Mobile Inventory Management**
-- Complete inventory features in web app
 - Browse, search, filter cards from phone
 - Edit card details and pricing from mobile
 - Delete cards with confirmation
@@ -19,43 +37,12 @@
 **Tailscale Network Support**
 - Access your cards from anywhere on private Tailscale network
 - Secure, encrypted connections
-- No cloud hosting fees
 - Works with Desktop, Web, and API
 
-**API Server (NEW!)**
+**API Server**
 - RESTful data access API
 - 11+ endpoints for complete CRUD operations
 - Health check endpoint for easy testing
-- Perfect for remote Desktop/Web app access
-- Launcher scripts included for easy startup
-
-## Technical Improvements
-
-- `ApiCardRepository` for HTTP-based remote access
-- `DataAccessModeDetector` for automatic mode selection
-- Proper resource cleanup on shutdown (no lingering processes)
-- Enhanced error handling and logging
-- Memory leak fixes (proper event handler cleanup)
-- Removed sync complexity (real-time API instead)
-
-## Breaking Changes
-
-- Removed old Tailscale sync feature (replaced with hybrid mode)
-- Settings UI simplified - no more sync checkboxes
-
----
-
-# 📱 Mobile Workflow Now Complete!
-
-With v2.2.0, you can manage your entire card inventory from your phone:
-
-1. **Scan** → Use camera to scan cards
-2. **Price** → Research and set prices
-3. **Manage** → Edit, search, filter inventory
-4. **Export** → Generate Whatnot CSV
-5. **Track** → View sales reports
-
-All from your Android or iOS browser via Tailscale! 🚀
 
 ---
 
@@ -78,7 +65,7 @@ For mobile access - run on your computer, access from phone:
 - **macOS Apple Silicon** - Extract and run `./start-web.sh`
 - **Linux (x64)** - Extract and run `./start-web.sh`
 
-## API Server (NEW!)
+## API Server
 
 For remote Desktop/Web app access via Tailscale:
 

@@ -1,8 +1,8 @@
-# Working with CardLister in Claude Code
+# Working with FlipKit in Claude Code
 
 ## Overview
 
-This guide helps you work with the existing CardLister codebase using Claude Code. CardLister is ~80-90% complete MVP with full end-to-end functionality. Use this guide to understand the architecture, add features, and troubleshoot issues.
+This guide helps you work with the existing FlipKit codebase using Claude Code. FlipKit is ~80-90% complete MVP with full end-to-end functionality. Use this guide to understand the architecture, add features, and troubleshoot issues.
 
 **Current State:** Fully functional single-project Avalonia MVVM application with 14 ViewModels, 12 Views, 11 services, SQLite database, and complete workflow from scanning to sales tracking.
 
@@ -23,8 +23,8 @@ This guide helps you work with the existing CardLister codebase using Claude Cod
 ### Current Architecture (Single Project)
 
 ```
-CardLister/
-├── CardLister.csproj          # Single project with all code
+FlipKit/
+├── FlipKit.csproj          # Single project with all code
 ├── Program.cs                 # Entry point
 ├── App.axaml.cs               # DI setup, logging, database init
 ├── ViewLocator.cs             # ViewModel → View mapping
@@ -80,7 +80,7 @@ CardLister/
 │   └── IFileDialogService.cs + AvaloniaFileDialogService.cs
 │
 ├── Data/                      # EF Core & seeding
-│   ├── CardListerDbContext.cs        # DbContext
+│   ├── FlipKitDbContext.cs        # DbContext
 │   ├── Migrations/                   # EF migrations
 │   ├── SchemaUpdater.cs              # Column additions
 │   └── ChecklistSeeder.cs            # Seed data loader
@@ -124,7 +124,7 @@ CardLister/
 
 **Prompt for Claude Code:**
 ```
-Add a new "Collection Stats" page to CardLister that shows:
+Add a new "Collection Stats" page to FlipKit that shows:
 
 1. Create ViewModel: ViewModels/CollectionStatsViewModel.cs
    - Inherit from ViewModelBase
@@ -176,7 +176,7 @@ public partial class CollectionStatsViewModel : ViewModelBase
 
 **Prompt for Claude Code:**
 ```
-Add a new backup service to CardLister that:
+Add a new backup service to FlipKit that:
 
 1. Create interface: Services/IBackupService.cs
 2. Create implementation: Services/BackupService.cs
@@ -200,7 +200,7 @@ public class BackupService : IBackupService
     {
         _dbPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CardLister", "cards.db");
+            "FlipKit", "cards.db");
     }
 
     public async Task<bool> BackupDatabaseAsync(string destinationPath)
@@ -223,7 +223,7 @@ public class BackupService : IBackupService
 
 **Prompt for Claude Code:**
 ```
-Add a "Notes" field to the Card entity in CardLister:
+Add a "Notes" field to the Card entity in FlipKit:
 1. Update Model: Models/Card.cs
    - Card already has a Notes field, but if adding a new one:
    - Add the property: `public string? NewField { get; set; }`
@@ -250,7 +250,7 @@ Add a "Notes" field to the Card entity in CardLister:
 
 Example SchemaUpdater addition:
 ```csharp
-public static async Task EnsureColumnExistsAsync(CardListerDbContext context, string tableName, string columnName, string columnType)
+public static async Task EnsureColumnExistsAsync(FlipKitDbContext context, string tableName, string columnName, string columnType)
 {
     var sql = $"PRAGMA table_info({tableName})";
     var columns = await context.Database.SqlQueryRaw<TableInfo>(sql).ToListAsync();
@@ -309,15 +309,15 @@ public static async Task EnsureColumnExistsAsync(CardListerDbContext context, st
 
 ### Database Location
 
-- **Development:** `%LOCALAPPDATA%\CardLister\cards.db`
-- **Logs:** `%LOCALAPPDATA%\CardLister\logs\`
-- **Settings:** `%LOCALAPPDATA%\CardLister\config.json`
+- **Development:** `%LOCALAPPDATA%\FlipKit\cards.db`
+- **Logs:** `%LOCALAPPDATA%\FlipKit\logs\`
+- **Settings:** `%LOCALAPPDATA%\FlipKit\config.json`
 
 ### Common Tasks
 
 **Running the app:**
 ```bash
-dotnet run --project CardLister
+dotnet run --project FlipKit
 ```
 
 **Building:**
@@ -371,7 +371,7 @@ git status
   - Check Settings → API key is correct
   - Try different model (some have rate limits)
   - Check OpenRouter dashboard for credits
-  - Review logs in `%LOCALAPPDATA%\CardLister\logs\`
+  - Review logs in `%LOCALAPPDATA%\FlipKit\logs\`
 
 **5. Database Locked**
 - **Symptom:** "Database is locked" error
@@ -409,7 +409,7 @@ git status
 ### Debugging Tips
 
 **Enable Verbose Logging:**
-- Logs are in `%LOCALAPPDATA%\CardLister\logs\log-YYYYMMDD.txt`
+- Logs are in `%LOCALAPPDATA%\FlipKit\logs\log-YYYYMMDD.txt`
 - Serilog configured in App.axaml.cs
 - Check logs for exceptions and API responses
 
@@ -431,7 +431,7 @@ git status
 
 **Prompt:**
 ```
-In CardLister.Core/Services/, create these interface files:
+In FlipKit.Core/Services/, create these interface files:
 
 1. ICardRepository.cs:
    - InsertCardAsync(Card) → int
@@ -485,9 +485,9 @@ All methods that do I/O should be async Task.
 
 **Prompt:**
 ```
-In CardLister.Infrastructure/Data/, create:
+In FlipKit.Infrastructure/Data/, create:
 
-1. CardListerDbContext.cs — EF Core DbContext:
+1. FlipKitDbContext.cs — EF Core DbContext:
    - DbSet<Card> Cards
    - DbSet<PriceHistory> PriceHistories
    - Override OnModelCreating to configure:
@@ -496,15 +496,15 @@ In CardLister.Infrastructure/Data/, create:
      - Index on Card.Status and Card.Sport for filtering
 
 2. CardRepository.cs — Implements ICardRepository:
-   - Constructor takes CardListerDbContext
+   - Constructor takes FlipKitDbContext
    - All methods use async EF Core queries
    - GetStaleCardsAsync: filter where PriceDate is older than threshold and Status is not Sold
    - SearchCardsAsync: search PlayerName, Manufacturer, Brand, Team using LIKE
    - GetAllCardsAsync: optional filters on status and sport, ordered by UpdatedAt desc
 
 After creating the DbContext, add an initial migration:
-cd CardLister.Infrastructure
-dotnet ef migrations add InitialCreate --startup-project ../CardLister.App
+cd FlipKit.Infrastructure
+dotnet ef migrations add InitialCreate --startup-project ../FlipKit.App
 
 The database file should be created at the app's data directory (use Environment.GetFolderPath for AppData).
 ```
@@ -513,9 +513,9 @@ The database file should be created at the app's data directory (use Environment
 
 **Prompt:**
 ```
-In CardLister.Infrastructure/Services/, create JsonSettingsService.cs implementing ISettingsService:
+In FlipKit.Infrastructure/Services/, create JsonSettingsService.cs implementing ISettingsService:
 
-- Store config in {AppData}/CardLister/config.json
+- Store config in {AppData}/FlipKit/config.json
 - Use System.Text.Json for serialization
 - Load(): Read and deserialize, return defaults if file missing
 - Save(): Serialize and write to file
@@ -532,7 +532,7 @@ Handle file not found gracefully (return default AppSettings).
 
 **Prompt:**
 ```
-Create the MainWindow with sidebar navigation for CardLister.App.
+Create the MainWindow with sidebar navigation for FlipKit.App.
 
 1. ViewLocator.cs — Maps ViewModels to Views by naming convention:
    - Replace "Core.ViewModels" with "App.Views"
@@ -568,7 +568,7 @@ Create placeholder views (just a TextBlock with the page name) for all pages so 
 
 **Prompt:**
 ```
-Build the complete Scan feature for CardLister:
+Build the complete Scan feature for FlipKit:
 
 1. CardDetailViewModel.cs (Core/ViewModels/):
    - Observable properties for every card field (player, year, brand, etc.)
@@ -782,13 +782,13 @@ Build the Settings page:
 
 ### Test Settings
 ```bash
-dotnet run --project CardLister.App
+dotnet run --project FlipKit.App
 # Should create config.json directory, show setup wizard
 ```
 
 ### Test Database
 ```bash
-dotnet ef database update --project CardLister.Infrastructure --startup-project CardLister.App
+dotnet ef database update --project FlipKit.Infrastructure --startup-project FlipKit.App
 # Should create cards.db
 ```
 

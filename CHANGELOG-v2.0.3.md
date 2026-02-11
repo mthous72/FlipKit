@@ -1,4 +1,4 @@
-# CardLister Web v2.0.3 - Changes Summary
+# FlipKit Web v2.0.3 - Changes Summary
 
 ## Issue: Mobile Scanning Error
 
@@ -7,7 +7,7 @@
 ## Fixes Applied
 
 ### 1. Model Selection Ordering ✅
-**File:** `CardLister.Web/Models/ScanUploadViewModel.cs`
+**File:** `FlipKit.Web/Models/ScanUploadViewModel.cs`
 
 - **Changed default model** from `openai/gpt-4o-mini` (paid) to `nvidia/nemotron-nano-12b-v2-vl:free` (free)
 - **Reorganized model list** with proper ordering:
@@ -30,12 +30,12 @@
     - openai/gpt-4o (higher cost)
     - anthropic/claude-3.5-sonnet ($5/$25 per 1M tokens - premium)
 
-**File:** `CardLister.Web/Controllers/ScanController.cs`
+**File:** `FlipKit.Web/Controllers/ScanController.cs`
 
 - **Changed fallback model** from `openai/gpt-4o-mini` to `nvidia/nemotron-nano-12b-v2-vl:free`
 
 ### 2. Enhanced Model Selection UI ✅
-**File:** `CardLister.Web/Views/Scan/Index.cshtml`
+**File:** `FlipKit.Web/Views/Scan/Index.cshtml`
 
 - **Converted to proper combobox** with optgroups:
   - "Free Models (Recommended)" group
@@ -45,7 +45,7 @@
 - **Improved help text** to clarify free vs paid model behavior
 
 ### 3. Footer Word Wrapping & Overlap Issues ✅
-**File:** `CardLister.Web/Views/Shared/_Layout.cshtml`
+**File:** `FlipKit.Web/Views/Shared/_Layout.cshtml`
 
 **Footer improvements:**
 - Added `line-height: 1.6` for better readability
@@ -60,14 +60,14 @@
 - Increased padding with `pb-5 mb-5` to create more clearance
 
 ### 4. API Warning Banner - Word Wrapping ✅
-**File:** `CardLister.Web/Views/Shared/_Layout.cshtml`
+**File:** `FlipKit.Web/Views/Shared/_Layout.cshtml`
 
 - Added `overflow-wrap: break-word; word-wrap: break-word;` to alert container
 - Added `line-height: 1.6` to all paragraphs and lists for better readability
 - Text now properly wraps within screen width on all device sizes
 
 ### 5. Settings Page - Legal Disclaimer Formatting ✅
-**File:** `CardLister.Web/Views/Settings/Index.cshtml`
+**File:** `FlipKit.Web/Views/Settings/Index.cshtml`
 
 - Added `line-height: 1.6` to disclaimer paragraphs for better readability
 - Ensures text wraps properly on mobile devices

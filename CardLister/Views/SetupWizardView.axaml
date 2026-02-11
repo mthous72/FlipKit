@@ -1,11 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:CardLister.Desktop.ViewModels"
-             xmlns:conv="using:CardLister.Desktop.Converters"
+             xmlns:vm="using:FlipKit.Desktop.ViewModels"
+             xmlns:conv="using:FlipKit.Desktop.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
-             x:Class="CardLister.Desktop.Views.SetupWizardView"
+             x:Class="FlipKit.Desktop.Views.SetupWizardView"
              x:DataType="vm:SetupWizardViewModel">
 
     <UserControl.Resources>
@@ -17,7 +17,7 @@
                 CornerRadius="12" Padding="40" Background="{DynamicResource SystemChromeLowColor}">
             <StackPanel Spacing="20">
 
-                <TextBlock Text="Welcome to CardLister" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock Text="Welcome to FlipKit" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
                 <TextBlock HorizontalAlignment="Center" Opacity="0.6">
                     <Run Text="Step"/>
                     <Run Text="{Binding CurrentStep}"/>
@@ -29,7 +29,7 @@
                             IsVisible="{Binding CurrentStep, Converter={StaticResource Eq}, ConverterParameter=1}">
                     <TextBlock Text="OpenRouter API Key" FontSize="16" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" Opacity="0.7"
-                               Text="OpenRouter lets CardLister use AI to scan your card images. You need an API key (free to sign up, pay per scan ~$0.01)."/>
+                               Text="OpenRouter lets FlipKit use AI to scan your card images. You need an API key (free to sign up, pay per scan ~$0.01)."/>
                     <Button Content="Create Free Account" Command="{Binding OpenOpenRouterSignupCommand}" Padding="12,6"/>
                     <TextBlock Text="Paste your API key:"/>
                     <TextBox Text="{Binding OpenRouterApiKey}" PasswordChar="*" Watermark="sk-or-v1-..."/>

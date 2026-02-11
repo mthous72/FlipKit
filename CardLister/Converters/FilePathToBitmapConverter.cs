@@ -6,7 +6,7 @@ using Avalonia.Data.Converters;
 using Avalonia.Media.Imaging;
 using Serilog;
 
-namespace CardLister.Desktop.Converters
+namespace FlipKit.Desktop.Converters
 {
     /// <summary>
     /// Converts file paths to thumbnail bitmaps with caching for improved DataGrid scrolling performance.

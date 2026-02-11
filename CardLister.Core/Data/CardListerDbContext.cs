@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace CardLister.Core.Data
+namespace FlipKit.Core.Data
 {
-    public class CardListerDbContext : DbContext
+    public class FlipKitDbContext : DbContext
     {
         public DbSet<Card> Cards => Set<Card>();
         public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
@@ -16,7 +16,7 @@ namespace CardLister.Core.Data
         public DbSet<MissingChecklist> MissingChecklists => Set<MissingChecklist>();
         public DbSet<SoldPriceRecord> SoldPriceRecords => Set<SoldPriceRecord>();
 
-        public CardListerDbContext(DbContextOptions<CardListerDbContext> options)
+        public FlipKitDbContext(DbContextOptions<FlipKitDbContext> options)
             : base(options)
         {
         }
@@ -25,7 +25,7 @@ namespace CardLister.Core.Data
         {
             var folder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "CardLister");
+                "FlipKit");
             Directory.CreateDirectory(folder);
             return Path.Combine(folder, "cards.db");
         }

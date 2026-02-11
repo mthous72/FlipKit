@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using CardLister.Core.Models.Enums;
-using CardLister.Core.Services.ApiModels;
-using CardLister.Core.Services;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services.ApiModels;
+using FlipKit.Core.Services;
 
-namespace CardLister.Core.Models
+namespace FlipKit.Core.Models
 {
     public class AppSettings
     {
@@ -50,7 +50,7 @@ namespace CardLister.Core.Models
 
         // Data Access Mode - Auto-detected based on API URL
         // If empty/localhost: Uses local SQLite database (fast, direct access)
-        // If Tailscale IP: Uses remote API (network access via CardLister.Api)
+        // If Tailscale IP: Uses remote API (network access via FlipKit.Api)
         public string? SyncServerUrl { get; set; }  // e.g., "http://100.64.1.5:5000"
     }
 }

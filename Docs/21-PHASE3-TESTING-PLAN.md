@@ -7,7 +7,7 @@
 ## Testing Environment
 
 - **Local Server:** http://localhost:5000 (http://0.0.0.0:5000)
-- **Database:** `%APPDATA%\CardLister\cards.db` (SQLite with WAL mode)
+- **Database:** `%APPDATA%\FlipKit\cards.db` (SQLite with WAL mode)
 - **Target Platforms:**
   - Desktop browsers: Chrome, Edge, Firefox
   - Mobile browsers: Chrome Android, Safari iOS

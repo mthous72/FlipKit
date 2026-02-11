@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <ProjectReference Include="..\CardLister.Core\CardLister.Core.csproj" />
+    <ProjectReference Include="..\FlipKit.Core\FlipKit.Core.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

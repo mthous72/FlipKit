@@ -1,14 +1,14 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 
-namespace CardLister.Core.Data
+namespace FlipKit.Core.Data
 {
     public static class DatabaseSeeder
     {
-        public static async Task SeedIfEmptyAsync(CardListerDbContext db)
+        public static async Task SeedIfEmptyAsync(FlipKitDbContext db)
         {
             if (db.Cards.Any())
                 return;

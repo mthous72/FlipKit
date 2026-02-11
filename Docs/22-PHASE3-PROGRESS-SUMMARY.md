@@ -9,7 +9,7 @@
 
 ## Overview
 
-Phase 3 focuses on testing, optimization, and production readiness for the CardLister web application. This phase ensures all features work correctly, handles concurrent Desktop + Web usage, optimizes for mobile devices, and prepares comprehensive documentation.
+Phase 3 focuses on testing, optimization, and production readiness for the FlipKit web application. This phase ensures all features work correctly, handles concurrent Desktop + Web usage, optimizes for mobile devices, and prepares comprehensive documentation.
 
 ---
 
@@ -104,7 +104,7 @@ Created comprehensive testing plan covering 10 test categories:
 - Status: ✅ Running
 - URL: http://localhost:5000
 - Process: Background task ID `b42caca`
-- Database: `%APPDATA%\CardLister\cards.db`
+- Database: `%APPDATA%\FlipKit\cards.db`
 - WAL Mode: Enabled
 
 **Desktop Application:**
@@ -282,7 +282,7 @@ warn: Microsoft.EntityFrameworkCore.Model.Validation[10620]
 ### Test Data
 
 **Current Database:**
-- Location: `C:\Users\<User>\AppData\Roaming\CardLister\cards.db`
+- Location: `C:\Users\<User>\AppData\Roaming\FlipKit\cards.db`
 - Status: Empty (newly created)
 - Tables: cards, price_history, set_checklists, missing_checklists, sold_price_records, active_listing_records
 - Seed Data: Checklist tables seeded (if seed JSON files exist)

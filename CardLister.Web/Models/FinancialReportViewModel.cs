@@ -1,4 +1,4 @@
-namespace CardLister.Web.Models
+namespace FlipKit.Web.Models
 {
     /// <summary>
     /// View model for the financial report showing profitability analysis.

@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
-using CardLister.Core.Models;
+using FlipKit.Core.Models;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     public interface ISettingsService
     {

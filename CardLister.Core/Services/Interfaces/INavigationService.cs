@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace CardLister.Core.Services
+namespace FlipKit.Core.Services
 {
     /// <summary>
     /// Platform-agnostic navigation service for routing between pages.

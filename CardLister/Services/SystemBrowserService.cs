@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using CardLister.Core.Services;
+using FlipKit.Core.Services;
 
-namespace CardLister.Desktop.Services
+namespace FlipKit.Desktop.Services
 {
     public class SystemBrowserService : IBrowserService
     {

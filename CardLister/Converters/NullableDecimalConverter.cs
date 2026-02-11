@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
 
-namespace CardLister.Desktop.Converters
+namespace FlipKit.Desktop.Converters
 {
     /// <summary>
     /// Converts between nullable decimal and string, handling empty strings gracefully.

@@ -3,16 +3,16 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
-using CardLister.Core.Services;
+using FlipKit.Core.Models;
+using FlipKit.Core.Services;
 
-namespace CardLister.Desktop.Services
+namespace FlipKit.Desktop.Services
 {
     public class JsonSettingsService : ISettingsService
     {
         private static readonly string ConfigFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "CardLister");
+            "FlipKit");
 
         private static readonly string ConfigPath = Path.Combine(ConfigFolder, "config.json");
 

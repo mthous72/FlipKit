@@ -6,18 +6,18 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using System.Net.Http;
-using CardLister.Core.Data;
-using CardLister.Core.Helpers;
-using CardLister.Core.Services;
-using CardLister.Desktop.ViewModels;
-using CardLister.Desktop.Views;
-using CardLister.Desktop.Services;
+using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Services;
+using FlipKit.Desktop.ViewModels;
+using FlipKit.Desktop.Views;
+using FlipKit.Desktop.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 
-namespace CardLister.Desktop
+namespace FlipKit.Desktop
 {
     public partial class App : Application
     {
@@ -36,17 +36,17 @@ namespace CardLister.Desktop
             // Also write to a predictable location for published builds
             var fallbackLogDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "CardLister", "logs");
+                "FlipKit", "logs");
 
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.File(
-                    Path.Combine(logDir, "cardlister-.log"),
+                    Path.Combine(logDir, "flipkit-.log"),
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 14,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
                 .WriteTo.File(
-                    Path.Combine(fallbackLogDir, "cardlister-.log"),
+                    Path.Combine(fallbackLogDir, "flipkit-.log"),
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 7,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
@@ -60,7 +60,7 @@ namespace CardLister.Desktop
             };
             AppDomain.CurrentDomain.UnhandledException += _exceptionHandler;
 
-            Log.Information("CardLister starting up");
+            Log.Information("FlipKit starting up");
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
@@ -92,8 +92,8 @@ namespace CardLister.Desktop
                 {
                     // Local mode - direct database access (fast)
                     Log.Information("Data access mode: LOCAL (Direct SQLite)");
-                    services.AddDbContext<CardListerDbContext>(options =>
-                        options.UseSqlite($"Data Source={CardListerDbContext.GetDbPath()}"));
+                    services.AddDbContext<FlipKitDbContext>(options =>
+                        options.UseSqlite($"Data Source={FlipKitDbContext.GetDbPath()}"));
                     services.AddTransient<ICardRepository, CardRepository>();
                 }
                 else
@@ -143,8 +143,8 @@ namespace CardLister.Desktop
                     try
                     {
                         using var scope = _services.CreateScope();
-                        var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
-                        Log.Information("Initializing database at {DbPath}", CardListerDbContext.GetDbPath());
+                        var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
+                        Log.Information("Initializing database at {DbPath}", FlipKitDbContext.GetDbPath());
                         db.Database.EnsureCreated();
                     Log.Debug("Running schema updates");
                     SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
@@ -173,7 +173,7 @@ namespace CardLister.Desktop
 
                 desktop.ShutdownRequested += async (_, e) =>
                 {
-                    Log.Information("CardLister shutting down");
+                    Log.Information("FlipKit shutting down");
 
                     try
                     {

@@ -1,6 +1,6 @@
 using System;
 
-namespace CardLister.Core.Models;
+namespace FlipKit.Core.Models;
 
 /// <summary>
 /// Represents a sold card transaction scraped from 130point.com or other sources.

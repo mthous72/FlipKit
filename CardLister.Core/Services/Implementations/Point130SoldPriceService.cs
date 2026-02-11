@@ -6,14 +6,14 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using CardLister.Core.Data;
-using CardLister.Core.Helpers;
-using CardLister.Core.Models;
+using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Models;
 using HtmlAgilityPack;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace CardLister.Core.Services;
+namespace FlipKit.Core.Services;
 
 /// <summary>
 /// Implementation of ISoldPriceService that scrapes 130point.com for eBay sold listings.
@@ -21,7 +21,7 @@ namespace CardLister.Core.Services;
 public class Point130SoldPriceService : ISoldPriceService
 {
     private readonly HttpClient _httpClient;
-    private readonly CardListerDbContext _dbContext;
+    private readonly FlipKitDbContext _dbContext;
     private readonly ILogger<Point130SoldPriceService> _logger;
 
     // Rate limiting: Max 1 request per 15 seconds (130point blocks after 10 requests/minute)
@@ -31,7 +31,7 @@ public class Point130SoldPriceService : ISoldPriceService
 
     public Point130SoldPriceService(
         HttpClient httpClient,
-        CardListerDbContext dbContext,
+        FlipKitDbContext dbContext,
         ILogger<Point130SoldPriceService> logger)
     {
         _httpClient = httpClient;

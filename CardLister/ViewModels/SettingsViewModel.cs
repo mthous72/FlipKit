@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using CardLister.Core.Data;
-using CardLister.Core.Helpers;
-using CardLister.Core.Models;
-using CardLister.Core.Models.Enums;
-using CardLister.Core.Services;
+using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace CardLister.Desktop.ViewModels
+namespace FlipKit.Desktop.ViewModels
 {
     public partial class SettingsViewModel : ViewModelBase
     {
@@ -130,7 +130,7 @@ namespace CardLister.Desktop.ViewModels
             OpenRouterStatus = string.IsNullOrWhiteSpace(OpenRouterApiKey) ? "Not configured" : "Configured (not tested)";
             ImgBBStatus = string.IsNullOrWhiteSpace(ImgBBApiKey) ? "Not configured" : "Configured (not tested)";
 
-            DbPath = CardListerDbContext.GetDbPath();
+            DbPath = FlipKitDbContext.GetDbPath();
         }
 
         private async void LoadCardCountAsync()
@@ -138,7 +138,7 @@ namespace CardLister.Desktop.ViewModels
             try
             {
                 using var scope = _services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
                 CardCount = await db.Cards.CountAsync();
             }
             catch
@@ -273,7 +273,7 @@ namespace CardLister.Desktop.ViewModels
             try
             {
                 using var scope = _services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
                 var sampleCard = await db.Cards.FirstOrDefaultAsync();
 
                 if (sampleCard == null)
@@ -336,7 +336,7 @@ namespace CardLister.Desktop.ViewModels
             try
             {
                 using var scope = _services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
                 var sampleCard = await db.Cards.FirstOrDefaultAsync();
 
                 if (sampleCard == null)

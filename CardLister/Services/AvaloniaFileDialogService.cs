@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
-using CardLister.Core.Services;
+using FlipKit.Core.Services;
 
-namespace CardLister.Desktop.Services
+namespace FlipKit.Desktop.Services
 {
     public class AvaloniaFileDialogService : IFileDialogService
     {

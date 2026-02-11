@@ -1,4 +1,4 @@
-# CardLister Web v2.0.4 - Scanning Reliability Fix
+# FlipKit Web v2.0.4 - Scanning Reliability Fix
 
 ## Issue: JSON Parsing Error on Mobile Scanning
 
@@ -9,7 +9,7 @@
 ## Fixes Applied
 
 ### 1. Increased Token Limit ✅
-**File:** `CardLister.Core/Services/Implementations/OpenRouterScannerService.cs`
+**File:** `FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs`
 
 - **Increased MaxTokens from 2048 to 4096** (doubled)
 - This ensures the AI model has enough tokens to complete the full JSON response
@@ -17,7 +17,7 @@
 - 4096 provides ample headroom for complete responses
 
 ### 2. Enhanced Error Handling ✅
-**File:** `CardLister.Core/Services/Implementations/OpenRouterScannerService.cs`
+**File:** `FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs`
 
 - **Added try-catch for JSON parsing** with detailed error logging
 - **Logs first 500 characters** of raw response when parsing fails
@@ -27,7 +27,7 @@
 - **Detects truncated responses** by checking `finish_reason` field
 
 ### 3. Improved JSON Extraction ✅
-**File:** `CardLister.Core/Services/Implementations/OpenRouterScannerService.cs`
+**File:** `FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs`
 
 - **Enhanced StripCodeBlocks method** to handle edge cases:
   - Extracts JSON even if surrounded by extra text
@@ -36,7 +36,7 @@
   - More robust against malformed responses
 
 ### 4. Response Validation ✅
-**File:** `CardLister.Core/Services/ApiModels/OpenRouterResponse.cs`
+**File:** `FlipKit.Core/Services/ApiModels/OpenRouterResponse.cs`
 
 - **Added FinishReason property** to OpenRouterChoice class
 - **Checks for `finish_reason: "length"`** which indicates truncation
@@ -91,13 +91,13 @@
 
 ## Files Changed
 
-1. `CardLister.Core/Services/Implementations/OpenRouterScannerService.cs`
+1. `FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs`
    - Increased MaxTokens: 2048 → 4096
    - Enhanced error handling with logging
    - Improved StripCodeBlocks method
    - Added response validation
 
-2. `CardLister.Core/Services/ApiModels/OpenRouterResponse.cs`
+2. `FlipKit.Core/Services/ApiModels/OpenRouterResponse.cs`
    - Added FinishReason property
 
 ## Build Status

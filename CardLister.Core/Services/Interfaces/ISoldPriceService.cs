@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CardLister.Core.Models;
+using FlipKit.Core.Models;
 
-namespace CardLister.Core.Services;
+namespace FlipKit.Core.Services;
 
 /// <summary>
 /// Service for managing sold price data and automated market value lookups.
