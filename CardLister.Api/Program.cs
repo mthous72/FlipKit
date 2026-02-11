@@ -10,14 +10,12 @@ var builder = WebApplication.CreateBuilder(args);
 var dbPath = Environment.GetEnvironmentVariable("CARDLISTER_DB_PATH")
     ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CardLister", "cards.db");
 
-// Add CardLister.Core services
+// Add CardLister.Core services (API only provides data access)
 builder.Services.AddDbContext<CardListerDbContext>(options =>
 {
     options.UseSqlite($"Data Source={dbPath}");
 });
 builder.Services.AddScoped<ICardRepository, CardRepository>();
-builder.Services.AddScoped<IPricerService, PricerService>();
-builder.Services.AddScoped<IExportService, CsvExportService>();
 
 // Add CORS for local network access
 builder.Services.AddCors(options =>
