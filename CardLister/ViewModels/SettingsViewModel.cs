@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CardLister.Core.Data;
+using CardLister.Core.Helpers;
 using CardLister.Core.Models;
 using CardLister.Core.Models.Enums;
 using CardLister.Core.Services;
@@ -19,7 +20,6 @@ namespace CardLister.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IBrowserService _browserService;
         private readonly IServiceProvider _services;
-        private readonly ISyncService _syncService;
 
         // API Keys
         [ObservableProperty] private string _openRouterApiKey = string.Empty;
@@ -76,24 +76,20 @@ namespace CardLister.Desktop.ViewModels
         // Save feedback
         [ObservableProperty] private string _saveMessage = string.Empty;
 
-        // Tailscale Sync
-        [ObservableProperty] private bool _enableSync;
+        // Data Access Mode
         [ObservableProperty] private string? _syncServerUrl;
-        [ObservableProperty] private bool _autoSyncOnStartup = true;
-        [ObservableProperty] private bool _autoSyncOnExit = true;
-        [ObservableProperty] private string _syncStatusMessage = string.Empty;
-        [ObservableProperty] private string _syncStatusColor = "Gray";
-        [ObservableProperty] private bool _isSyncing;
+        [ObservableProperty] private string _dataAccessMode = "Local Database (Direct access)";
+        [ObservableProperty] private string _dataAccessModeColor = "Green";
 
-        public SettingsViewModel(ISettingsService settingsService, IBrowserService browserService, IServiceProvider services, ISyncService syncService)
+        public SettingsViewModel(ISettingsService settingsService, IBrowserService browserService, IServiceProvider services)
         {
             _settingsService = settingsService;
             _browserService = browserService;
             _services = services;
-            _syncService = syncService;
 
             LoadSettings();
             LoadCardCountAsync();
+            UpdateDataAccessMode();
         }
 
         private void LoadSettings()
@@ -128,11 +124,8 @@ namespace CardLister.Desktop.ViewModels
             TerapeakSearchTemplate = s.TerapeakSearchTemplate;
             EbaySearchTemplate = s.EbaySearchTemplate;
 
-            // Tailscale Sync
-            EnableSync = s.EnableSync;
+            // API Server URL
             SyncServerUrl = s.SyncServerUrl;
-            AutoSyncOnStartup = s.AutoSyncOnStartup;
-            AutoSyncOnExit = s.AutoSyncOnExit;
 
             OpenRouterStatus = string.IsNullOrWhiteSpace(OpenRouterApiKey) ? "Not configured" : "Configured (not tested)";
             ImgBBStatus = string.IsNullOrWhiteSpace(ImgBBApiKey) ? "Not configured" : "Configured (not tested)";
@@ -205,13 +198,11 @@ namespace CardLister.Desktop.ViewModels
                 ActiveExportPlatform = ActiveExportPlatform,
                 TerapeakSearchTemplate = TerapeakSearchTemplate,
                 EbaySearchTemplate = EbaySearchTemplate,
-                EnableSync = EnableSync,
-                SyncServerUrl = SyncServerUrl,
-                AutoSyncOnStartup = AutoSyncOnStartup,
-                AutoSyncOnExit = AutoSyncOnExit
+                SyncServerUrl = SyncServerUrl
             };
 
             _settingsService.Save(s);
+            UpdateDataAccessMode();
             SaveMessage = "Settings saved!";
             TemplateValidationMessage = string.Empty;
         }
@@ -366,44 +357,13 @@ namespace CardLister.Desktop.ViewModels
             }
         }
 
-        [RelayCommand]
-        private async Task SyncNowAsync()
+        private void UpdateDataAccessMode()
         {
-            if (!EnableSync || string.IsNullOrWhiteSpace(SyncServerUrl))
-            {
-                SyncStatusMessage = "Sync not configured. Please enable sync and enter server URL.";
-                SyncStatusColor = "Red";
-                return;
-            }
+            var settings = _settingsService.Load();
+            var mode = DataAccessModeDetector.DetectMode(settings);
 
-            IsSyncing = true;
-            SyncStatusMessage = "Syncing...";
-            SyncStatusColor = "Gray";
-
-            try
-            {
-                var result = await _syncService.SyncAsync();
-
-                if (result.Success)
-                {
-                    SyncStatusMessage = $"✓ Sync complete! Pushed: {result.CardsPushed}, Pulled: {result.CardsPulled}";
-                    SyncStatusColor = "Green";
-                }
-                else
-                {
-                    SyncStatusMessage = $"✗ {result.ErrorMessage}";
-                    SyncStatusColor = "Red";
-                }
-            }
-            catch (Exception ex)
-            {
-                SyncStatusMessage = $"✗ Sync failed: {ex.Message}";
-                SyncStatusColor = "Red";
-            }
-            finally
-            {
-                IsSyncing = false;
-            }
+            DataAccessMode = DataAccessModeDetector.GetModeDescription(mode);
+            DataAccessModeColor = mode == Core.Helpers.DataAccessMode.Local ? "Green" : "Blue";
         }
     }
 }

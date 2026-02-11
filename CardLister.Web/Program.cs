@@ -1,36 +1,63 @@
 using CardLister.Core.Data;
+using CardLister.Core.Helpers;
 using CardLister.Core.Services;
 using CardLister.Web.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-// Add DbContext with SQLite
-var dbPath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-    "CardLister", "cards.db");
-
-// Ensure the directory exists
-var dbDirectory = Path.GetDirectoryName(dbPath);
-if (!Directory.Exists(dbDirectory))
-{
-    Directory.CreateDirectory(dbDirectory!);
-}
-
-builder.Services.AddDbContext<CardListerDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
-
 // Add HttpClient and HttpContextAccessor
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 
-// Register Core services (shared with Desktop)
+// Add logging
+builder.Services.AddLogging();
+
+// Settings service needed first for mode detection
 builder.Services.AddSingleton<ISettingsService, JsonSettingsService>();
-builder.Services.AddScoped<ICardRepository, CardRepository>(); // Depends on DbContext
+
+// Smart mode detection - choose between local database or API
+var tempProvider = builder.Services.BuildServiceProvider();
+var settingsService = tempProvider.GetRequiredService<ISettingsService>();
+var settings = settingsService.Load();
+var dataMode = DataAccessModeDetector.DetectMode(settings);
+
+if (dataMode == DataAccessMode.Local)
+{
+    // Local mode - direct database access (fast)
+    Console.WriteLine($"Data access mode: LOCAL (Direct SQLite)");
+
+    var dbPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "CardLister", "cards.db");
+
+    // Ensure the directory exists
+    var dbDirectory = Path.GetDirectoryName(dbPath);
+    if (!Directory.Exists(dbDirectory))
+    {
+        Directory.CreateDirectory(dbDirectory!);
+    }
+
+    builder.Services.AddDbContext<CardListerDbContext>(options =>
+        options.UseSqlite($"Data Source={dbPath}"));
+    builder.Services.AddScoped<ICardRepository, CardRepository>();
+}
+else
+{
+    // Remote mode - API calls via Tailscale
+    Console.WriteLine($"Data access mode: REMOTE API ({settings.SyncServerUrl})");
+    builder.Services.AddSingleton<ICardRepository>(sp =>
+    {
+        var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+        var logger = sp.GetRequiredService<ILogger<ApiCardRepository>>();
+        return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
+    });
+}
 builder.Services.AddSingleton<IScannerService, OpenRouterScannerService>();
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
 builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on DbContext
@@ -47,22 +74,35 @@ builder.Services.AddSingleton<INavigationService, MvcNavigationService>();
 
 var app = builder.Build();
 
-// Enable WAL mode for shared database
-using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+// Initialize database (only in local mode)
+if (dataMode == DataAccessMode.Local)
 {
-    connection.Open();
-    var command = connection.CreateCommand();
-    command.CommandText = "PRAGMA journal_mode = WAL;";
-    command.ExecuteNonQuery();
-}
+    var dbPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "CardLister", "cards.db");
 
-// Initialize database (create tables, seed data)
-using (var scope = app.Services.CreateScope())
+    // Enable WAL mode for shared database
+    using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+    {
+        connection.Open();
+        var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA journal_mode = WAL;";
+        command.ExecuteNonQuery();
+    }
+
+    // Initialize database (create tables, seed data)
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+        db.Database.EnsureCreated();
+        await SchemaUpdater.EnsureVerificationTablesAsync(db);
+        await ChecklistSeeder.SeedIfEmptyAsync(db);
+    }
+    Console.WriteLine("Local database initialization complete");
+}
+else
 {
-    var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
-    db.Database.EnsureCreated();
-    await SchemaUpdater.EnsureVerificationTablesAsync(db);
-    await ChecklistSeeder.SeedIfEmptyAsync(db);
+    Console.WriteLine("Skipping local database initialization (using remote API mode)");
 }
 
 // Configure the HTTP request pipeline.

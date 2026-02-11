@@ -7,6 +7,7 @@ using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using System.Net.Http;
 using CardLister.Core.Data;
+using CardLister.Core.Helpers;
 using CardLister.Core.Services;
 using CardLister.Desktop.ViewModels;
 using CardLister.Desktop.Views;
@@ -74,15 +75,37 @@ namespace CardLister.Desktop
                     builder.AddSerilog(dispose: true);
                 });
 
-                // Database
-                services.AddDbContext<CardListerDbContext>(options =>
-                    options.UseSqlite($"Data Source={CardListerDbContext.GetDbPath()}"));
-
-                // Services
+                // Services (order matters - settings service needed first)
                 services.AddSingleton<HttpClient>();
                 services.AddSingleton<ISettingsService, JsonSettingsService>();
                 services.AddSingleton<IBrowserService, SystemBrowserService>();
-                services.AddTransient<ICardRepository, CardRepository>();
+
+                // Smart mode detection - choose between local database or API
+                var tempProvider = services.BuildServiceProvider();
+                var settingsService = tempProvider.GetRequiredService<ISettingsService>();
+                var settings = settingsService.Load();
+                var dataMode = DataAccessModeDetector.DetectMode(settings);
+
+                if (dataMode == DataAccessMode.Local)
+                {
+                    // Local mode - direct database access (fast)
+                    Log.Information("Data access mode: LOCAL (Direct SQLite)");
+                    services.AddDbContext<CardListerDbContext>(options =>
+                        options.UseSqlite($"Data Source={CardListerDbContext.GetDbPath()}"));
+                    services.AddTransient<ICardRepository, CardRepository>();
+                }
+                else
+                {
+                    // Remote mode - API calls via Tailscale
+                    Log.Information("Data access mode: REMOTE API ({ApiUrl})", settings.SyncServerUrl);
+                    // No DbContext needed in remote mode
+                    services.AddSingleton<ICardRepository>(sp =>
+                    {
+                        var httpClient = sp.GetRequiredService<HttpClient>();
+                        var logger = sp.GetRequiredService<ILogger<ApiCardRepository>>();
+                        return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
+                    });
+                }
                 services.AddSingleton<IScannerService, OpenRouterScannerService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 services.AddTransient<IPricerService, PricerService>();
@@ -92,7 +115,6 @@ namespace CardLister.Desktop
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
                 services.AddSingleton<ISoldPriceService, Point130SoldPriceService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
-                services.AddSingleton<ISyncService, TailscaleSyncService>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();
@@ -113,13 +135,15 @@ namespace CardLister.Desktop
 
                 _services = services.BuildServiceProvider();
 
-                // Ensure database is created and seeded
-                try
+                // Ensure database is created and seeded (only in local mode)
+                if (dataMode == DataAccessMode.Local)
                 {
-                    using var scope = _services.CreateScope();
-                    var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
-                    Log.Information("Initializing database at {DbPath}", CardListerDbContext.GetDbPath());
-                    db.Database.EnsureCreated();
+                    try
+                    {
+                        using var scope = _services.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<CardListerDbContext>();
+                        Log.Information("Initializing database at {DbPath}", CardListerDbContext.GetDbPath());
+                        db.Database.EnsureCreated();
                     Log.Debug("Running schema updates");
                     SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
                     // Disabled sample card seeding - users don't want auto-generated cards
@@ -129,10 +153,15 @@ namespace CardLister.Desktop
                     ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
                     Log.Information("Database initialization complete");
                 }
-                catch (Exception ex)
+                    catch (Exception ex)
+                    {
+                        Log.Fatal(ex, "Database initialization failed");
+                        throw;
+                    }
+                }
+                else
                 {
-                    Log.Fatal(ex, "Database initialization failed");
-                    throw;
+                    Log.Information("Skipping local database initialization (using remote API mode)");
                 }
 
                 desktop.MainWindow = new MainWindow
@@ -140,74 +169,8 @@ namespace CardLister.Desktop
                     DataContext = _services.GetRequiredService<MainWindowViewModel>()
                 };
 
-                // Auto-sync on startup (if enabled)
-                Task.Run(async () =>
+                desktop.ShutdownRequested += (_, _) =>
                 {
-                    try
-                    {
-                        var settingsService = _services.GetRequiredService<ISettingsService>();
-                        var syncService = _services.GetRequiredService<ISyncService>();
-                        var settings = settingsService.Load();
-
-                        if (settings.EnableSync && settings.AutoSyncOnStartup)
-                        {
-                            Log.Information("Auto-sync on startup enabled, syncing...");
-                            var result = await syncService.SyncAsync();
-                            if (result.Success)
-                            {
-                                Log.Information("Startup sync complete: pushed {Pushed}, pulled {Pulled}",
-                                    result.CardsPushed, result.CardsPulled);
-                            }
-                            else
-                            {
-                                Log.Warning("Startup sync failed: {Error}", result.ErrorMessage);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Startup sync failed");
-                    }
-                });
-
-                desktop.ShutdownRequested += async (_, e) =>
-                {
-                    try
-                    {
-                        var settingsService = _services.GetRequiredService<ISettingsService>();
-                        var syncService = _services.GetRequiredService<ISyncService>();
-                        var settings = settingsService.Load();
-
-                        if (settings.EnableSync && settings.AutoSyncOnExit)
-                        {
-                            Log.Information("Auto-sync on exit enabled, syncing...");
-
-                            // Defer shutdown to allow sync to complete
-                            var deferral = e.GetDeferral();
-                            try
-                            {
-                                var result = await syncService.SyncAsync();
-                                if (result.Success)
-                                {
-                                    Log.Information("Exit sync complete: pushed {Pushed}, pulled {Pulled}",
-                                        result.CardsPushed, result.CardsPulled);
-                                }
-                                else
-                                {
-                                    Log.Warning("Exit sync failed: {Error}", result.ErrorMessage);
-                                }
-                            }
-                            finally
-                            {
-                                deferral.Complete();
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Exit sync failed");
-                    }
-
                     Log.Information("CardLister shutting down");
                     Log.CloseAndFlush();
                     if (_services is IDisposable disposable)

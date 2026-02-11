@@ -48,11 +48,9 @@ namespace CardLister.Core.Models
         // For paid models (with credits), use 3-4 for optimal performance
         public int MaxConcurrentScans { get; set; } = 1;
 
-        // Tailscale Sync Settings
-        public bool EnableSync { get; set; } = false;
+        // Data Access Mode - Auto-detected based on API URL
+        // If empty/localhost: Uses local SQLite database (fast, direct access)
+        // If Tailscale IP: Uses remote API (network access via CardLister.Api)
         public string? SyncServerUrl { get; set; }  // e.g., "http://100.64.1.5:5000"
-        public DateTime? LastSyncTime { get; set; }
-        public bool AutoSyncOnStartup { get; set; } = true;
-        public bool AutoSyncOnExit { get; set; } = true;
     }
 }

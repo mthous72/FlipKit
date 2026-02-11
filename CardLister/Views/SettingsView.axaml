@@ -289,78 +289,53 @@
                 </StackPanel>
             </Border>
 
-            <!-- Tailscale Sync -->
+            <!-- Data Access Mode -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                     CornerRadius="8" Padding="20">
                 <StackPanel Spacing="12">
-                    <TextBlock Text="Tailscale Sync" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="Data Access Mode" FontSize="18" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
-                        Sync your cards across multiple computers using your Tailscale private network.
-                        Run the sync server (CardLister.Api) on your main computer, then connect from other devices.
+                        CardLister automatically detects whether to use local database (fast, direct access) or remote API (Tailscale network access).
                     </TextBlock>
 
-                    <!-- Enable Sync -->
-                    <CheckBox IsChecked="{Binding EnableSync}" Content="Enable sync"
-                              FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <!-- Current Mode Status -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Text="Current Mode:" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DataAccessMode}" VerticalAlignment="Center">
+                            <TextBlock.Foreground>
+                                <SolidColorBrush Color="{Binding DataAccessModeColor}"/>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                    </StackPanel>
 
-                    <!-- Server URL -->
-                    <TextBlock Text="Sync Server URL (Tailscale IP)" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <!-- API Server URL (Optional) -->
+                    <TextBlock Text="API Server URL (Optional for Remote Access)" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <TextBox Text="{Binding SyncServerUrl}"
-                             Watermark="http://100.64.1.5:5000"
-                             IsEnabled="{Binding EnableSync}"/>
+                             Watermark="http://100.64.1.5:5000"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.5" Margin="0,-6,0,0">
-                        Enter your main computer's Tailscale IP address and port. Get your IP with: tailscale ip -4
+                        Leave empty or use localhost for local database. Enter Tailscale IP for remote API access.
                     </TextBlock>
 
-                    <!-- Auto-sync options -->
-                    <StackPanel Spacing="6" Margin="0,8,0,0">
-                        <CheckBox IsChecked="{Binding AutoSyncOnStartup}" Content="Auto-sync on startup"
-                                  FontSize="12" IsEnabled="{Binding EnableSync}"/>
-                        <CheckBox IsChecked="{Binding AutoSyncOnExit}" Content="Auto-sync on exit"
-                                  FontSize="12" IsEnabled="{Binding EnableSync}"/>
-                    </StackPanel>
-
-                    <!-- Sync Now Button -->
-                    <Button Content="Sync Now" Command="{Binding SyncNowCommand}"
-                            IsEnabled="{Binding EnableSync}"
-                            Padding="16,8" Margin="0,8,0,0"
-                            HorizontalAlignment="Left"/>
-
-                    <!-- Sync Status -->
-                    <TextBlock Text="{Binding SyncStatusMessage}"
-                               FontSize="12" TextWrapping="Wrap"
-                               IsVisible="{Binding SyncStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock.Foreground>
-                            <SolidColorBrush Color="{Binding SyncStatusColor}"/>
-                        </TextBlock.Foreground>
-                    </TextBlock>
-
-                    <!-- Loading indicator -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsSyncing}">
-                        <ProgressBar IsIndeterminate="True" Width="100" Height="4" VerticalAlignment="Center"/>
-                        <TextBlock Text="Syncing..." FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
-                    </StackPanel>
-
-                    <!-- How to setup -->
+                    <!-- How it works -->
                     <Border Background="{DynamicResource SystemChromeLowColor}"
                             CornerRadius="6" Padding="12" Margin="0,8,0,0">
                         <StackPanel Spacing="6">
-                            <TextBlock Text="📋 Setup Instructions" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="📋 How It Works" FontSize="13" FontWeight="SemiBold"/>
                             <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.8">
-                                <Run FontWeight="SemiBold">On your main computer:</Run>
+                                • <Run FontWeight="SemiBold">Empty/Localhost:</Run> Uses local SQLite database (fast, direct)
                                 <LineBreak/>
-                                1. Run: cd CardLister.Api &amp;&amp; dotnet run
+                                • <Run FontWeight="SemiBold">Tailscale IP:</Run> Uses remote API via CardLister.Api server
+                                <LineBreak/>
+                                <LineBreak/>
+                                <Run FontWeight="SemiBold">To access remotely:</Run>
+                                <LineBreak/>
+                                1. Run CardLister.Api on main computer: cd CardLister.Api &amp;&amp; dotnet run
                                 <LineBreak/>
                                 2. Get Tailscale IP: tailscale ip -4
                                 <LineBreak/>
+                                3. Enter http://[TAILSCALE_IP]:5000 above and save
                                 <LineBreak/>
-                                <Run FontWeight="SemiBold">On this computer:</Run>
-                                <LineBreak/>
-                                1. Enable sync above
-                                <LineBreak/>
-                                2. Enter: http://[YOUR_TAILSCALE_IP]:5000
-                                <LineBreak/>
-                                3. Click "Sync Now"
+                                4. Restart app - all data operations now use API
                             </TextBlock>
                         </StackPanel>
                     </Border>
