@@ -65,7 +65,8 @@
       "Bash(python -m json.tool:*)",
       "Bash(dotnet new:*)",
       "Bash(dotnet sln:*)",
-      "Bash(dotnet add reference:*)"
+      "Bash(dotnet add reference:*)",
+      "Bash(echo:*)"
     ]
   }
 }
