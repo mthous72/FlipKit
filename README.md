@@ -39,8 +39,10 @@ For mobile access - scan cards with your phone's camera and quick price research
 1. Download the package for your computer's OS (not your phone!)
 2. Extract and run the launcher script
 3. Server starts at `http://localhost:5000` (browser opens automatically)
-4. On your phone: Connect to same Wi-Fi → Open browser → Go to `http://YOUR-COMPUTER-IP:5000`
-5. Use your phone's camera to scan cards and research prices on-the-go!
+4. On your phone:
+   - **Local Wi-Fi:** Connect to same Wi-Fi → Go to `http://YOUR-COMPUTER-IP:5000`
+   - **Tailscale:** Connect to Tailscale network → Go to `http://YOUR-TAILSCALE-IP:5000`
+5. Full inventory management from your phone - scan, edit, export, and track sales!
 
 **Shared Database:** Desktop and Web apps share the same SQLite database, so scanned cards are immediately available in the desktop app for full inventory management.
 
@@ -67,23 +69,24 @@ These features are implemented and functional today:
 - **Tax Report Export** -- Export sold cards as a CSV with sale date, cost basis, fees, and net profit for record-keeping.
 - **Reports** -- View sold card summary with total revenue, cost basis, fees, and net profit. Monthly breakdown and top sellers list.
 - **Listing Title Optimization** -- SEO-optimized title templates for different platforms (Whatnot, eBay, COMC, Generic). Customize title format per platform using placeholders like `{Year} {Brand} {Player} {Parallel}`. Search query templates optimize pricing research by excluding overly specific fields. Export platform selector lets you choose which template to use per-export. Based on WTSCards research showing different platforms weight fields differently for search ranking.
-- **Tailscale Sync** -- Access your card inventory from multiple computers on your private Tailscale network. Run a simple sync server on your main computer, and remote computers automatically sync their local database via secure, encrypted connection. Features timestamp-based conflict resolution (newest wins), auto-sync on startup/exit, and manual sync button. Zero cost, no cloud hosting needed - your data stays on your private network. Perfect for accessing cards from a laptop while traveling or managing inventory from multiple locations.
+- **Smart Hybrid Data Access** -- Access your card inventory from anywhere on your private Tailscale network with automatic local/remote detection. The app intelligently chooses between fast local database access (when on the same computer) or API-based access (when remote) with zero configuration. Run the optional CardLister.Api server on your main computer to enable remote access from laptops or mobile devices. Works seamlessly across Desktop and Web apps. Zero cost, no cloud hosting - your data stays on your private Tailscale network.
 - **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, verification preferences, and Tailscale sync. Includes full title and search template customization with validation, preview, and reset options.
 - **Setup Wizard** -- First-run walkthrough for entering API keys and setting preferences.
 - **Local-First Data** -- All data is stored on your machine in SQLite. API keys are stored in your local app data folder, never in the repo. Optional Tailscale sync keeps data synchronized across your computers via private network.
 
-### Web Application Features (v2.1.0)
+### Web Application Features (v2.0.5)
 
-Mobile-optimized web interface focused on core on-the-go features:
+Mobile-optimized web interface with complete feature set for on-the-go management:
 
 - **Mobile Camera Scanning** -- Use your phone's camera to scan cards directly from the web browser. Touch-optimized upload interface with instant camera access.
-- **Single Card Scanning** -- Scan one card at a time with AI vision (front + optional back photo). Same AI models and verification as desktop app.
+- **Full Inventory Management** -- Browse, search, filter, edit, and delete cards from your phone. Responsive table layout with pagination, status filters, and quick actions.
+- **Card Details & Editing** -- View complete card information and edit any field (price, status, notes, etc.) from mobile. Changes sync instantly with desktop app.
 - **Pricing Research** -- Quick access to eBay and Terapeak pricing tools. Real-time profit calculator shows fees, revenue, and margin as you type.
-- **Shared Database** -- Uses the same SQLite database as the desktop app with Write-Ahead Logging (WAL) for concurrent access. Cards scanned on mobile immediately appear in desktop app for full management.
+- **CSV Export** -- Generate Whatnot-compatible CSV files directly from your phone. Select cards and export for bulk listing.
+- **Sales Reports** -- View sold card analytics, revenue, and profit tracking from mobile.
+- **Shared Database** -- Uses the same SQLite database as the desktop app with Write-Ahead Logging (WAL) for concurrent access. Perfect for multi-device workflows.
 - **No Installation on Mobile** -- Just open your phone's browser and navigate to your computer's IP address. No app store, no downloads on your phone!
-- **Network Access** -- Run the server on your computer, access from any device on your local Wi-Fi network. Perfect for scanning at card shows or quick price checks on-the-go.
-
-**Simplified Architecture (v2.1.0):** The web app focuses exclusively on **scanning and pricing** to provide the best mobile experience. For full inventory management, CSV export, reports, and settings, use the desktop application.
+- **Tailscale Network Access** -- Access from anywhere on your private Tailscale network. Scan cards at a show, manage inventory from a coffee shop, or check prices while shopping - all from your phone securely connected to your home computer.
 
 **Use Cases:**
 - Scan cards at card shows using your phone's camera
@@ -111,12 +114,11 @@ Here's what's rough or missing in the desktop application:
 
 Limitations specific to the web application:
 
-- **Limited Feature Set (v2.1.0)** -- Web app provides **scanning and pricing only**. For inventory management, CSV export, reports, and settings, use the desktop application. This simplification provides a better mobile experience focused on on-the-go workflows.
 - **No Bulk Scanning** -- Web app only supports single-card scanning. Use desktop app for batch scanning (10+ cards).
 - **No Settings Configuration** -- API keys and preferences must be configured in the desktop app. Web app reads from the shared `settings.json` file.
-- **No Authentication** -- Web app has no login system. Only use on trusted Wi-Fi networks (home/office). Anyone on your network can access it.
-- **HTTP Only** -- No HTTPS support yet. Data is not encrypted in transit on your local network.
-- **Local Network Only** -- Designed for local Wi-Fi access. Not suitable for internet deployment without authentication and HTTPS.
+- **No Authentication** -- Web app has no login system. When using Tailscale, network access is restricted to your private network. For local Wi-Fi, anyone on your network can access it.
+- **HTTP Only (Local Wi-Fi)** -- Local network access uses HTTP. Tailscale provides encrypted tunnel. For internet deployment, HTTPS would be needed.
+- **Designed for Tailscale/Local Access** -- Best used on private Tailscale network or trusted local Wi-Fi. Not suitable for public internet deployment without authentication and HTTPS.
 - **Manual IP Entry** -- You need to find your computer's IP address and type it on your phone. No auto-discovery yet.
 
 ## Roadmap
