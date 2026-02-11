@@ -11,6 +11,7 @@ namespace FlipKit.Desktop.ViewModels
     {
         private readonly IServiceProvider _services;
         private readonly ISettingsService _settingsService;
+        private readonly IServerManagementService _serverManagement;
         private INavigationService? _navigationService;
 
         [ObservableProperty]
@@ -22,10 +23,21 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty]
         private bool _showSidebar = true;
 
-        public MainWindowViewModel(IServiceProvider services, ISettingsService settingsService)
+        [ObservableProperty]
+        private string _trayTooltip = "FlipKit Hub";
+
+        [ObservableProperty]
+        private bool _isWindowVisible = true;
+
+        public MainWindowViewModel(IServiceProvider services, ISettingsService settingsService,
+            IServerManagementService serverManagement)
         {
             _services = services;
             _settingsService = settingsService;
+            _serverManagement = serverManagement;
+
+            // Start tray tooltip updater
+            UpdateTrayTooltip();
 
             if (!_settingsService.HasValidConfig())
             {
@@ -70,6 +82,80 @@ namespace FlipKit.Desktop.ViewModels
             // Lazy-resolve navigation service to avoid circular dependency
             _navigationService ??= _services.GetRequiredService<INavigationService>();
             await _navigationService.NavigateToEditCardAsync(cardId);
+        }
+
+        [RelayCommand]
+        private void ShowWindow()
+        {
+            IsWindowVisible = true;
+        }
+
+        [RelayCommand]
+        private void HideWindow()
+        {
+            IsWindowVisible = false;
+        }
+
+        [RelayCommand]
+        private void ToggleWindow()
+        {
+            IsWindowVisible = !IsWindowVisible;
+        }
+
+        [RelayCommand]
+        private async Task StartWebServerFromTray()
+        {
+            var settings = _settingsService.Load();
+            await _serverManagement.StartWebServerAsync(settings.WebServerPort);
+            UpdateTrayTooltip();
+        }
+
+        [RelayCommand]
+        private async Task StopWebServerFromTray()
+        {
+            await _serverManagement.StopWebServerAsync();
+            UpdateTrayTooltip();
+        }
+
+        [RelayCommand]
+        private async Task StartApiServerFromTray()
+        {
+            var settings = _settingsService.Load();
+            await _serverManagement.StartApiServerAsync(settings.ApiServerPort);
+            UpdateTrayTooltip();
+        }
+
+        [RelayCommand]
+        private async Task StopApiServerFromTray()
+        {
+            await _serverManagement.StopApiServerAsync();
+            UpdateTrayTooltip();
+        }
+
+        [RelayCommand]
+        private void OpenWebBrowser()
+        {
+            var status = _serverManagement.GetServerStatus();
+            if (status.IsWebRunning)
+            {
+                var browser = _services.GetRequiredService<IBrowserService>();
+                browser.OpenUrl($"http://localhost:{status.WebPort}");
+            }
+        }
+
+        [RelayCommand]
+        private void ExitApplication()
+        {
+            // This will trigger the shutdown sequence
+            System.Environment.Exit(0);
+        }
+
+        private void UpdateTrayTooltip()
+        {
+            var status = _serverManagement.GetServerStatus();
+            var webStatus = status.IsWebRunning ? "●" : "○";
+            var apiStatus = status.IsApiRunning ? "●" : "○";
+            TrayTooltip = $"FlipKit Hub - Web: {webStatus} API: {apiStatus}";
         }
 
         public void Dispose()

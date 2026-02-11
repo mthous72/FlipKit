@@ -74,7 +74,12 @@
       "Bash(cmd /c \"move FlipKit.Core FlipKit.Core\")",
       "Bash(dotnet clean:*)",
       "Bash(test:*)",
-      "Bash(where iscc)"
+      "Bash(where iscc)",
+      "Bash(.build-release.ps1 -Version 3.1.0)",
+      "Bash(pwsh:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(Select-Object -First 150)",
+      "Bash(Select-String -Pattern \"Created:|Size:|Build Complete\")"
     ]
   }
 }

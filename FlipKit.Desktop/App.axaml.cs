@@ -2,9 +2,11 @@ using System;
 using System.IO;
 using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
 using System.Net.Http;
 using FlipKit.Core.Data;
 using FlipKit.Core.Helpers;
@@ -181,9 +183,139 @@ namespace FlipKit.Desktop
                     Log.Information("Skipping local database initialization (using remote API mode)");
                 }
 
+                var mainViewModel = _services.GetRequiredService<MainWindowViewModel>();
                 desktop.MainWindow = new MainWindow
                 {
-                    DataContext = _services.GetRequiredService<MainWindowViewModel>()
+                    DataContext = mainViewModel
+                };
+
+                // System Tray Icon
+                var trayIcon = new TrayIcon
+                {
+                    IsVisible = true,
+                    ToolTipText = mainViewModel.TrayTooltip
+                };
+
+                // Load app icon for tray
+                try
+                {
+                    var assets = AssetLoader.Open(new Uri("avares://FlipKit.Desktop/Assets/avalonia-logo.ico"));
+                    trayIcon.Icon = new WindowIcon(assets);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to load tray icon, using default");
+                }
+
+                // Update tooltip when it changes
+                mainViewModel.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(mainViewModel.TrayTooltip))
+                    {
+                        trayIcon.ToolTipText = mainViewModel.TrayTooltip;
+                    }
+                };
+
+                // Tray menu
+                var trayMenu = new NativeMenu();
+
+                var showHideItem = new NativeMenuItem
+                {
+                    Header = "Show/Hide Window",
+                    Command = mainViewModel.ToggleWindowCommand
+                };
+                trayMenu.Add(showHideItem);
+
+                trayMenu.Add(new NativeMenuItemSeparator());
+
+                // Web Server submenu
+                var webServerMenu = new NativeMenu();
+                webServerMenu.Add(new NativeMenuItem
+                {
+                    Header = "Start",
+                    Command = mainViewModel.StartWebServerFromTrayCommand
+                });
+                webServerMenu.Add(new NativeMenuItem
+                {
+                    Header = "Stop",
+                    Command = mainViewModel.StopWebServerFromTrayCommand
+                });
+
+                var webServerItem = new NativeMenuItem
+                {
+                    Header = "Web Server",
+                    Menu = webServerMenu
+                };
+                trayMenu.Add(webServerItem);
+
+                // API Server submenu
+                var apiServerMenu = new NativeMenu();
+                apiServerMenu.Add(new NativeMenuItem
+                {
+                    Header = "Start",
+                    Command = mainViewModel.StartApiServerFromTrayCommand
+                });
+                apiServerMenu.Add(new NativeMenuItem
+                {
+                    Header = "Stop",
+                    Command = mainViewModel.StopApiServerFromTrayCommand
+                });
+
+                var apiServerItem = new NativeMenuItem
+                {
+                    Header = "API Server",
+                    Menu = apiServerMenu
+                };
+                trayMenu.Add(apiServerItem);
+
+                trayMenu.Add(new NativeMenuItemSeparator());
+
+                var openBrowserItem = new NativeMenuItem
+                {
+                    Header = "Open Web Browser",
+                    Command = mainViewModel.OpenWebBrowserCommand
+                };
+                trayMenu.Add(openBrowserItem);
+
+                trayMenu.Add(new NativeMenuItemSeparator());
+
+                var exitItem = new NativeMenuItem
+                {
+                    Header = "Exit",
+                    Command = mainViewModel.ExitApplicationCommand
+                };
+                trayMenu.Add(exitItem);
+
+                trayIcon.Menu = trayMenu;
+
+                // Handle window visibility changes
+                mainViewModel.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(mainViewModel.IsWindowVisible))
+                    {
+                        if (mainViewModel.IsWindowVisible)
+                        {
+                            desktop.MainWindow.Show();
+                            desktop.MainWindow.Activate();
+                        }
+                        else
+                        {
+                            desktop.MainWindow.Hide();
+                        }
+                    }
+                };
+
+                // Handle window close to minimize to tray (if configured)
+                desktop.MainWindow.Closing += (s, e) =>
+                {
+                    var settingsService = _services?.GetService<ISettingsService>();
+                    var settings = settingsService?.Load();
+                    if (settings?.MinimizeToTray == true)
+                    {
+                        e.Cancel = true;
+                        mainViewModel.IsWindowVisible = false;
+                        Log.Information("Window minimized to tray");
+                    }
                 };
 
                 // Auto-start servers if configured (FlipKit Hub)
