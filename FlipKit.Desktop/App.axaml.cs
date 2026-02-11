@@ -140,6 +140,20 @@ namespace FlipKit.Desktop
                 // Ensure database is created and seeded (only in local mode)
                 if (dataMode == DataAccessMode.Local)
                 {
+                    // One-time migration from CardLister to FlipKit
+                    if (LegacyMigrator.HasCardListerData())
+                    {
+                        Log.Information("Detected CardLister data, initiating migration...");
+                        if (LegacyMigrator.MigrateFromCardLister())
+                        {
+                            Log.Information("Successfully migrated data from CardLister to FlipKit");
+                        }
+                        else
+                        {
+                            Log.Warning("CardLister migration failed or was skipped");
+                        }
+                    }
+
                     try
                     {
                         using var scope = _services.CreateScope();

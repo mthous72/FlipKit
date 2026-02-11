@@ -1,4 +1,5 @@
 using FlipKit.Core.Data;
+using FlipKit.Core.Helpers;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -29,6 +30,20 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// One-time migration from CardLister to FlipKit
+if (LegacyMigrator.HasCardListerData())
+{
+    Console.WriteLine("Detected CardLister data, initiating migration...");
+    if (LegacyMigrator.MigrateFromCardLister())
+    {
+        Console.WriteLine("Successfully migrated data from CardLister to FlipKit");
+    }
+    else
+    {
+        Console.WriteLine("WARNING: CardLister migration failed or was skipped");
+    }
+}
 
 // Enable CORS
 app.UseCors();

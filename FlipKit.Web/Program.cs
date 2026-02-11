@@ -70,6 +70,20 @@ var app = builder.Build();
 // Initialize database (only in local mode)
 if (dataMode == DataAccessMode.Local)
 {
+    // One-time migration from CardLister to FlipKit
+    if (LegacyMigrator.HasCardListerData())
+    {
+        Console.WriteLine("Detected CardLister data, initiating migration...");
+        if (LegacyMigrator.MigrateFromCardLister())
+        {
+            Console.WriteLine("Successfully migrated data from CardLister to FlipKit");
+        }
+        else
+        {
+            Console.WriteLine("WARNING: CardLister migration failed or was skipped");
+        }
+    }
+
     var dbPath = FlipKitDbContext.GetDbPath();
 
     // Enable WAL mode for shared database
