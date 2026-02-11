@@ -14,40 +14,43 @@ Both apps share a single SQLite database with WAL mode for concurrent access, en
 
 **Core Features:** AI vision scanning (OpenRouter API), inventory management, pricing research (eBay/Terapeak), Whatnot CSV export, sales tracking, financial reports.
 
-**Current State:** Desktop MVP ~90% complete, Web MVP ~95% complete (feature/web-app-migration branch). Desktop on `feature/bulk-scan` for batch scanning.
+**Current State:** v3.1.0 FlipKit Hub released. Unified package with Desktop app + embedded Web and API servers. Desktop and Web both feature-complete. Servers managed from Desktop Settings UI.
 
 ## Build & Run Commands
 
-**Desktop App:**
+**Desktop App (Development):**
 ```bash
 # Restore and build
 dotnet restore
 dotnet build
 
-# Run desktop app
+# Run desktop app (servers auto-start if configured)
 dotnet run --project FlipKit.Desktop
 
 # Build for release
 dotnet build -c Release
-
-# Publish self-contained Windows executable
-dotnet publish FlipKit.Desktop -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
-**Web App:**
+**Web App (Development - Standalone):**
 ```bash
-# Run web app (development)
+# Run web app standalone (development)
 cd FlipKit.Web
 dotnet run
 
 # Run with specific URLs (for local network access)
 dotnet run --urls "http://0.0.0.0:5000"
-
-# Publish for deployment
-dotnet publish FlipKit.Web -c Release -o ./publish
 ```
 
-**Both:**
+**Build FlipKit Hub Packages (Release):**
+```bash
+# Build unified packages for Windows and Linux
+.\build-release.ps1 -Version 3.1.0
+
+# Output: releases/FlipKit-Hub-Windows-x64-v3.1.0.zip
+#         releases/FlipKit-Hub-Linux-x64-v3.1.0.tar.gz
+```
+
+**All Projects:**
 ```bash
 # Run tests (when test projects exist)
 dotnet test
@@ -282,6 +285,7 @@ Comprehensive specs are in `Docs/`. Most are now implemented, use as reference f
 | `WEB-USER-GUIDE.md` | 📖 Reference | Web app user guide for mobile access |
 | `DEPLOYMENT-GUIDE.md` | 📖 Reference | Web app deployment and network setup |
 | `USER-GUIDE.md` | 📖 Reference | Desktop app user guide with screenshots |
+| `HUB-ARCHITECTURE.md` | 📖 Reference | FlipKit Hub architecture and server management |
 
 ## Git Branching Workflow
 

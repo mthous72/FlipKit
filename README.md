@@ -1,50 +1,56 @@
 # FlipKit
 
-A dual-platform application for sports card sellers that uses AI vision to scan card images, manage inventory, research pricing, and export Whatnot-compatible CSV files for bulk listing.
+A unified desktop application for sports card sellers with embedded Web and API servers. Uses AI vision to scan cards, manage inventory, research pricing, and export Whatnot-compatible CSV files.
 
-**Two ways to use FlipKit:**
-- **Desktop App** - Full-featured Windows/macOS application built with Avalonia UI (inventory, export, reports, settings)
-- **Web App** - Mobile-optimized interface for on-the-go card scanning and price research only
+**FlipKit Hub** combines three components in one package:
+- **Desktop App** - Full-featured application built with Avalonia UI 11 (Windows/Linux)
+- **Web Server** - Mobile-optimized interface for on-the-go scanning (auto-starts on port 5000)
+- **API Server** - Remote access for multi-device workflows (auto-starts on port 5001)
 
 Built with **C# / .NET 8**, using **Avalonia UI 11** for desktop and **ASP.NET Core MVC** for web.
 
-> **Note:** This is a **production-ready application** with complete features for the core workflow. The desktop app is mature and stable; the web app is newly released for mobile access.
+> **Note:** This is a **production-ready application** with complete features for the core workflow. v3.1.0 introduces unified Hub architecture where all servers are managed from the Desktop app.
 
 ## Download
 
 Pre-built executables are available on the [Releases page](https://github.com/mthous72/FlipKit/releases). No .NET runtime install needed -- these are fully self-contained.
 
-### Desktop Application
+### FlipKit Hub (v3.1.0+)
 
-For power users who want the full desktop experience with bulk scanning and advanced features:
+**Unified package** with Desktop app + embedded Web and API servers:
 
-| Platform | File |
-|----------|------|
-| Windows (x64) | `FlipKit-win-x64.zip` -- extract and double-click `FlipKit.exe` |
-| macOS Intel | `FlipKit-osx-x64.zip` -- extract all files to same folder, run `./FlipKit` from terminal |
-| macOS Apple Silicon (M1/M2/M3/M4) | `FlipKit-osx-arm64.zip` -- extract all files to same folder, run `./FlipKit` from terminal |
+| Platform | File | Size |
+|----------|------|------|
+| Windows (x64) | `FlipKit-Hub-Windows-x64-v3.1.0.zip` | ~150 MB |
+| Linux (x64) | `FlipKit-Hub-Linux-x64-v3.1.0.tar.gz` | ~145 MB |
 
-### Web Application
+> **Note:** macOS builds are not provided due to code signing requirements. macOS users can build from source.
 
-For mobile access - scan cards with your phone's camera and quick price research:
+**Quick Start:**
+1. Download and extract the package for your platform
+2. Launch `FlipKit.Desktop.exe` (Windows) or `./FlipKit.Desktop` (Linux)
+3. Web and API servers auto-start automatically
+4. Browser opens to `http://localhost:5000` (if enabled in Settings)
+5. On your phone:
+   - Connect to same Wi-Fi network as your computer
+   - **Option A:** Scan QR code from Settings → Servers section
+   - **Option B:** Navigate to `http://YOUR-COMPUTER-IP:5000`
+6. Start scanning cards from your phone or desktop!
 
-| Platform | File | Usage |
-|----------|------|-------|
-| Windows (x64) | `FlipKit-Web-v2.1.0.zip` | Extract and double-click `StartWeb.bat` |
-| macOS Intel | `FlipKit-Web-macOS-Intel-v2.1.0.zip` | Extract and run `./start-web.sh` |
-| macOS Apple Silicon | `FlipKit-Web-macOS-ARM-v2.1.0.zip` | Extract and run `./start-web.sh` |
-| Linux (x64) | `FlipKit-Web-Linux-v2.1.0.tar.gz` | Extract and run `./start-web.sh` |
+**What's Included:**
+- Desktop application with full feature set
+- Web server for mobile access (managed from Settings)
+- API server for remote workflows (managed from Settings)
+- Shared SQLite database with WAL mode for concurrent access
+- Complete documentation in `Docs/` folder
 
-**Web App Quick Start:**
-1. Download the package for your computer's OS (not your phone!)
-2. Extract and run the launcher script
-3. Server starts at `http://localhost:5000` (browser opens automatically)
-4. On your phone:
-   - **Local Wi-Fi:** Connect to same Wi-Fi → Go to `http://YOUR-COMPUTER-IP:5000`
-   - **Tailscale:** Connect to Tailscale network → Go to `http://YOUR-TAILSCALE-IP:5000`
-5. Full inventory management from your phone - scan, edit, export, and track sales!
-
-**Shared Database:** Desktop and Web apps share the same SQLite database, so scanned cards are immediately available in the desktop app for full inventory management.
+**Server Management:**
+- All servers are managed from **Settings → Servers** in the Desktop app
+- Auto-start on launch (configurable)
+- Start/Stop buttons with live status monitoring
+- QR code for instant mobile connection
+- Port configuration (default: Web 5000, API 5001)
+- Real-time server logs viewer
 
 ## What's Working
 
@@ -69,14 +75,15 @@ These features are implemented and functional today:
 - **Tax Report Export** -- Export sold cards as a CSV with sale date, cost basis, fees, and net profit for record-keeping.
 - **Reports** -- View sold card summary with total revenue, cost basis, fees, and net profit. Monthly breakdown and top sellers list.
 - **Listing Title Optimization** -- SEO-optimized title templates for different platforms (Whatnot, eBay, COMC, Generic). Customize title format per platform using placeholders like `{Year} {Brand} {Player} {Parallel}`. Search query templates optimize pricing research by excluding overly specific fields. Export platform selector lets you choose which template to use per-export. Based on WTSCards research showing different platforms weight fields differently for search ranking.
+- **Server Management (FlipKit Hub)** -- Embedded Web and API servers managed directly from the Desktop app. Auto-start on launch, Start/Stop controls with live status monitoring, port configuration with automatic conflict resolution, QR code generation for instant mobile connection, network IP display for all local addresses, and real-time server logs viewer. Everything managed from Settings → Servers.
 - **Smart Hybrid Data Access** -- Access your card inventory from anywhere on your private Tailscale network with automatic local/remote detection. The app intelligently chooses between fast local database access (when on the same computer) or API-based access (when remote) with zero configuration. Run the optional FlipKit.Api server on your main computer to enable remote access from laptops or mobile devices. Works seamlessly across Desktop and Web apps. Zero cost, no cloud hosting - your data stays on your private Tailscale network.
-- **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, verification preferences, and Tailscale sync. Includes full title and search template customization with validation, preview, and reset options.
+- **Settings** -- Configure API keys, default AI model, fee percentages (Whatnot/eBay), shipping costs, price staleness threshold, verification preferences, server management, and Tailscale sync. Includes full title and search template customization with validation, preview, and reset options.
 - **Setup Wizard** -- First-run walkthrough for entering API keys and setting preferences.
 - **Local-First Data** -- All data is stored on your machine in SQLite. API keys are stored in your local app data folder, never in the repo. Optional Tailscale sync keeps data synchronized across your computers via private network.
 
-### Web Application Features (v2.0.5)
+### Web Application Features (Included in Hub)
 
-Mobile-optimized web interface with complete feature set for on-the-go management:
+Mobile-optimized web interface accessible from any device on your network. **Now embedded in FlipKit Hub** - starts automatically with Desktop app, managed from Settings:
 
 - **Mobile Camera Scanning** -- Use your phone's camera to scan cards directly from the web browser. Touch-optimized upload interface with instant camera access.
 - **Full Inventory Management** -- Browse, search, filter, edit, and delete cards from your phone. Responsive table layout with pagination, status filters, and quick actions.
