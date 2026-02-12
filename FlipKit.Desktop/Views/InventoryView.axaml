@@ -19,8 +19,8 @@
     <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" ColumnDefinitions="*,Auto" Margin="24">
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,16">
-            <StackPanel Orientation="Horizontal" Spacing="12">
+        <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,0,16" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
                 <TextBlock Text="My Cards" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding TotalCount, StringFormat='({0} total)'}"
                            FontSize="16" Opacity="0.6" VerticalAlignment="Center"/>
@@ -29,7 +29,75 @@
                         IsVisible="{Binding StaleCardCount}"
                         Foreground="Red" Padding="12,6" VerticalAlignment="Center"/>
             </StackPanel>
-        </StackPanel>
+
+            <!-- Help Button -->
+            <Button Grid.Column="1" Width="32" Height="32" Padding="0" VerticalAlignment="Top"
+                    ToolTip.Tip="Quick Help">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <Border MaxWidth="350" Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="📦 Inventory - Quick Guide" FontSize="16" FontWeight="Bold"/>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="🔍 Search &amp; Filter" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Search by player name, brand, or team
+                                        <LineBreak/>
+                                        • Filter by sport and status
+                                        <LineBreak/>
+                                        • Click column headers to sort
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="✏️ Edit Cards" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Click a row to select
+                                        <LineBreak/>
+                                        • Click "Edit Card" for quick edit panel
+                                        <LineBreak/>
+                                        • Or double-click for full edit window
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="💰 Bulk Actions" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Check boxes to select multiple cards
+                                        <LineBreak/>
+                                        • Export selected to CSV
+                                        <LineBreak/>
+                                        • Upload images for selected cards
+                                        <LineBreak/>
+                                        • Delete selected cards
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="📊 Price Indicators" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Green dot: Price is fresh
+                                        <LineBreak/>
+                                        • Yellow dot: Price getting old
+                                        <LineBreak/>
+                                        • Red dot: Price is stale, needs update
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <Border Background="{DynamicResource SystemChromeLowColor}"
+                                        CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                        💡 <Run FontWeight="Bold">Tip:</Run> Use "Select All" and "Export Selected to CSV" to quickly export your entire inventory for listing.
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Flyout>
+                </Button.Flyout>
+                <TextBlock Text="?" FontSize="18" FontWeight="Bold"/>
+            </Button>
+        </Grid>
 
         <!-- Filter Bar -->
         <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">

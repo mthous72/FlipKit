@@ -17,11 +17,79 @@
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="24,24,24,8">
-            <TextBlock Text="Scan Card" FontSize="24" FontWeight="Bold"/>
-            <TextBlock Text="Upload a card image, scan with AI, review and save"
-                       Opacity="0.6" Margin="0,4,0,0"/>
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="24,24,24,8" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Scan Card" FontSize="24" FontWeight="Bold"/>
+                <TextBlock Text="Upload a card image, scan with AI, review and save"
+                           Opacity="0.6" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- Help Button -->
+            <Button Grid.Column="1" Width="32" Height="32" Padding="0" VerticalAlignment="Top"
+                    ToolTip.Tip="Quick Help">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <Border MaxWidth="350" Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="📸 Scan Card - Quick Guide" FontSize="16" FontWeight="Bold"/>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="1️⃣ Upload Image" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Drag &amp; drop or click to select card image
+                                        <LineBreak/>
+                                        • Upload both front and back (optional)
+                                        <LineBreak/>
+                                        • Supports JPG, PNG formats
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="2️⃣ AI Scan" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Click "Scan with AI" button
+                                        <LineBreak/>
+                                        • AI identifies player, year, brand, parallel
+                                        <LineBreak/>
+                                        • Check confidence scores (green = high)
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="3️⃣ Review &amp; Edit" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Verify AI results are accurate
+                                        <LineBreak/>
+                                        • Edit any incorrect fields
+                                        <LineBreak/>
+                                        • Add notes, cost, pricing
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="4️⃣ Save to Inventory" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Click "Save to Inventory"
+                                        <LineBreak/>
+                                        • Card is added to your collection
+                                        <LineBreak/>
+                                        • Ready for pricing and export
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <Border Background="{DynamicResource SystemChromeLowColor}"
+                                        CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                        💡 <Run FontWeight="Bold">Tip:</Run> For best results, use clear, well-lit photos with the entire card visible.
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Flyout>
+                </Button.Flyout>
+                <TextBlock Text="?" FontSize="18" FontWeight="Bold"/>
+            </Button>
+        </Grid>
 
         <!-- Main Content: Two columns -->
         <Grid Grid.Row="1" ColumnDefinitions="350,*" Margin="24,8">

@@ -10,7 +10,64 @@
     <ScrollViewer Padding="24">
         <StackPanel Spacing="20" MaxWidth="750">
 
-            <TextBlock Text="Financial Reports" FontSize="24" FontWeight="Bold"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="Financial Reports" FontSize="24" FontWeight="Bold"/>
+
+                <!-- Help Button -->
+                <Button Grid.Column="1" Width="32" Height="32" Padding="0" VerticalAlignment="Top"
+                        ToolTip.Tip="Quick Help">
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <Border MaxWidth="350" Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="📊 Reports - Quick Guide" FontSize="16" FontWeight="Bold"/>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="💰 Sales Summary" FontWeight="SemiBold"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                            • View total sales by date range
+                                            <LineBreak/>
+                                            • See gross revenue and net profit
+                                            <LineBreak/>
+                                            • Breakdown of fees and costs
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="📈 Inventory Value" FontWeight="SemiBold"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                            • Total value of unsold inventory
+                                            <LineBreak/>
+                                            • Cost basis vs listing price
+                                            <LineBreak/>
+                                            • Potential profit if all sold
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="🎯 Top Performers" FontWeight="SemiBold"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                            • Best selling players
+                                            <LineBreak/>
+                                            • Most profitable sales
+                                            <LineBreak/>
+                                            • Sales by platform (Whatnot, eBay)
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <Border Background="#FFF3E0" BorderBrush="Orange" BorderThickness="1"
+                                            CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                                        <TextBlock TextWrapping="Wrap" FontSize="11">
+                                            ⚠️ <Run FontWeight="Bold">Legal Notice:</Run> These reports are for informational purposes only. Not tax or financial advice. Always verify data and consult professionals.
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </Flyout>
+                    </Button.Flyout>
+                    <TextBlock Text="?" FontSize="18" FontWeight="Bold"/>
+                </Button>
+            </Grid>
 
             <!-- Legal Notice -->
             <Border BorderBrush="Orange" BorderThickness="2"

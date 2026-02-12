@@ -12,11 +12,58 @@
 
             <TextBlock Text="Settings" FontSize="24" FontWeight="Bold"/>
 
-            <!-- API Connections -->
+            <!-- Quick Start Guide -->
+            <Border BorderBrush="#2196F3" BorderThickness="2"
+                    CornerRadius="8" Padding="20" Background="{DynamicResource SystemChromeLowColor}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="🚀 Quick Start - Get Your API Keys" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="13">
+                        FlipKit needs two free API keys to function:
+                    </TextBlock>
+
+                    <StackPanel Spacing="8" Margin="12,4,0,0">
+                        <TextBlock TextWrapping="Wrap" FontSize="13">
+                            <Run FontWeight="Bold">1. OpenRouter API</Run> (for AI card scanning)
+                            <LineBreak/>
+                            • Visit: <Run Foreground="#2196F3">https://openrouter.ai/keys</Run>
+                            <LineBreak/>
+                            • Sign in with Google/GitHub
+                            <LineBreak/>
+                            • Click "Create Key" - name it "FlipKit"
+                            <LineBreak/>
+                            • Copy the key (starts with "sk-or-v1-...")
+                            <LineBreak/>
+                            • Paste below in "OpenRouter API Key"
+                        </TextBlock>
+
+                        <TextBlock TextWrapping="Wrap" FontSize="13" Margin="0,8,0,0">
+                            <Run FontWeight="Bold">2. ImgBB API</Run> (for image hosting)
+                            <LineBreak/>
+                            • Visit: <Run Foreground="#2196F3">https://api.imgbb.com/</Run>
+                            <LineBreak/>
+                            • Click "Get API Key"
+                            <LineBreak/>
+                            • Sign up with email (free, no credit card)
+                            <LineBreak/>
+                            • Copy your API key
+                            <LineBreak/>
+                            • Paste below in "ImgBB API Key"
+                        </TextBlock>
+                    </StackPanel>
+
+                    <Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,8,0,0">
+                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                            💡 <Run FontWeight="Bold">Both services are FREE!</Run> OpenRouter provides free AI models (11 available), and ImgBB offers free image hosting. No credit card required.
+                        </TextBlock>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- API Connections (Essential) -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                     CornerRadius="8" Padding="20">
                 <StackPanel Spacing="12">
-                    <TextBlock Text="API Connections" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="🔑 API Connections" FontSize="18" FontWeight="SemiBold"/>
 
                     <!-- OpenRouter -->
                     <TextBlock Text="OpenRouter API Key" FontWeight="SemiBold" Margin="0,8,0,0"/>
@@ -28,9 +75,12 @@
                                  PasswordChar="*" Watermark="sk-or-v1-..."/>
                     </DockPanel>
                     <TextBlock Text="{Binding OpenRouterStatus}" FontSize="12" Opacity="0.7"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                        Used for AI-powered card scanning. Get your key at: https://openrouter.ai/keys
+                    </TextBlock>
 
                     <!-- ImgBB -->
-                    <TextBlock Text="ImgBB API Key" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock Text="ImgBB API Key" FontWeight="SemiBold" Margin="0,12,0,0"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
                                 Command="{Binding TestImgBBCommand}"
@@ -39,9 +89,12 @@
                                  PasswordChar="*" Watermark="Your ImgBB API key"/>
                     </DockPanel>
                     <TextBlock Text="{Binding ImgBBStatus}" FontSize="12" Opacity="0.7"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                        Used for hosting card images in exports. Get your key at: https://api.imgbb.com/
+                    </TextBlock>
 
                     <!-- Model Selection -->
-                    <TextBlock Text="Default AI Model" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <TextBlock Text="Default AI Model" FontWeight="SemiBold" Margin="0,12,0,0"/>
                     <ComboBox ItemsSource="{Binding ModelOptions}"
                               SelectedItem="{Binding DefaultModel}"
                               HorizontalAlignment="Stretch"/>
@@ -50,339 +103,21 @@
                 </StackPanel>
             </Border>
 
-            <!-- Card Scanning -->
+            <!-- Local Servers (Essential) -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                     CornerRadius="8" Padding="20">
                 <StackPanel Spacing="12">
-                    <TextBlock Text="Card Scanning" FontSize="18" FontWeight="SemiBold"/>
-
-                    <CheckBox IsChecked="{Binding EnableVariationVerification}"
-                              Content="Verify variations against set checklists"/>
-
-                    <CheckBox IsChecked="{Binding AutoApplyHighConfidenceSuggestions}"
-                              Content="Auto-apply high-confidence corrections"
-                              IsEnabled="{Binding EnableVariationVerification}"/>
-
-                    <CheckBox IsChecked="{Binding RunConfirmationPass}"
-                              Content="Run confirmation pass for ambiguous cards"
-                              IsEnabled="{Binding EnableVariationVerification}"/>
-
-                    <CheckBox IsChecked="{Binding EnableChecklistLearning}"
-                              Content="Auto-learn checklists from saved cards"/>
-
-                    <!-- Concurrent Scans -->
-                    <TextBlock Text="Max Concurrent Bulk Scans" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <NumericUpDown Value="{Binding MaxConcurrentScans}"
-                                   Minimum="1" Maximum="8" Increment="1"
-                                   HorizontalAlignment="Left" Width="100"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        For free models (with :free suffix), use 1 to avoid rate limits.
-                        For paid models with credits, use 3-4 for optimal speed.
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-
-            <!-- Preferences -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Preferences" FontSize="18" FontWeight="SemiBold"/>
-
-                    <CheckBox IsChecked="{Binding IsEbaySeller}" Content="I sell on eBay (enables Terapeak links)"/>
-
-                    <TextBlock Text="Default Shipping Profile" FontWeight="SemiBold"/>
-                    <ComboBox SelectedItem="{Binding DefaultShippingProfile}" HorizontalAlignment="Stretch">
-                        <x:String>4 oz</x:String>
-                        <x:String>8 oz</x:String>
-                        <x:String>1 lb</x:String>
-                    </ComboBox>
-
-                    <TextBlock Text="Default Condition" FontWeight="SemiBold"/>
-                    <ComboBox SelectedItem="{Binding DefaultCondition}" HorizontalAlignment="Stretch">
-                        <x:String>Near Mint</x:String>
-                        <x:String>Like New</x:String>
-                        <x:String>Very Good</x:String>
-                        <x:String>Good</x:String>
-                        <x:String>Acceptable</x:String>
-                    </ComboBox>
-                </StackPanel>
-            </Border>
-
-            <!-- Financial Settings -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Financial Settings" FontSize="18" FontWeight="SemiBold"/>
-
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="16">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Whatnot Fee %" VerticalAlignment="Center"/>
-                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding WhatnotFeePercent}"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="eBay Fee %" VerticalAlignment="Center"/>
-                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding EbayFeePercent}"/>
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Default Shipping (PWE)" VerticalAlignment="Center"/>
-                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DefaultShippingCostPwe}"/>
-
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Default Shipping (BMWT)" VerticalAlignment="Center"/>
-                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding DefaultShippingCostBmwt}"/>
-
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Price Staleness (days)" VerticalAlignment="Center"/>
-                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PriceStalenessThresholdDays}"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <!-- Title Templates (SEO Optimization) -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Listing Title Templates" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="🌐 Local Servers (FlipKit Hub)" FontSize="18" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
-                        Customize how card titles are generated for each platform. Based on WTSCards research,
-                        different platforms weight fields differently for SEO (search ranking).
+                        Access FlipKit from your phone or other devices on your network.
                     </TextBlock>
-
-                    <!-- Active Export Platform -->
-                    <TextBlock Text="Active Export Platform" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <ComboBox ItemsSource="{Binding ExportPlatformOptions}"
-                              SelectedItem="{Binding ActiveExportPlatform}"
-                              HorizontalAlignment="Stretch"/>
-                    <TextBlock Text="This platform's template will be used for exports"
-                               FontSize="11" Opacity="0.5" Margin="0,-6,0,0"/>
-
-                    <!-- Whatnot Template -->
-                    <TextBlock Text="Whatnot Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding WhatnotTitleTemplate}"
-                             Watermark="Example: Year Brand Player Parallel"
-                             TextWrapping="Wrap" AcceptsReturn="False"/>
-                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Optimized for brand + player searches (e.g., "Prizm CJ Stroud")
-                    </TextBlock>
-
-                    <!-- eBay Template -->
-                    <TextBlock Text="eBay Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding EbayTitleTemplate}"
-                             Watermark="Example: Year Manufacturer Brand Player Team"
-                             TextWrapping="Wrap" AcceptsReturn="False"/>
-                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Comprehensive SEO with manufacturer emphasis
-                    </TextBlock>
-
-                    <!-- COMC Template -->
-                    <TextBlock Text="COMC Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding ComcTitleTemplate}"
-                             Watermark="Example: Year Brand Player Team Parallel"
-                             TextWrapping="Wrap" AcceptsReturn="False"/>
-                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Check Out My Cards consignment format
-                    </TextBlock>
-
-                    <!-- Generic Template -->
-                    <TextBlock Text="Generic Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding GenericTitleTemplate}"
-                             Watermark="Example: Year Brand Player Parallel"
-                             TextWrapping="Wrap" AcceptsReturn="False"/>
-                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Balanced format for other platforms
-                    </TextBlock>
-
-                    <!-- Help Text (Collapsible) -->
-                    <Expander Header="Available Placeholders" Margin="0,8,0,0">
-                        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                                Padding="12" CornerRadius="4" Margin="0,8,0,0">
-                            <TextBlock Text="{Binding PlaceholderHelpText}"
-                                       FontSize="11" FontFamily="Consolas"
-                                       TextWrapping="Wrap"/>
-                        </Border>
-                    </Expander>
-
-                    <!-- Validation & Preview -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                        <Button Content="Validate Template" Command="{Binding ValidateCurrentTemplateCommand}"
-                                Padding="12,6"/>
-                        <Button Content="Preview with Sample Card" Command="{Binding GeneratePreviewCommand}"
-                                Padding="12,6"/>
-                        <Button Content="Reset to Defaults" Command="{Binding ResetTitleTemplatesCommand}"
-                                Padding="12,6"/>
-                    </StackPanel>
-
-                    <!-- Validation Message -->
-                    <TextBlock Text="{Binding TemplateValidationMessage}"
-                               IsVisible="{Binding TemplateValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                               FontSize="12" Foreground="Orange" TextWrapping="Wrap"/>
-
-                    <!-- Preview -->
-                    <TextBlock Text="{Binding TemplatePreview}"
-                               IsVisible="{Binding TemplatePreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                               FontSize="12" Foreground="Blue" TextWrapping="Wrap"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Search Query Templates (Pricing Research) -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Search Query Templates" FontSize="18" FontWeight="SemiBold"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
-                        Customize how search queries are built for pricing research (Terapeak/eBay).
-                        Exclude overly specific fields (CardNumber, Serial) to get broader search results.
-                    </TextBlock>
-
-                    <!-- Terapeak Search Template -->
-                    <TextBlock Text="Terapeak Search Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding TerapeakSearchTemplate}"
-                             Watermark="Example: Year Brand Player Parallel"
-                             TextWrapping="Wrap" AcceptsReturn="False"/>
-                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Used when clicking "Open Terapeak" in Pricing view
-                    </TextBlock>
-
-                    <!-- eBay Search Template -->
-                    <TextBlock Text="eBay Sold Search Template" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding EbaySearchTemplate}"
-                             Watermark="Example: Year Manufacturer Brand Player Team"
-                             TextWrapping="Wrap" AcceptsReturn="False"/>
-                    <TextBlock FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Used when clicking "Open eBay Sold" in Pricing view
-                    </TextBlock>
-
-                    <!-- Validation & Preview -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                        <Button Content="Validate Templates" Command="{Binding ValidateSearchTemplatesCommand}"
-                                Padding="12,6"/>
-                        <Button Content="Preview with Sample Card" Command="{Binding GenerateSearchPreviewCommand}"
-                                Padding="12,6"/>
-                        <Button Content="Reset to Defaults" Command="{Binding ResetSearchTemplatesCommand}"
-                                Padding="12,6"/>
-                    </StackPanel>
-
-                    <!-- Validation Message -->
-                    <TextBlock Text="{Binding SearchTemplateValidationMessage}"
-                               IsVisible="{Binding SearchTemplateValidationMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                               FontSize="12" Foreground="Orange" TextWrapping="Wrap"/>
-
-                    <!-- Preview -->
-                    <TextBlock Text="{Binding SearchTemplatePreview}"
-                               IsVisible="{Binding SearchTemplatePreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                               FontSize="12" Foreground="Blue" TextWrapping="Wrap"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Your Data -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Your Data" FontSize="18" FontWeight="SemiBold"/>
-
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="Cards in database:" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding CardCount}" FontWeight="Bold" VerticalAlignment="Center"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="Database:" VerticalAlignment="Center" FontSize="12" Opacity="0.7"/>
-                        <TextBlock Text="{Binding DbPath}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
-                    </StackPanel>
-
-                    <Button Content="Open Data Folder" Command="{Binding OpenDataFolderCommand}"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Data Access Mode -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Data Access Mode" FontSize="18" FontWeight="SemiBold"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
-                        FlipKit automatically detects whether to use local database (fast, direct access) or remote API (Tailscale network access).
-                    </TextBlock>
-
-                    <!-- Current Mode Status -->
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
-                        <TextBlock Text="Current Mode:" VerticalAlignment="Center" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding DataAccessMode}" VerticalAlignment="Center">
-                            <TextBlock.Foreground>
-                                <SolidColorBrush Color="{Binding DataAccessModeColor}"/>
-                            </TextBlock.Foreground>
-                        </TextBlock>
-                    </StackPanel>
-
-                    <!-- API Server URL (Optional) -->
-                    <TextBlock Text="API Server URL (Optional for Remote Access)" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <TextBox Text="{Binding SyncServerUrl}"
-                             Watermark="http://100.64.1.5:5000"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.5" Margin="0,-6,0,0">
-                        Leave empty or use localhost for local database. Enter Tailscale IP for remote API access.
-                    </TextBlock>
-
-                    <!-- How it works -->
-                    <Border Background="{DynamicResource SystemChromeLowColor}"
-                            CornerRadius="6" Padding="12" Margin="0,8,0,0">
-                        <StackPanel Spacing="6">
-                            <TextBlock Text="📋 How It Works" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.8">
-                                • <Run FontWeight="SemiBold">Empty/Localhost:</Run> Uses local SQLite database (fast, direct)
-                                <LineBreak/>
-                                • <Run FontWeight="SemiBold">Tailscale IP:</Run> Uses remote API via FlipKit.Api server
-                                <LineBreak/>
-                                <LineBreak/>
-                                <Run FontWeight="SemiBold">To access remotely:</Run>
-                                <LineBreak/>
-                                1. Run FlipKit.Api on main computer: cd FlipKit.Api &amp;&amp; dotnet run
-                                <LineBreak/>
-                                2. Get Tailscale IP: tailscale ip -4
-                                <LineBreak/>
-                                3. Enter http://[TAILSCALE_IP]:5000 above and save
-                                <LineBreak/>
-                                4. Restart app - all data operations now use API
-                            </TextBlock>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Border>
-
-            <!-- Servers (FlipKit Hub) -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Local Servers (FlipKit Hub)" FontSize="18" FontWeight="SemiBold"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
-                        Manage embedded Web and API servers for mobile access and remote connectivity.
-                    </TextBlock>
-
-                    <!-- Auto-start Configuration -->
-                    <TextBlock Text="Auto-start Configuration" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <CheckBox IsChecked="{Binding AutoStartWebServer}"
-                              Content="Start Web server automatically on launch"/>
-                    <CheckBox IsChecked="{Binding AutoStartApiServer}"
-                              Content="Start API server automatically on launch"/>
-                    <CheckBox IsChecked="{Binding AutoOpenBrowser}"
-                              Content="Open browser when Web server starts"/>
-                    <CheckBox IsChecked="{Binding MinimizeToTray}"
-                              Content="Minimize to system tray"/>
-
-                    <!-- Port Configuration -->
-                    <TextBlock Text="Port Configuration" FontWeight="SemiBold" Margin="0,12,0,0"/>
-                    <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto" Margin="0,4">
-                        <TextBlock Grid.Column="0" Text="Web Port:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <NumericUpDown Grid.Column="1" Value="{Binding WebServerPort}"
-                                       Minimum="5000" Maximum="9999" Increment="1"
-                                       Width="120" HorizontalAlignment="Left"/>
-                        <TextBlock Grid.Column="2" Text="API Port:" VerticalAlignment="Center" Margin="16,0,8,0"/>
-                        <NumericUpDown Grid.Column="3" Value="{Binding ApiServerPort}"
-                                       Minimum="5000" Maximum="9999" Increment="1"
-                                       Width="120" HorizontalAlignment="Left"/>
-                    </Grid>
-                    <TextBlock Text="Changes to ports take effect after restarting servers"
-                               FontSize="11" Opacity="0.6" Margin="0,-6,0,0"/>
 
                     <!-- Server Controls -->
-                    <TextBlock Text="Server Status" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <TextBlock Text="Server Status" FontWeight="SemiBold" Margin="0,8,0,0"/>
 
                     <!-- Web Server -->
                     <Border Background="{DynamicResource SystemChromeLowColor}"
-                            CornerRadius="6" Padding="12" Margin="0,4,0,0">
+                            CornerRadius="6" Padding="12">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="Web Server:" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -402,7 +137,7 @@
 
                     <!-- API Server -->
                     <Border Background="{DynamicResource SystemChromeLowColor}"
-                            CornerRadius="6" Padding="12" Margin="0,4,0,0">
+                            CornerRadius="6" Padding="12">
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="API Server:" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -418,66 +153,94 @@
                         </Grid>
                     </Border>
 
-                    <!-- Network Access -->
-                    <TextBlock Text="Mobile Access" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <!-- Mobile Access - Always Visible -->
+                    <TextBlock Text="Mobile Access" FontWeight="SemiBold" Margin="0,12,0,4"/>
                     <Border Background="{DynamicResource SystemChromeLowColor}"
-                            CornerRadius="6" Padding="12" Margin="0,4,0,0">
+                            CornerRadius="6" Padding="16">
                         <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="6">
+                            <StackPanel Grid.Column="0" Spacing="8">
                                 <TextBlock Text="{Binding LocalIpAddresses}"
-                                           TextWrapping="Wrap" FontSize="12"/>
-                                <TextBlock Text="Connect your phone to the same Wi-Fi network and scan the QR code or navigate to the URL above."
-                                           TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,4,0,0"/>
+                                           TextWrapping="Wrap" FontSize="13" FontFamily="Consolas"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                    📱 Scan the QR code or type the URL into your phone's browser
+                                </TextBlock>
                             </StackPanel>
                             <Border Grid.Column="1" Background="White" Padding="8"
-                                    CornerRadius="4" Margin="12,0,0,0"
+                                    CornerRadius="4" Margin="16,0,0,0"
                                     IsVisible="{Binding QrCodeBitmap, Converter={x:Static ObjectConverters.IsNotNull}}">
                                 <Image Source="{Binding QrCodeBitmap}"
-                                       Width="150" Height="150"
+                                       Width="140" Height="140"
                                        Stretch="Uniform"/>
                             </Border>
                         </Grid>
                     </Border>
 
-                    <!-- Server Logs (Expandable) -->
-                    <Expander Header="Server Logs" IsExpanded="False" Margin="0,12,0,0">
+                    <!-- Server Configuration -->
+                    <Expander Header="⚙️ Server Configuration" Margin="0,8,0,0">
                         <Border Background="{DynamicResource SystemChromeLowColor}"
                                 CornerRadius="6" Padding="12" Margin="0,8,0,0">
                             <StackPanel Spacing="12">
-                                <!-- Web Logs -->
-                                <StackPanel>
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Grid.Column="0" Text="Web Server Logs" FontWeight="SemiBold"/>
-                                        <Button Grid.Column="1" Content="Clear" Command="{Binding ClearWebLogsCommand}"
-                                                Padding="8,4" FontSize="11"/>
-                                    </Grid>
-                                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                                            CornerRadius="4" Padding="8" Margin="0,4,0,0" Height="150">
-                                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                                      VerticalScrollBarVisibility="Auto">
-                                            <TextBlock Text="{Binding WebServerLogs}"
-                                                       FontFamily="Consolas,Courier New" FontSize="10"
-                                                       TextWrapping="NoWrap"/>
-                                        </ScrollViewer>
-                                    </Border>
-                                </StackPanel>
+                                <!-- Auto-start -->
+                                <TextBlock Text="Auto-start Configuration" FontWeight="SemiBold"/>
+                                <CheckBox IsChecked="{Binding AutoStartWebServer}"
+                                          Content="Start Web server automatically on launch"/>
+                                <CheckBox IsChecked="{Binding AutoStartApiServer}"
+                                          Content="Start API server automatically on launch"/>
+                                <CheckBox IsChecked="{Binding AutoOpenBrowser}"
+                                          Content="Open browser when Web server starts"/>
+                                <CheckBox IsChecked="{Binding MinimizeToTray}"
+                                          Content="Minimize to system tray"/>
 
-                                <!-- API Logs -->
-                                <StackPanel>
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <TextBlock Grid.Column="0" Text="API Server Logs" FontWeight="SemiBold"/>
-                                        <Button Grid.Column="1" Content="Clear" Command="{Binding ClearApiLogsCommand}"
-                                                Padding="8,4" FontSize="11"/>
-                                    </Grid>
-                                    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                                            CornerRadius="4" Padding="8" Margin="0,4,0,0" Height="150">
-                                        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                                                      VerticalScrollBarVisibility="Auto">
-                                            <TextBlock Text="{Binding ApiServerLogs}"
-                                                       FontFamily="Consolas,Courier New" FontSize="10"
-                                                       TextWrapping="NoWrap"/>
-                                        </ScrollViewer>
-                                    </Border>
+                                <!-- Ports -->
+                                <TextBlock Text="Port Configuration" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                                <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto">
+                                    <TextBlock Grid.Column="0" Text="Web Port:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <NumericUpDown Grid.Column="1" Value="{Binding WebServerPort}"
+                                                   Minimum="5000" Maximum="9999" Increment="1"
+                                                   Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock Grid.Column="2" Text="API Port:" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                                    <NumericUpDown Grid.Column="3" Value="{Binding ApiServerPort}"
+                                                   Minimum="5000" Maximum="9999" Increment="1"
+                                                   Width="120" HorizontalAlignment="Left"/>
+                                </Grid>
+                                <TextBlock Text="Changes to ports take effect after restarting servers"
+                                           FontSize="11" Opacity="0.6"/>
+
+                                <!-- Logs -->
+                                <TextBlock Text="Server Logs" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                                <StackPanel Spacing="8">
+                                    <!-- Web Logs -->
+                                    <StackPanel>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="Web Server" FontSize="12"/>
+                                            <Button Grid.Column="1" Content="Clear" Command="{Binding ClearWebLogsCommand}"
+                                                    Padding="8,4" FontSize="11"/>
+                                        </Grid>
+                                        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                                CornerRadius="4" Padding="8" Margin="0,4,0,0" Height="100">
+                                            <ScrollViewer>
+                                                <TextBlock Text="{Binding WebServerLogs}"
+                                                           FontFamily="Consolas" FontSize="10"
+                                                           TextWrapping="NoWrap"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </StackPanel>
+                                    <!-- API Logs -->
+                                    <StackPanel>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Text="API Server" FontSize="12"/>
+                                            <Button Grid.Column="1" Content="Clear" Command="{Binding ClearApiLogsCommand}"
+                                                    Padding="8,4" FontSize="11"/>
+                                        </Grid>
+                                        <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                                CornerRadius="4" Padding="8" Margin="0,4,0,0" Height="100">
+                                            <ScrollViewer>
+                                                <TextBlock Text="{Binding ApiServerLogs}"
+                                                           FontFamily="Consolas" FontSize="10"
+                                                           TextWrapping="NoWrap"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -485,7 +248,213 @@
                 </StackPanel>
             </Border>
 
-            <!-- Save -->
+            <!-- Card Scanning (Collapsible) -->
+            <Expander Header="🔍 Card Scanning Settings">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <CheckBox IsChecked="{Binding EnableVariationVerification}"
+                                  Content="Verify variations against set checklists"/>
+
+                        <CheckBox IsChecked="{Binding AutoApplyHighConfidenceSuggestions}"
+                                  Content="Auto-apply high-confidence corrections"
+                                  IsEnabled="{Binding EnableVariationVerification}"/>
+
+                        <CheckBox IsChecked="{Binding RunConfirmationPass}"
+                                  Content="Run confirmation pass for ambiguous cards"
+                                  IsEnabled="{Binding EnableVariationVerification}"/>
+
+                        <CheckBox IsChecked="{Binding EnableChecklistLearning}"
+                                  Content="Auto-learn checklists from saved cards"/>
+
+                        <!-- Concurrent Scans -->
+                        <TextBlock Text="Max Concurrent Bulk Scans" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                        <NumericUpDown Value="{Binding MaxConcurrentScans}"
+                                       Minimum="1" Maximum="8" Increment="1"
+                                       HorizontalAlignment="Left" Width="100"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                            For free models (with :free suffix), use 1 to avoid rate limits.
+                            For paid models with credits, use 3-4 for optimal speed.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
+            <!-- Platform & Export Settings (Collapsible) -->
+            <Expander Header="📋 Platform &amp; Export Settings">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="16">
+                        <!-- Active Platform -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Active Export Platform" FontWeight="SemiBold"/>
+                            <ComboBox ItemsSource="{Binding ExportPlatformOptions}"
+                                      SelectedItem="{Binding ActiveExportPlatform}"
+                                      HorizontalAlignment="Stretch"/>
+                            <TextBlock Text="This platform's template will be used for exports"
+                                       FontSize="11" Opacity="0.5"/>
+                        </StackPanel>
+
+                        <!-- Title Templates -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Listing Title Templates" FontWeight="SemiBold"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                Customize how card titles are generated for each platform.
+                            </TextBlock>
+
+                            <!-- Whatnot -->
+                            <TextBlock Text="Whatnot Template" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding WhatnotTitleTemplate}"
+                                     Watermark="Year Brand Player Parallel"/>
+
+                            <!-- eBay -->
+                            <TextBlock Text="eBay Template" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding EbayTitleTemplate}"
+                                     Watermark="Year Manufacturer Brand Player Team"/>
+
+                            <!-- COMC -->
+                            <TextBlock Text="COMC Template" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding ComcTitleTemplate}"
+                                     Watermark="Year Brand Player Team Parallel"/>
+
+                            <!-- Generic -->
+                            <TextBlock Text="Generic Template" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding GenericTitleTemplate}"
+                                     Watermark="Year Brand Player Parallel"/>
+
+                            <!-- Actions -->
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                <Button Content="Preview" Command="{Binding GeneratePreviewCommand}" Padding="12,6"/>
+                                <Button Content="Reset Defaults" Command="{Binding ResetTitleTemplatesCommand}" Padding="12,6"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding TemplatePreview}"
+                                       IsVisible="{Binding TemplatePreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="11" Foreground="Blue" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- Search Templates -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Pricing Search Templates" FontWeight="SemiBold"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                Customize search queries for pricing research.
+                            </TextBlock>
+
+                            <TextBlock Text="Terapeak Template" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding TerapeakSearchTemplate}"
+                                     Watermark="Year Brand Player Parallel"/>
+
+                            <TextBlock Text="eBay Sold Template" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding EbaySearchTemplate}"
+                                     Watermark="Year Manufacturer Brand Player Team"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                                <Button Content="Preview" Command="{Binding GenerateSearchPreviewCommand}" Padding="12,6"/>
+                                <Button Content="Reset Defaults" Command="{Binding ResetSearchTemplatesCommand}" Padding="12,6"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding SearchTemplatePreview}"
+                                       IsVisible="{Binding SearchTemplatePreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="11" Foreground="Blue" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
+            <!-- Financial Settings (Collapsible) -->
+            <Expander Header="💰 Financial Settings">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="16">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Whatnot Fee %" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding WhatnotFeePercent}"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="eBay Fee %" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding EbayFeePercent}"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Default Shipping (PWE)" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding DefaultShippingCostPwe}"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Default Shipping (BMWT)" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding DefaultShippingCostBmwt}"/>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Price Staleness (days)" VerticalAlignment="Center"/>
+                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PriceStalenessThresholdDays}"/>
+                    </Grid>
+                </Border>
+            </Expander>
+
+            <!-- Preferences (Collapsible) -->
+            <Expander Header="⚙️ General Preferences">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <CheckBox IsChecked="{Binding IsEbaySeller}" Content="I sell on eBay (enables Terapeak links)"/>
+
+                        <TextBlock Text="Default Shipping Profile" FontWeight="SemiBold"/>
+                        <ComboBox SelectedItem="{Binding DefaultShippingProfile}" HorizontalAlignment="Stretch">
+                            <x:String>4 oz</x:String>
+                            <x:String>8 oz</x:String>
+                            <x:String>1 lb</x:String>
+                        </ComboBox>
+
+                        <TextBlock Text="Default Condition" FontWeight="SemiBold"/>
+                        <ComboBox SelectedItem="{Binding DefaultCondition}" HorizontalAlignment="Stretch">
+                            <x:String>Near Mint</x:String>
+                            <x:String>Like New</x:String>
+                            <x:String>Very Good</x:String>
+                            <x:String>Good</x:String>
+                            <x:String>Acceptable</x:String>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
+            <!-- Data Management (Collapsible) -->
+            <Expander Header="💾 Data Management">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <!-- Database Info -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Your Database" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Cards in database:" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding CardCount}" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Location:" VerticalAlignment="Center" FontSize="12" Opacity="0.7"/>
+                                <TextBlock Text="{Binding DbPath}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Content="Open Data Folder" Command="{Binding OpenDataFolderCommand}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <!-- Data Access Mode -->
+                        <StackPanel Spacing="8" Margin="0,12,0,0">
+                            <TextBlock Text="Data Access Mode" FontWeight="SemiBold"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                Configure how FlipKit accesses your data (local database vs remote API).
+                            </TextBlock>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Current Mode:" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DataAccessMode}" FontWeight="Bold" VerticalAlignment="Center">
+                                    <TextBlock.Foreground>
+                                        <SolidColorBrush Color="{Binding DataAccessModeColor}"/>
+                                    </TextBlock.Foreground>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <TextBlock Text="API Server URL (Optional)" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                            <TextBox Text="{Binding SyncServerUrl}"
+                                     Watermark="http://100.64.1.5:5000 (Tailscale IP)"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6">
+                                Leave empty for local database. Enter Tailscale IP for remote API access.
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
+            <!-- Save Button -->
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <Button Content="Save Settings" Command="{Binding SaveSettingsCommand}"
                         Classes="accent" Padding="24,10"/>

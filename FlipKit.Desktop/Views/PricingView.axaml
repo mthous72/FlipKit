@@ -15,17 +15,85 @@
     <Grid RowDefinitions="Auto,*,Auto" Margin="24">
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,16">
-            <TextBlock Text="Price Cards" FontSize="24" FontWeight="Bold"/>
-            <TextBlock IsVisible="{Binding HasCards}">
-                <Run Text="Card"/>
-                <Run Text="{Binding CurrentPosition}"/>
-                <Run Text="of"/>
-                <Run Text="{Binding TotalCount}"/>
-            </TextBlock>
-            <TextBlock Text="{Binding StatusMessage}" Opacity="0.6"
-                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-        </StackPanel>
+        <Grid Grid.Row="0" Margin="0,0,0,16" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Price Cards" FontSize="24" FontWeight="Bold"/>
+                <TextBlock IsVisible="{Binding HasCards}">
+                    <Run Text="Card"/>
+                    <Run Text="{Binding CurrentPosition}"/>
+                    <Run Text="of"/>
+                    <Run Text="{Binding TotalCount}"/>
+                </TextBlock>
+                <TextBlock Text="{Binding StatusMessage}" Opacity="0.6"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <!-- Help Button -->
+            <Button Grid.Column="1" Width="32" Height="32" Padding="0" VerticalAlignment="Top"
+                    ToolTip.Tip="Quick Help">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <Border MaxWidth="350" Padding="16">
+                            <StackPanel Spacing="12">
+                                <TextBlock Text="💰 Pricing - Quick Guide" FontSize="16" FontWeight="Bold"/>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="🔍 Research Prices" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Click "Open Terapeak" for eBay sold data
+                                        <LineBreak/>
+                                        • Click "Open eBay Sold" for recent sales
+                                        <LineBreak/>
+                                        • Review comparable sold listings
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="💵 Set Pricing" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Enter your cost basis (what you paid)
+                                        <LineBreak/>
+                                        • Enter listing price based on research
+                                        <LineBreak/>
+                                        • System calculates profit automatically
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="📊 Profit Calculator" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Shows estimated fees (Whatnot/eBay %)
+                                        <LineBreak/>
+                                        • Includes shipping costs
+                                        <LineBreak/>
+                                        • Displays net profit after all costs
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="✅ Save &amp; Navigate" FontWeight="SemiBold"/>
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                        • Click "Save" to update card pricing
+                                        <LineBreak/>
+                                        • Use "Previous"/"Next" to price queue
+                                        <LineBreak/>
+                                        • "Mark Ready" when priced and ready to list
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <Border Background="{DynamicResource SystemChromeLowColor}"
+                                        CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                        💡 <Run FontWeight="Bold">Tip:</Run> Price staleness is tracked automatically. Cards older than 30 days will show as stale in inventory.
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Flyout>
+                </Button.Flyout>
+                <TextBlock Text="?" FontSize="18" FontWeight="Bold"/>
+            </Button>
+        </Grid>
 
         <!-- Main Content -->
         <ScrollViewer Grid.Row="1" IsVisible="{Binding HasCards}">

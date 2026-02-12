@@ -10,8 +10,67 @@
     <ScrollViewer Padding="24">
         <StackPanel Spacing="20" MaxWidth="700">
 
-            <TextBlock Text="Export to Whatnot" FontSize="24" FontWeight="Bold"/>
-            <TextBlock Text="Upload images and generate CSV for Whatnot bulk import" Opacity="0.6"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Export to Whatnot" FontSize="24" FontWeight="Bold"/>
+                    <TextBlock Text="Upload images and generate CSV for Whatnot bulk import" Opacity="0.6"/>
+                </StackPanel>
+
+                <!-- Help Button -->
+                <Button Grid.Column="1" Width="32" Height="32" Padding="0" VerticalAlignment="Top"
+                        ToolTip.Tip="Quick Help">
+                    <Button.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedRight">
+                            <Border MaxWidth="350" Padding="16">
+                                <StackPanel Spacing="12">
+                                    <TextBlock Text="📤 Export - Quick Guide" FontSize="16" FontWeight="Bold"/>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="1️⃣ Upload Images" FontWeight="SemiBold"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                            • Click "Upload All Images to ImgBB"
+                                            <LineBreak/>
+                                            • Images are hosted for public access
+                                            <LineBreak/>
+                                            • URLs are stored with each card
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="2️⃣ Generate CSV" FontWeight="SemiBold"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                            • Click "Generate Whatnot CSV"
+                                            <LineBreak/>
+                                            • Includes all ready/listed cards
+                                            <LineBreak/>
+                                            • File saved to Downloads folder
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="3️⃣ Import to Whatnot" FontWeight="SemiBold"/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                            • Log in to Whatnot seller portal
+                                            <LineBreak/>
+                                            • Use bulk import feature
+                                            <LineBreak/>
+                                            • Upload the generated CSV file
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <Border Background="{DynamicResource SystemChromeLowColor}"
+                                            CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                            💡 <Run FontWeight="Bold">Tip:</Run> Make sure all cards have prices and status set to "Ready" or "Listed" before exporting.
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </Flyout>
+                    </Button.Flyout>
+                    <TextBlock Text="?" FontSize="18" FontWeight="Bold"/>
+                </Button>
+            </Grid>
 
             <!-- Summary Cards -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"

@@ -551,42 +551,87 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 var localIPs = new List<string>();
+                var tailscaleIPs = new List<string>();
 
                 foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
                 {
-                    if (ni.OperationalStatus == OperationalStatus.Up &&
-                        (ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
-                         ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet))
+                    if (ni.OperationalStatus == OperationalStatus.Up)
                     {
                         foreach (var ip in ni.GetIPProperties().UnicastAddresses)
                         {
                             if (ip.Address.AddressFamily == AddressFamily.InterNetwork &&
                                 !ip.Address.ToString().StartsWith("127."))
                             {
-                                localIPs.Add(ip.Address.ToString());
+                                var ipStr = ip.Address.ToString();
+
+                                // Detect Tailscale IPs (100.64.0.0/10 CGNAT range)
+                                if (ipStr.StartsWith("100."))
+                                {
+                                    tailscaleIPs.Add(ipStr);
+                                }
+                                // Regular network interfaces
+                                else if (ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
+                                         ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet)
+                                {
+                                    localIPs.Add(ipStr);
+                                }
                             }
                         }
                     }
                 }
 
-                if (localIPs.Count > 0 && IsWebRunning)
+                if (IsWebRunning)
                 {
-                    var primaryIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
+                    string primaryIp;
+                    string networkType;
+                    string additionalInfo = "";
+
+                    // Prioritize Tailscale if available
+                    if (tailscaleIPs.Count > 0)
+                    {
+                        primaryIp = tailscaleIPs[0];
+                        networkType = "🌐 Tailscale (Remote Access)";
+
+                        if (localIPs.Count > 0)
+                        {
+                            var localIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
+                            additionalInfo = $"\n📱 Local Network: http://{localIp}:{ActualWebPort}";
+                        }
+                    }
+                    else if (localIPs.Count > 0)
+                    {
+                        primaryIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
+                        networkType = "📱 Local Network";
+                    }
+                    else
+                    {
+                        LocalIpAddresses = "No network connection";
+                        QrCodeBitmap = null;
+                        return;
+                    }
+
                     var url = $"http://{primaryIp}:{ActualWebPort}";
-                    var ipList = string.Join(", ", localIPs.Select(ip => $"http://{ip}:{ActualWebPort}"));
-                    LocalIpAddresses = $"Access from phone: {ipList}";
+                    LocalIpAddresses = $"{networkType}\n{url}{additionalInfo}";
 
                     // Generate QR code for the primary URL
                     GenerateQrCode(url);
                 }
-                else if (localIPs.Count > 0)
-                {
-                    LocalIpAddresses = $"Local IPs: {string.Join(", ", localIPs)} (Web server not running)";
-                    QrCodeBitmap = null;
-                }
                 else
                 {
-                    LocalIpAddresses = "No network connection";
+                    if (tailscaleIPs.Count > 0)
+                    {
+                        LocalIpAddresses = $"🌐 Tailscale IP: {tailscaleIPs[0]}\n(Web server not running)";
+                    }
+                    else if (localIPs.Count > 0)
+                    {
+                        var localIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
+                        LocalIpAddresses = $"📱 Local IP: {localIp}\n(Web server not running)";
+                    }
+                    else
+                    {
+                        LocalIpAddresses = "No network connection";
+                    }
+
                     QrCodeBitmap = null;
                 }
             }
