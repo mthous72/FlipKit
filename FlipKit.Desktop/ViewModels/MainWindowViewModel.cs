@@ -144,9 +144,16 @@ namespace FlipKit.Desktop.ViewModels
         }
 
         [RelayCommand]
-        private void ExitApplication()
+        private async Task ExitApplication()
         {
-            // This will trigger the shutdown sequence
+            // Stop servers before exiting
+            await _serverManagement.StopWebServerAsync();
+            await _serverManagement.StopApiServerAsync();
+
+            // Small delay to ensure servers are fully stopped
+            await Task.Delay(300);
+
+            // Now exit the application
             System.Environment.Exit(0);
         }
 

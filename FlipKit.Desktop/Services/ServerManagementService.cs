@@ -92,7 +92,7 @@ namespace FlipKit.Desktop.Services
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = serverPath,
-                    Arguments = $"--urls http://localhost:{availablePort}",
+                    Arguments = $"--urls http://0.0.0.0:{availablePort}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -202,7 +202,7 @@ namespace FlipKit.Desktop.Services
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = serverPath,
-                    Arguments = $"--urls http://localhost:{availablePort}",
+                    Arguments = $"--urls http://0.0.0.0:{availablePort}",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -277,15 +277,14 @@ namespace FlipKit.Desktop.Services
 
                 _logger.LogInformation("Stopping Web server (PID {Pid})", _webProcess.Id);
 
-                // Try graceful shutdown first
-                _webProcess.CloseMainWindow();
+                // Kill the process immediately (console apps don't respond to CloseMainWindow)
+                _webProcess.Kill(entireProcessTree: true);
 
-                // Wait up to 5 seconds for graceful shutdown
-                if (!_webProcess.WaitForExit(5000))
+                // Wait briefly to ensure process is terminated
+                await Task.Delay(100);
+                if (!_webProcess.WaitForExit(1000))
                 {
-                    _logger.LogWarning("Web server did not exit gracefully, killing process");
-                    _webProcess.Kill(entireProcessTree: true);
-                    await Task.Delay(500);
+                    _logger.LogWarning("Web server did not exit after kill command");
                 }
 
                 _webProcess.Dispose();
@@ -312,15 +311,14 @@ namespace FlipKit.Desktop.Services
 
                 _logger.LogInformation("Stopping API server (PID {Pid})", _apiProcess.Id);
 
-                // Try graceful shutdown first
-                _apiProcess.CloseMainWindow();
+                // Kill the process immediately (console apps don't respond to CloseMainWindow)
+                _apiProcess.Kill(entireProcessTree: true);
 
-                // Wait up to 5 seconds for graceful shutdown
-                if (!_apiProcess.WaitForExit(5000))
+                // Wait briefly to ensure process is terminated
+                await Task.Delay(100);
+                if (!_apiProcess.WaitForExit(1000))
                 {
-                    _logger.LogWarning("API server did not exit gracefully, killing process");
-                    _apiProcess.Kill(entireProcessTree: true);
-                    await Task.Delay(500);
+                    _logger.LogWarning("API server did not exit after kill command");
                 }
 
                 _apiProcess.Dispose();

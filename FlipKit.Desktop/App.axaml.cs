@@ -413,8 +413,8 @@ namespace FlipKit.Desktop
                             disposable.Dispose();
                         }
 
-                        // Small delay to ensure async operations complete
-                        await System.Threading.Tasks.Task.Delay(100);
+                        // Delay to ensure server processes are fully terminated
+                        await System.Threading.Tasks.Task.Delay(500);
                     }
                     catch (Exception ex)
                     {
