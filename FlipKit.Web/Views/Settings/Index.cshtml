@@ -239,11 +239,11 @@
                             @if (isEditable)
                             {
                                 <select asp-for="DefaultModel" class="form-select">
+                                    <option value="google/gemma-3-27b-it:free">Google Gemma 3 27B (Free - Best)</option>
+                                    <option value="mistralai/mistral-small-3.1-24b-instruct:free">Mistral Small 3.1 24B (Free)</option>
+                                    <option value="google/gemma-3-12b-it:free">Google Gemma 3 12B (Free)</option>
                                     <option value="nvidia/nemotron-nano-12b-v2-vl:free">Nvidia Nemotron Nano 12B (Free)</option>
-                                    <option value="google/gemini-flash-2.0:free">Google Gemini Flash 2.0 (Free)</option>
-                                    <option value="meta-llama/llama-3.2-90b-vision-instruct:free">Meta Llama 3.2 90B Vision (Free)</option>
-                                    <option value="qwen/qwen-2-vl-7b-instruct:free">Qwen 2 VL 7B (Free)</option>
-                                    <option value="mistralai/pixtral-12b:free">Mistral Pixtral 12B (Free)</option>
+                                    <option value="google/gemma-3-4b-it:free">Google Gemma 3 4B (Free - Fastest)</option>
                                 </select>
                             }
                             else
