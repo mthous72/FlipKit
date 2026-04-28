@@ -12,10 +12,9 @@ namespace FlipKit.Core.Services
     /// </summary>
     public class CompositeScannerService : IScannerService
     {
-        // XIMILAR DISABLED: Collectibles Recognition API requires paid subscription.
-        // Set to true when you have an active Ximilar Collectibles subscription.
-        // The free tier only provides account verification, not card recognition.
-        private const bool EnableXimilar = false;
+        // Set to false to skip Ximilar and use OpenRouter directly.
+        // Ximilar Collectibles Recognition provides faster card lookups from their database.
+        private const bool EnableXimilar = true;
 
         private readonly IXimilarService _ximilarService;
         private readonly OpenRouterScannerService _openRouterService;
