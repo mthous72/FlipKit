@@ -59,8 +59,9 @@
                         </h5>
                     </div>
                     <div class="card-body">
+                        <!-- OpenRouter API Key -->
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-8">
                                 <label asp-for="OpenRouterApiKey" class="form-label fw-bold"></label>
                                 @if (isEditable)
                                 {
@@ -103,7 +104,19 @@
                                     <small class="text-muted">Required for AI card scanning</small>
                                 }
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4 d-flex align-items-end">
+                                @if (Model.HasOpenRouterKey)
+                                {
+                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="openrouter">
+                                        <i class="bi bi-lightning"></i> Test Connection
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- ImgBB API Key -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
                                 <label asp-for="ImgBBApiKey" class="form-label fw-bold"></label>
                                 @if (isEditable)
                                 {
@@ -146,9 +159,19 @@
                                     <small class="text-muted">Optional - for image uploads</small>
                                 }
                             </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                @if (Model.HasImgBBKey)
+                                {
+                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="imgbb">
+                                        <i class="bi bi-lightning"></i> Test Connection
+                                    </button>
+                                }
+                            </div>
                         </div>
+
+                        <!-- Ximilar API Key -->
                         <div class="row mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-8">
                                 <label asp-for="XimilarApiKey" class="form-label fw-bold"></label>
                                 @if (isEditable)
                                 {
@@ -189,6 +212,14 @@
                                         </span>
                                     </div>
                                     <small class="text-muted">Optional - card recognition via Ximilar database</small>
+                                }
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                @if (Model.HasXimilarKey)
+                                {
+                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="ximilar">
+                                        <i class="bi bi-lightning"></i> Test Connection
+                                    </button>
                                 }
                             </div>
                         </div>
@@ -412,6 +443,60 @@
                     input.type = 'password';
                     icon.classList.remove('bi-eye-slash');
                     icon.classList.add('bi-eye');
+                }
+            });
+        });
+
+        // Test API connection
+        document.querySelectorAll('.test-connection-btn').forEach(button => {
+            button.addEventListener('click', async function() {
+                const service = this.dataset.service;
+                const originalHtml = this.innerHTML;
+
+                // Show loading state
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Testing...';
+
+                try {
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                    const response = await fetch('@Url.Action("TestConnection", "Settings")?service=' + service, {
+                        method: 'POST',
+                        headers: {
+                            'RequestVerificationToken': token
+                        }
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        this.innerHTML = '<i class="bi bi-check-circle"></i> Connected!';
+                        this.classList.remove('btn-outline-primary', 'btn-outline-danger');
+                        this.classList.add('btn-success');
+                    } else {
+                        this.innerHTML = '<i class="bi bi-x-circle"></i> ' + (result.message || 'Failed');
+                        this.classList.remove('btn-outline-primary', 'btn-success');
+                        this.classList.add('btn-outline-danger');
+                    }
+
+                    // Reset after 3 seconds
+                    setTimeout(() => {
+                        this.innerHTML = originalHtml;
+                        this.classList.remove('btn-success', 'btn-outline-danger');
+                        this.classList.add('btn-outline-primary');
+                        this.disabled = false;
+                    }, 3000);
+
+                } catch (error) {
+                    this.innerHTML = '<i class="bi bi-x-circle"></i> Error';
+                    this.classList.remove('btn-outline-primary', 'btn-success');
+                    this.classList.add('btn-outline-danger');
+                    this.disabled = false;
+
+                    setTimeout(() => {
+                        this.innerHTML = originalHtml;
+                        this.classList.remove('btn-outline-danger');
+                        this.classList.add('btn-outline-primary');
+                    }, 3000);
                 }
             });
         });
