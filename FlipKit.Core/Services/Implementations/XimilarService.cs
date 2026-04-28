@@ -14,8 +14,10 @@ namespace FlipKit.Core.Services
 {
     public class XimilarService : IXimilarService
     {
-        // Ximilar Collectibles Recognition API endpoint
-        private const string ApiUrl = "https://api.ximilar.com/collectibles/v2/recognize";
+        // Ximilar Collectibles Recognition API endpoints
+        private const string SportCardApiUrl = "https://api.ximilar.com/collectibles/v2/sport_id";
+        private const string TcgApiUrl = "https://api.ximilar.com/collectibles/v2/tcg_id";
+        private const string SlabApiUrl = "https://api.ximilar.com/collectibles/v2/slab_id";
 
         private readonly HttpClient _httpClient;
         private readonly ISettingsService _settingsService;
@@ -61,7 +63,9 @@ namespace FlipKit.Core.Services
                 };
 
                 var jsonRequest = JsonSerializer.Serialize(request);
-                var httpRequest = new HttpRequestMessage(HttpMethod.Post, ApiUrl)
+                // Use sport_id endpoint for sports cards (most common use case)
+                // TODO: Could add logic to try tcg_id for Pokemon/Magic cards
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, SportCardApiUrl)
                 {
                     Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
                 };
