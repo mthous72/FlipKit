@@ -364,3 +364,27 @@ FodyWeavers.xsd
 
 # FlipKit debug logs
 Docs/debug/
+
+# FlipKit project-specific
+*.db
+*.db-wal
+*.db-shm
+settings.json
+wwwroot/uploads/
+publish/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Environment files with secrets
+.env
+.env.*
+!.env.example
+
+# Local app settings overrides
+appsettings.Local.json
+appsettings.Development.json
+
+# JetBrains Rider
+.idea/
+*.sln.iml
