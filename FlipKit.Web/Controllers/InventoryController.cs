@@ -106,7 +106,8 @@ namespace FlipKit.Web.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
-                return View(card);
+                var viewModel = MapCardToViewModel(card);
+                return View(viewModel);
             }
             catch (Exception ex)
             {
@@ -128,7 +129,8 @@ namespace FlipKit.Web.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
-                return View(card);
+                var viewModel = MapCardToViewModel(card);
+                return View(viewModel);
             }
             catch (Exception ex)
             {
@@ -141,9 +143,9 @@ namespace FlipKit.Web.Controllers
         // POST: Inventory/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Card card)
+        public async Task<IActionResult> Edit(int id, CardDetailsViewModel viewModel)
         {
-            if (id != card.Id)
+            if (id != viewModel.Id)
             {
                 TempData["ErrorMessage"] = "Invalid card ID.";
                 return RedirectToAction(nameof(Index));
@@ -151,21 +153,129 @@ namespace FlipKit.Web.Controllers
 
             try
             {
-                // Update timestamp
-                card.UpdatedAt = DateTime.UtcNow;
+                // Get existing card to preserve fields not in the view model
+                var existingCard = await _cardRepository.GetCardAsync(id);
+                if (existingCard == null)
+                {
+                    TempData["ErrorMessage"] = "Card not found.";
+                    return RedirectToAction(nameof(Index));
+                }
 
-                await _cardRepository.UpdateCardAsync(card);
+                // Map view model back to card
+                MapViewModelToCard(viewModel, existingCard);
+                existingCard.UpdatedAt = DateTime.UtcNow;
+
+                await _cardRepository.UpdateCardAsync(existingCard);
 
                 _logger.LogInformation("Card {CardId} updated successfully", id);
-                TempData["SuccessMessage"] = $"Card '{card.PlayerName}' updated successfully.";
-                return RedirectToAction(nameof(Details), new { id = card.Id });
+                TempData["SuccessMessage"] = $"Card '{existingCard.PlayerName}' updated successfully.";
+                return RedirectToAction(nameof(Details), new { id = existingCard.Id });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating card {CardId}", id);
                 TempData["ErrorMessage"] = "Error saving changes. Please try again.";
-                return View(card);
+                return View(viewModel);
             }
+        }
+
+        private static CardDetailsViewModel MapCardToViewModel(Card card)
+        {
+            return new CardDetailsViewModel
+            {
+                Id = card.Id,
+                PlayerName = card.PlayerName,
+                Sport = card.Sport,
+                Brand = card.Brand,
+                Manufacturer = card.Manufacturer,
+                Year = card.Year,
+                CardNumber = card.CardNumber,
+                Team = card.Team,
+                SetName = card.SetName,
+                VariationType = card.VariationType,
+                ParallelName = card.ParallelName,
+                SerialNumbered = card.SerialNumbered,
+                IsShortPrint = card.IsShortPrint,
+                IsSSP = card.IsSSP,
+                IsRookie = card.IsRookie,
+                IsAuto = card.IsAuto,
+                IsRelic = card.IsRelic,
+                Condition = card.Condition,
+                IsGraded = card.IsGraded,
+                GradeCompany = card.GradeCompany,
+                GradeValue = card.GradeValue,
+                CertNumber = card.CertNumber,
+                AutoGrade = card.AutoGrade,
+                CostBasis = card.CostBasis,
+                CostSource = card.CostSource,
+                CostDate = card.CostDate,
+                CostNotes = card.CostNotes,
+                Quantity = card.Quantity,
+                EstimatedValue = card.EstimatedValue,
+                ListingPrice = card.ListingPrice,
+                ListingType = card.ListingType,
+                Offerable = card.Offerable,
+                ShippingProfile = card.ShippingProfile,
+                WhatnotCategory = card.WhatnotCategory,
+                WhatnotSubcategory = card.WhatnotSubcategory,
+                Notes = card.Notes,
+                Status = card.Status,
+                ImagePathFront = card.ImagePathFront,
+                ImagePathBack = card.ImagePathBack,
+                ImageUrl1 = card.ImageUrl1,
+                ImageUrl2 = card.ImageUrl2,
+                CreatedAt = card.CreatedAt,
+                UpdatedAt = card.UpdatedAt
+            };
+        }
+
+        private static void MapViewModelToCard(CardDetailsViewModel viewModel, Card card)
+        {
+            card.PlayerName = viewModel.PlayerName ?? "";
+            card.Sport = viewModel.Sport;
+            card.Brand = viewModel.Brand;
+            card.Manufacturer = viewModel.Manufacturer;
+            card.Year = viewModel.Year;
+            card.CardNumber = viewModel.CardNumber;
+            card.Team = viewModel.Team;
+            card.SetName = viewModel.SetName;
+            card.VariationType = viewModel.VariationType;
+            card.ParallelName = viewModel.ParallelName;
+            card.SerialNumbered = viewModel.SerialNumbered;
+            card.IsShortPrint = viewModel.IsShortPrint;
+            card.IsSSP = viewModel.IsSSP;
+            card.IsRookie = viewModel.IsRookie;
+            card.IsAuto = viewModel.IsAuto;
+            card.IsRelic = viewModel.IsRelic;
+            card.Condition = viewModel.Condition;
+            card.IsGraded = viewModel.IsGraded;
+            card.GradeCompany = viewModel.GradeCompany;
+            card.GradeValue = viewModel.GradeValue;
+            card.CertNumber = viewModel.CertNumber;
+            card.AutoGrade = viewModel.AutoGrade;
+            card.CostBasis = viewModel.CostBasis;
+            card.CostSource = viewModel.CostSource;
+            card.CostDate = viewModel.CostDate;
+            card.CostNotes = viewModel.CostNotes;
+            card.Quantity = viewModel.Quantity;
+            card.EstimatedValue = viewModel.EstimatedValue;
+            card.ListingPrice = viewModel.ListingPrice;
+            card.ListingType = viewModel.ListingType;
+            card.Offerable = viewModel.Offerable;
+            card.ShippingProfile = viewModel.ShippingProfile;
+            card.WhatnotCategory = viewModel.WhatnotCategory;
+            card.WhatnotSubcategory = viewModel.WhatnotSubcategory;
+            card.Notes = viewModel.Notes;
+            card.Status = viewModel.Status;
+            // Preserve image paths from existing card if not provided
+            if (!string.IsNullOrEmpty(viewModel.ImagePathFront))
+                card.ImagePathFront = viewModel.ImagePathFront;
+            if (!string.IsNullOrEmpty(viewModel.ImagePathBack))
+                card.ImagePathBack = viewModel.ImagePathBack;
+            if (!string.IsNullOrEmpty(viewModel.ImageUrl1))
+                card.ImageUrl1 = viewModel.ImageUrl1;
+            if (!string.IsNullOrEmpty(viewModel.ImageUrl2))
+                card.ImageUrl2 = viewModel.ImageUrl2;
         }
 
         // POST: Inventory/Delete/5
