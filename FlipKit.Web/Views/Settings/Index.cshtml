@@ -1,6 +1,7 @@
 @model FlipKit.Web.Models.SettingsViewModel
 @{
     ViewData["Title"] = "Settings";
+    var isEditable = Model.IsDockerEnvironment;
 }
 
 <div class="container py-4">
@@ -8,140 +9,328 @@
         <div class="col-lg-8 mx-auto">
             <h2 class="mb-4">
                 <i class="bi bi-gear"></i> Settings
-                <span class="badge bg-secondary ms-2">Read-Only</span>
+                @if (!isEditable)
+                {
+                    <span class="badge bg-secondary ms-2">Read-Only</span>
+                }
+                else
+                {
+                    <span class="badge bg-success ms-2">Docker Mode</span>
+                }
             </h2>
 
-            <!-- Info Alert -->
-            <div class="alert alert-info mb-4">
-                <h5 class="alert-heading">
-                    <i class="bi bi-info-circle"></i> Settings Are Read-Only in Web App
-                </h5>
-                <p class="mb-2">
-                    The Web application can <strong>view</strong> settings but cannot edit them.
-                </p>
-                <hr>
-                <p class="mb-0">
-                    <i class="bi bi-desktop"></i> <strong>To change settings:</strong> Open the <strong>FlipKit Desktop application</strong> and go to Settings.
-                    Changes made there will automatically be reflected here.
-                </p>
-            </div>
-
-            <!-- API Keys -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-key"></i> API Keys
+            @if (!isEditable)
+            {
+                <!-- Info Alert for Non-Docker Mode -->
+                <div class="alert alert-info mb-4">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-info-circle"></i> Settings Are Read-Only in Web App
                     </h5>
+                    <p class="mb-2">
+                        The Web application can <strong>view</strong> settings but cannot edit them when running alongside Desktop.
+                    </p>
+                    <hr>
+                    <p class="mb-0">
+                        <i class="bi bi-desktop"></i> <strong>To change settings:</strong> Open the <strong>FlipKit Desktop application</strong> and go to Settings.
+                    </p>
                 </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">OpenRouter API Key</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control"
-                                       value="@(Model.HasOpenRouterKey ? "••••••••••••••••••••" : "Not configured")"
-                                       readonly>
-                                <span class="input-group-text">
-                                    @if (Model.HasOpenRouterKey)
-                                    {
-                                        <i class="bi bi-check-circle-fill text-success"></i>
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-x-circle-fill text-danger"></i>
-                                    }
-                                </span>
+            }
+            else
+            {
+                <!-- Docker Mode Info -->
+                <div class="alert alert-success mb-4">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-box"></i> Docker Configuration Mode
+                    </h5>
+                    <p class="mb-0">
+                        You're running FlipKit in Docker. Configure your API keys and settings below. Settings are persisted to the mounted volume.
+                    </p>
+                </div>
+            }
+
+            <form asp-action="Save" method="post">
+                @Html.AntiForgeryToken()
+
+                <!-- API Keys -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-key"></i> API Keys
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="OpenRouterApiKey" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" asp-for="OpenRouterApiKey" class="form-control"
+                                               placeholder="@(Model.HasOpenRouterKey ? "Enter new key to update" : "sk-or-...")">
+                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="input-group-text">
+                                            @if (Model.HasOpenRouterKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-danger"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Required for AI card scanning. <a href="https://openrouter.ai/keys" target="_blank">Get a free key</a></small>
+                                }
+                                else
+                                {
+                                    <div class="input-group">
+                                        <input type="text" class="form-control"
+                                               value="@(Model.HasOpenRouterKey ? "••••••••••••••••••••" : "Not configured")"
+                                               readonly>
+                                        <span class="input-group-text">
+                                            @if (Model.HasOpenRouterKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-danger"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Required for AI card scanning</small>
+                                }
                             </div>
-                            <small class="text-muted">Required for AI card scanning</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">ImgBB API Key</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control"
-                                       value="@(Model.HasImgBBKey ? "••••••••••••••••••••" : "Not configured")"
-                                       readonly>
-                                <span class="input-group-text">
-                                    @if (Model.HasImgBBKey)
-                                    {
-                                        <i class="bi bi-check-circle-fill text-success"></i>
-                                    }
-                                    else
-                                    {
-                                        <i class="bi bi-x-circle-fill text-warning"></i>
-                                    }
-                                </span>
+                            <div class="col-md-6">
+                                <label asp-for="ImgBBApiKey" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" asp-for="ImgBBApiKey" class="form-control"
+                                               placeholder="@(Model.HasImgBBKey ? "Enter new key to update" : "Optional")">
+                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="input-group-text">
+                                            @if (Model.HasImgBBKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Optional - for image uploads. <a href="https://api.imgbb.com/" target="_blank">Get a key</a></small>
+                                }
+                                else
+                                {
+                                    <div class="input-group">
+                                        <input type="text" class="form-control"
+                                               value="@(Model.HasImgBBKey ? "••••••••••••••••••••" : "Not configured")"
+                                               readonly>
+                                        <span class="input-group-text">
+                                            @if (Model.HasImgBBKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Optional - for image uploads</small>
+                                }
                             </div>
-                            <small class="text-muted">Optional - for image uploads</small>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- AI Settings -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-robot"></i> AI Settings
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Default AI Model</label>
-                        <input type="text" class="form-control" value="@Model.DefaultModel" readonly>
-                        <small class="text-muted">Model used for card scanning</small>
+                <!-- AI Settings -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-robot"></i> AI Settings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="DefaultModel" class="form-label fw-bold"></label>
+                            @if (isEditable)
+                            {
+                                <select asp-for="DefaultModel" class="form-select">
+                                    <option value="nvidia/nemotron-nano-12b-v2-vl:free">Nvidia Nemotron Nano 12B (Free)</option>
+                                    <option value="google/gemini-flash-2.0:free">Google Gemini Flash 2.0 (Free)</option>
+                                    <option value="meta-llama/llama-3.2-90b-vision-instruct:free">Meta Llama 3.2 90B Vision (Free)</option>
+                                    <option value="qwen/qwen-2-vl-7b-instruct:free">Qwen 2 VL 7B (Free)</option>
+                                    <option value="mistralai/pixtral-12b:free">Mistral Pixtral 12B (Free)</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <input type="text" class="form-control" value="@Model.DefaultModel" readonly>
+                            }
+                            <small class="text-muted">Model used for card scanning</small>
+                        </div>
+                        @if (isEditable)
+                        {
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="EnableVariationVerification" class="form-check-input" type="checkbox">
+                                        <label asp-for="EnableVariationVerification" class="form-check-label"></label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="AutoApplyHighConfidenceSuggestions" class="form-check-input" type="checkbox">
+                                        <label asp-for="AutoApplyHighConfidenceSuggestions" class="form-check-label"></label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input asp-for="EnableChecklistLearning" class="form-check-input" type="checkbox">
+                                        <label asp-for="EnableChecklistLearning" class="form-check-label"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
-            </div>
 
-            <!-- Fee Settings -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-percent"></i> Fee Settings
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Whatnot Fee %</label>
-                            <input type="text" class="form-control" value="@Model.WhatnotFeePercent%" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">eBay Fee %</label>
-                            <input type="text" class="form-control" value="@Model.EbayFeePercent%" readonly>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Shipping (PWE)</label>
-                            <input type="text" class="form-control" value="$@Model.DefaultShippingCostPwe" readonly>
-                            <small class="text-muted">Plain White Envelope</small>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold">Shipping (BMWT)</label>
-                            <input type="text" class="form-control" value="$@Model.DefaultShippingCostBmwt" readonly>
-                            <small class="text-muted">Bubble Mailer w/ Tracking</small>
+                <!-- Fee Settings -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-percent"></i> Fee Settings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label asp-for="WhatnotFeePercent" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input asp-for="WhatnotFeePercent" type="number" step="0.01" class="form-control">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="@Model.WhatnotFeePercent%" readonly>
+                                }
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="EbayFeePercent" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input asp-for="EbayFeePercent" type="number" step="0.01" class="form-control">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="@Model.EbayFeePercent%" readonly>
+                                }
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="DefaultShippingCostPwe" class="form-label fw-bold">Shipping (PWE)</label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="DefaultShippingCostPwe" type="number" step="0.01" class="form-control">
+                                    </div>
+                                    <small class="text-muted">Plain White Envelope</small>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="$@Model.DefaultShippingCostPwe" readonly>
+                                    <small class="text-muted">Plain White Envelope</small>
+                                }
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="DefaultShippingCostBmwt" class="form-label fw-bold">Shipping (BMWT)</label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input asp-for="DefaultShippingCostBmwt" type="number" step="0.01" class="form-control">
+                                    </div>
+                                    <small class="text-muted">Bubble Mailer w/ Tracking</small>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="$@Model.DefaultShippingCostBmwt" readonly>
+                                    <small class="text-muted">Bubble Mailer w/ Tracking</small>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Other Settings -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-sliders"></i> Other Settings
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Price Staleness Threshold</label>
-                        <input type="text" class="form-control" value="@Model.PriceStalenessThresholdDays days" readonly>
-                        <small class="text-muted">Cards priced older than this are flagged for repricing</small>
+                <!-- Other Settings -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-sliders"></i> Other Settings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label asp-for="PriceStalenessThresholdDays" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input asp-for="PriceStalenessThresholdDays" type="number" min="1" max="365" class="form-control">
+                                        <span class="input-group-text">days</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="@Model.PriceStalenessThresholdDays days" readonly>
+                                }
+                                <small class="text-muted">Cards priced older than this are flagged for repricing</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ActiveExportPlatform" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <select asp-for="ActiveExportPlatform" class="form-select"
+                                            asp-items="Html.GetEnumSelectList<FlipKit.Core.Models.Enums.ExportPlatform>()">
+                                    </select>
+                                }
+                                else
+                                {
+                                    <input type="text" class="form-control" value="@Model.ActiveExportPlatform" readonly>
+                                }
+                                <small class="text-muted">Default platform for CSV exports</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                @if (isEditable)
+                {
+                    <!-- Save Button -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-save"></i> Save Settings
+                        </button>
+                    </div>
+                }
+
+            </form>
 
             <!-- Legal Disclaimer -->
-            <div class="card border-warning">
+            <div class="card border-warning mt-4">
                 <div class="card-header bg-warning">
                     <h5 class="mb-0">
                         <i class="bi bi-exclamation-triangle"></i> Important Legal Notice
@@ -150,11 +339,11 @@
                 <div class="card-body">
                     <p class="mb-2" style="line-height: 1.6;">
                         <strong>For Educational Use Only.</strong>
-                        FlipKit is provided "AS IS" without warranties of any kind. No warranties are implied regarding the accuracy of AI card identification, pricing data, financial calculations, or any other information.
+                        FlipKit is provided "AS IS" without warranties of any kind.
                     </p>
                     <p class="mb-0" style="line-height: 1.6;">
                         <strong>Use at Your Own Risk.</strong>
-                        Always verify all card identifications, prices, and financial data independently. AI-generated content may contain errors. Not intended for professional accounting, tax, or financial advice.
+                        Always verify all card identifications, prices, and financial data independently.
                     </p>
                 </div>
             </div>
@@ -162,3 +351,24 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-password').forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.parentElement.querySelector('input');
+                const icon = this.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('bi-eye');
+                    icon.classList.add('bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('bi-eye-slash');
+                    icon.classList.add('bi-eye');
+                }
+            });
+        });
+    </script>
+}

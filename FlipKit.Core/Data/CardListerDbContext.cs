@@ -23,6 +23,16 @@ namespace FlipKit.Core.Data
 
         public static string GetDbPath()
         {
+            // Support Docker: check for FLIPKIT_DB_PATH environment variable
+            var envPath = Environment.GetEnvironmentVariable("FLIPKIT_DB_PATH");
+            if (!string.IsNullOrEmpty(envPath))
+            {
+                var envFolder = Path.GetDirectoryName(envPath);
+                if (!string.IsNullOrEmpty(envFolder))
+                    Directory.CreateDirectory(envFolder);
+                return envPath;
+            }
+
             var folder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "FlipKit");

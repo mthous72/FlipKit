@@ -1,0 +1,41 @@
+# FlipKit Docker Compose Configuration
+#
+# Usage:
+#   docker-compose up -d        # Start in background
+#   docker-compose logs -f      # View logs
+#   docker-compose down         # Stop
+#
+# Access:
+#   Web UI: http://localhost:5000
+#   API:    http://localhost:5001
+
+services:
+  flipkit:
+    build: .
+    container_name: flipkit
+    ports:
+      - "5000:5000"  # Web UI
+      - "5001:5001"  # API
+    volumes:
+      # Persist database and settings
+      - flipkit-data:/data
+      # Optional: Mount local settings file
+      # - ./settings.json:/data/settings.json:ro
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - FLIPKIT_DB_PATH=/data/cards.db
+      - FLIPKIT_SETTINGS_PATH=/data/settings.json
+      # Optional: Set API keys via environment
+      # - OPENROUTER_API_KEY=your-key-here
+      # - IMGBB_API_KEY=your-key-here
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  flipkit-data:
+    name: flipkit-data

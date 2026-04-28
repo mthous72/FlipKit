@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/publish/
+releases/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Documentation
+Docs/
+*.md
+!README.md
+
+# Other
+.claude/
+*.db
+*.db-wal
+*.db-shm
+settings.json

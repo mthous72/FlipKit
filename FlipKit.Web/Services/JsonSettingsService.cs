@@ -16,11 +16,26 @@ namespace FlipKit.Web.Services
     /// </summary>
     public class JsonSettingsService : ISettingsService
     {
-        private static readonly string ConfigFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "FlipKit");
+        private static readonly string ConfigFolder;
+        private static readonly string ConfigPath;
 
-        private static readonly string ConfigPath = Path.Combine(ConfigFolder, "config.json");
+        static JsonSettingsService()
+        {
+            // Support Docker: check for FLIPKIT_SETTINGS_PATH environment variable
+            var envPath = Environment.GetEnvironmentVariable("FLIPKIT_SETTINGS_PATH");
+            if (!string.IsNullOrEmpty(envPath))
+            {
+                ConfigPath = envPath;
+                ConfigFolder = Path.GetDirectoryName(envPath) ?? "/data";
+            }
+            else
+            {
+                ConfigFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "FlipKit");
+                ConfigPath = Path.Combine(ConfigFolder, "config.json");
+            }
+        }
 
         private static readonly JsonSerializerOptions JsonOptions = new()
         {

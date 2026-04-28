@@ -337,10 +337,10 @@ app.MapPost("/api/sync/push", async (
 .WithName("PushSyncCards")
 .WithOpenApi();
 
+var urls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://0.0.0.0:5000";
 Console.WriteLine($"FlipKit API Server");
 Console.WriteLine($"Database: {dbPath}");
-Console.WriteLine($"Listening on: http://0.0.0.0:5000");
-Console.WriteLine($"Access via Tailscale IP on port 5000");
+Console.WriteLine($"Listening on: {urls}");
 Console.WriteLine($"");
 Console.WriteLine($"Endpoints:");
 Console.WriteLine($"  GET    /api/cards                - List all cards");
@@ -352,6 +352,5 @@ Console.WriteLine($"  GET    /api/cards/unpriced       - Get unpriced cards");
 Console.WriteLine($"  GET    /api/cards/stale          - Get stale cards");
 Console.WriteLine($"  GET    /api/cards/stats          - Get statistics");
 Console.WriteLine($"  GET    /api/reports/sold         - Sold cards report");
-Console.WriteLine($"  POST   /api/export/csv           - Export to CSV");
 
-app.Run("http://0.0.0.0:5000");
+app.Run();
