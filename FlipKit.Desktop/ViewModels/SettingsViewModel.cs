@@ -32,10 +32,13 @@ namespace FlipKit.Desktop.ViewModels
         // API Keys
         [ObservableProperty] private string _openRouterApiKey = string.Empty;
         [ObservableProperty] private string _imgBBApiKey = string.Empty;
+        [ObservableProperty] private string _ximilarApiKey = string.Empty;
         [ObservableProperty] private string _openRouterStatus = "Not configured";
         [ObservableProperty] private string _imgBBStatus = "Not configured";
+        [ObservableProperty] private string _ximilarStatus = "Not configured";
         [ObservableProperty] private bool _isTestingOpenRouter;
         [ObservableProperty] private bool _isTestingImgBB;
+        [ObservableProperty] private bool _isTestingXimilar;
 
         // Preferences
         [ObservableProperty] private bool _isEbaySeller;
@@ -135,6 +138,7 @@ namespace FlipKit.Desktop.ViewModels
 
             OpenRouterApiKey = s.OpenRouterApiKey ?? string.Empty;
             ImgBBApiKey = s.ImgBBApiKey ?? string.Empty;
+            XimilarApiKey = s.XimilarApiKey ?? string.Empty;
             IsEbaySeller = s.IsEbaySeller;
             DefaultShippingProfile = s.DefaultShippingProfile;
             DefaultCondition = s.DefaultCondition;
@@ -174,6 +178,7 @@ namespace FlipKit.Desktop.ViewModels
 
             OpenRouterStatus = string.IsNullOrWhiteSpace(OpenRouterApiKey) ? "Not configured" : "Configured (not tested)";
             ImgBBStatus = string.IsNullOrWhiteSpace(ImgBBApiKey) ? "Not configured" : "Configured (not tested)";
+            XimilarStatus = string.IsNullOrWhiteSpace(XimilarApiKey) ? "Not configured" : "Configured (not tested)";
 
             DbPath = FlipKitDbContext.GetDbPath();
         }
@@ -222,6 +227,7 @@ namespace FlipKit.Desktop.ViewModels
             {
                 OpenRouterApiKey = OpenRouterApiKey,
                 ImgBBApiKey = ImgBBApiKey,
+                XimilarApiKey = XimilarApiKey,
                 IsEbaySeller = IsEbaySeller,
                 DefaultShippingProfile = DefaultShippingProfile,
                 DefaultCondition = DefaultCondition,
@@ -280,6 +286,18 @@ namespace FlipKit.Desktop.ViewModels
             ImgBBStatus = success ? "Connected!" : "Connection failed";
 
             IsTestingImgBB = false;
+        }
+
+        [RelayCommand]
+        private async Task TestXimilarAsync()
+        {
+            IsTestingXimilar = true;
+            XimilarStatus = "Testing...";
+
+            var success = await _settingsService.TestXimilarConnectionAsync(XimilarApiKey);
+            XimilarStatus = success ? "Connected!" : "Connection failed";
+
+            IsTestingXimilar = false;
         }
 
         [RelayCommand]

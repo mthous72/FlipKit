@@ -147,6 +147,51 @@
                                 }
                             </div>
                         </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="XimilarApiKey" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" asp-for="XimilarApiKey" class="form-control"
+                                               placeholder="@(Model.HasXimilarKey ? "Enter new key to update" : "Optional")">
+                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="input-group-text">
+                                            @if (Model.HasXimilarKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Optional - card recognition via Ximilar database (saves AI tokens). <a href="https://www.ximilar.com/" target="_blank">Get a key</a></small>
+                                }
+                                else
+                                {
+                                    <div class="input-group">
+                                        <input type="text" class="form-control"
+                                               value="@(Model.HasXimilarKey ? "••••••••••••••••••••" : "Not configured")"
+                                               readonly>
+                                        <span class="input-group-text">
+                                            @if (Model.HasXimilarKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Optional - card recognition via Ximilar database</small>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
 

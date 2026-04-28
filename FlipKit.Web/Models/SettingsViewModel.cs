@@ -12,6 +12,9 @@ namespace FlipKit.Web.Models
         [Display(Name = "ImgBB API Key")]
         public string? ImgBBApiKey { get; set; }
 
+        [Display(Name = "Ximilar API Key")]
+        public string? XimilarApiKey { get; set; }
+
         // Fee Settings
         [Display(Name = "Whatnot Fee %")]
         [Range(0, 100)]
@@ -56,6 +59,7 @@ namespace FlipKit.Web.Models
         // Status flags (read-only for display)
         public bool HasOpenRouterKey { get; set; }
         public bool HasImgBBKey { get; set; }
+        public bool HasXimilarKey { get; set; }
         public bool IsDockerEnvironment { get; set; }
     }
 }

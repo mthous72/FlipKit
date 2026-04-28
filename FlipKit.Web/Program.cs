@@ -60,7 +60,10 @@ else
         return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
     });
 }
-builder.Services.AddSingleton<IScannerService, OpenRouterScannerService>();
+// Scanner services - Ximilar checked first, then falls back to OpenRouter LLM
+builder.Services.AddSingleton<IXimilarService, XimilarService>();
+builder.Services.AddSingleton<OpenRouterScannerService>();
+builder.Services.AddSingleton<IScannerService, CompositeScannerService>();
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
 builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on DbContext
 builder.Services.AddSingleton<IImageUploadService, ImgBBUploadService>();

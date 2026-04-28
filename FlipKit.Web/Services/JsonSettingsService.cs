@@ -112,5 +112,24 @@ namespace FlipKit.Web.Services
                 return false;
             }
         }
+
+        public async Task<bool> TestXimilarConnectionAsync(string apiKey)
+        {
+            if (string.IsNullOrWhiteSpace(apiKey))
+                return false;
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/status");
+                request.Headers.Add("Authorization", $"Token {apiKey}");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

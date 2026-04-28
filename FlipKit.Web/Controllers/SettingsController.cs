@@ -44,8 +44,10 @@ namespace FlipKit.Web.Controllers
                 // Don't expose full API keys, just show if they're configured
                 OpenRouterApiKey = string.IsNullOrEmpty(settings.OpenRouterApiKey) ? "" : "••••••••" + settings.OpenRouterApiKey[^4..],
                 ImgBBApiKey = string.IsNullOrEmpty(settings.ImgBBApiKey) ? "" : "••••••••" + settings.ImgBBApiKey[^4..],
+                XimilarApiKey = string.IsNullOrEmpty(settings.XimilarApiKey) ? "" : "••••••••" + settings.XimilarApiKey[^4..],
                 HasOpenRouterKey = !string.IsNullOrEmpty(settings.OpenRouterApiKey),
                 HasImgBBKey = !string.IsNullOrEmpty(settings.ImgBBApiKey),
+                HasXimilarKey = !string.IsNullOrEmpty(settings.XimilarApiKey),
                 WhatnotFeePercent = settings.WhatnotFeePercent,
                 EbayFeePercent = settings.EbayFeePercent,
                 DefaultShippingCostPwe = settings.DefaultShippingCostPwe,
@@ -90,6 +92,11 @@ namespace FlipKit.Web.Controllers
                 if (!string.IsNullOrEmpty(model.ImgBBApiKey) && !model.ImgBBApiKey.StartsWith("••••"))
                 {
                     settings.ImgBBApiKey = model.ImgBBApiKey.Trim();
+                }
+
+                if (!string.IsNullOrEmpty(model.XimilarApiKey) && !model.XimilarApiKey.StartsWith("••••"))
+                {
+                    settings.XimilarApiKey = model.XimilarApiKey.Trim();
                 }
 
                 // Update other settings
@@ -154,6 +161,16 @@ namespace FlipKit.Web.Controllers
                 }
 
                 var isValid = await _settingsService.TestImgBBConnectionAsync(settings.ImgBBApiKey);
+                return Json(new { success = isValid, message = isValid ? "Connection successful!" : "Connection failed" });
+            }
+            else if (service == "ximilar")
+            {
+                if (string.IsNullOrEmpty(settings.XimilarApiKey))
+                {
+                    return Json(new { success = false, message = "No API key configured" });
+                }
+
+                var isValid = await _settingsService.TestXimilarConnectionAsync(settings.XimilarApiKey);
                 return Json(new { success = isValid, message = isValid ? "Connection successful!" : "Connection failed" });
             }
 
