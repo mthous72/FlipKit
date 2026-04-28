@@ -55,7 +55,19 @@ namespace FlipKit.Core.Services
                 _logger.LogInformation("Attempting Ximilar recognition for {ImagePath}", imagePath);
 
                 var imageBytes = await File.ReadAllBytesAsync(imagePath);
-                var base64 = Convert.ToBase64String(imageBytes);
+                var base64Raw = Convert.ToBase64String(imageBytes);
+
+                // Ximilar requires data URI format: data:image/jpeg;base64,{base64data}
+                var extension = Path.GetExtension(imagePath).ToLowerInvariant();
+                var mimeType = extension switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".gif" => "image/gif",
+                    ".webp" => "image/webp",
+                    _ => "image/jpeg" // Default to JPEG
+                };
+                var base64 = $"data:{mimeType};base64,{base64Raw}";
 
                 var request = new XimilarRequest
                 {
@@ -160,11 +172,29 @@ namespace FlipKit.Core.Services
         {
             try
             {
-                var httpRequest = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/status");
+                // Use a minimal request to the actual API endpoint to test authentication
+                // We send an empty records array which should return quickly with auth status
+                var request = new XimilarRequest
+                {
+                    Records = new() // Empty records list
+                };
+
+                var jsonRequest = JsonSerializer.Serialize(request);
+                var httpRequest = new HttpRequestMessage(HttpMethod.Post, SportCardApiUrl)
+                {
+                    Content = new StringContent(jsonRequest, Encoding.UTF8, "application/json")
+                };
                 httpRequest.Headers.Add("Authorization", $"Token {apiKey}");
 
                 var response = await _httpClient.SendAsync(httpRequest);
-                return response.IsSuccessStatusCode;
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                _logger.LogDebug("Ximilar test connection response ({StatusCode}): {Response}",
+                    response.StatusCode, responseBody);
+
+                // 200 = success, 400 = bad request (but auth worked), 401/403 = auth failed
+                return response.StatusCode != System.Net.HttpStatusCode.Unauthorized &&
+                       response.StatusCode != System.Net.HttpStatusCode.Forbidden;
             }
             catch (Exception ex)
             {

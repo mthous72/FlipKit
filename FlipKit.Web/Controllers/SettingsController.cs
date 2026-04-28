@@ -138,7 +138,7 @@ namespace FlipKit.Web.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        [IgnoreAntiforgeryToken] // Test connection is read-only, no CSRF risk
         public async Task<IActionResult> TestConnection(string service)
         {
             var settings = _settingsService.Load();
