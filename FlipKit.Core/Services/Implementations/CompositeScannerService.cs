@@ -12,6 +12,11 @@ namespace FlipKit.Core.Services
     /// </summary>
     public class CompositeScannerService : IScannerService
     {
+        // XIMILAR DISABLED: Collectibles Recognition API requires paid subscription.
+        // Set to true when you have an active Ximilar Collectibles subscription.
+        // The free tier only provides account verification, not card recognition.
+        private const bool EnableXimilar = false;
+
         private readonly IXimilarService _ximilarService;
         private readonly OpenRouterScannerService _openRouterService;
         private readonly ILogger<CompositeScannerService> _logger;
@@ -28,8 +33,8 @@ namespace FlipKit.Core.Services
 
         public async Task<ScanResult> ScanCardAsync(string imagePath, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
         {
-            // Try Ximilar first if configured (cheaper, uses existing card database)
-            if (_ximilarService.IsConfigured)
+            // Try Ximilar first if enabled and configured (cheaper, uses existing card database)
+            if (EnableXimilar && _ximilarService.IsConfigured)
             {
                 _logger.LogInformation("Attempting Ximilar recognition first...");
 
