@@ -1,25 +1,25 @@
-; FlipKit Inno Setup Script
-; Builds a Windows installer for FlipKit Hub
+; FlipKit Hub Inno Setup Script
+; Builds a Windows installer for FlipKit Hub (Desktop + Web + API)
 
 #ifndef VERSION
   #define VERSION "3.3.0"
 #endif
 
+#define AppName "FlipKit"
+#define Publisher "FlipKit"
+#define ExeName "FlipKit.Desktop.exe"
+
 [Setup]
 AppId={{F8A2B3C4-D5E6-7890-ABCD-EF1234567890}
-AppName=FlipKit
+AppName={#AppName}
 AppVersion={#VERSION}
-AppVerName=FlipKit v{#VERSION}
-AppPublisher=FlipKit
-AppPublisherURL=https://github.com/your-repo/flipkit
-AppSupportURL=https://github.com/your-repo/flipkit/issues
-DefaultDirName={autopf}\FlipKit
-DefaultGroupName=FlipKit
+AppVerName={#AppName} v{#VERSION}
+AppPublisher={#Publisher}
+DefaultDirName={autopf}\{#AppName}
+DefaultGroupName={#AppName}
 AllowNoIcons=yes
-LicenseFile=..\..\LICENSE
-OutputDir=..\..\installers
-OutputBaseFilename=FlipKit-Setup-Windows-x64-v{#VERSION}
-SetupIconFile=..\..\FlipKit.Desktop\Assets\flipkit.ico
+OutputDir=..\..\releases
+OutputBaseFilename=FlipKit-Setup-v{#VERSION}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -27,45 +27,47 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
+UninstallDisplayIcon={app}\{#ExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "autostart"; Description: "Start FlipKit when Windows starts"; GroupDescription: "Startup:"
 
 [Files]
-; Main application files
-Source: "..\..\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Documentation
-Source: "..\..\Docs\Mac-Installation-Guide.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
-Source: "..\..\Docs\Tailscale-Setup-Windows.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
-Source: "..\..\Docs\Tailscale-Setup-Mac.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
-Source: "..\..\Docs\Tailscale-Setup-Linux.md"; DestDir: "{app}\Docs"; Flags: ignoreversion
+; Desktop application (single file)
+Source: "..\..\releases\temp\FlipKit-Hub-Windows-x64-v{#VERSION}\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
+
+; Servers folder
+Source: "..\..\releases\temp\FlipKit-Hub-Windows-x64-v{#VERSION}\servers\*"; DestDir: "{app}\servers"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Documentation (optional - skip if not present)
+Source: "..\..\releases\temp\FlipKit-Hub-Windows-x64-v{#VERSION}\Docs\*"; DestDir: "{app}\Docs"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "..\..\releases\temp\FlipKit-Hub-Windows-x64-v{#VERSION}\README.txt"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\releases\temp\FlipKit-Hub-Windows-x64-v{#VERSION}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+
+; Tailscale guides from main Docs folder
+Source: "..\..\Docs\Tailscale-Setup-Windows.md"; DestDir: "{app}\Docs"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\Docs\Tailscale-Setup-Mac.md"; DestDir: "{app}\Docs"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\Docs\Tailscale-Setup-Linux.md"; DestDir: "{app}\Docs"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\..\Docs\Mac-Installation-Guide.md"; DestDir: "{app}\Docs"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\FlipKit"; Filename: "{app}\FlipKit.Desktop.exe"
-Name: "{group}\{cm:UninstallProgram,FlipKit}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\FlipKit"; Filename: "{app}\FlipKit.Desktop.exe"; Tasks: desktopicon
+Name: "{group}\{#AppName}"; Filename: "{app}\{#ExeName}"
+Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopicon
 
 [Registry]
-; Auto-start on login
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "FlipKit"; ValueData: """{app}\FlipKit.Desktop.exe"" --minimized"; Flags: uninsdeletevalue; Tasks: autostart
+; Auto-start on login (runs minimized)
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "FlipKit"; ValueData: """{app}\{#ExeName}"" --minimized"; Flags: uninsdeletevalue; Tasks: autostart
 
 [Run]
-Filename: "{app}\FlipKit.Desktop.exe"; Description: "{cm:LaunchProgram,FlipKit}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#ExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
-[Code]
-function InitializeSetup(): Boolean;
-begin
-  Result := True;
-end;
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\servers"
+Type: filesandordirs; Name: "{app}\Docs"
 
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if CurStep = ssPostInstall then
-  begin
-    // Any post-install tasks can go here
-  end;
-end;
+; Code section removed - using skipifsourcedoesntexist flag instead
