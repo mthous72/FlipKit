@@ -1,11 +1,16 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:FlipKit.Desktop.ViewModels"
+             xmlns:conv="using:FlipKit.Desktop.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="900"
              x:Class="FlipKit.Desktop.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
+
+    <UserControl.Resources>
+        <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+    </UserControl.Resources>
 
     <ScrollViewer Padding="24">
         <StackPanel Spacing="24" MaxWidth="700">
@@ -167,26 +172,101 @@
                         </Grid>
                     </Border>
 
-                    <!-- Mobile Access - Always Visible -->
+                    <!-- Mobile Access - Dual QR Codes -->
                     <TextBlock Text="Mobile Access" FontWeight="SemiBold" Margin="0,12,0,4"/>
                     <Border Background="{DynamicResource SystemChromeLowColor}"
                             CornerRadius="6" Padding="16">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="8">
-                                <TextBlock Text="{Binding LocalIpAddresses}"
-                                           TextWrapping="Wrap" FontSize="13" FontFamily="Consolas"/>
-                                <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
-                                    📱 Scan the QR code or type the URL into your phone's browser
-                                </TextBlock>
-                            </StackPanel>
-                            <Border Grid.Column="1" Background="White" Padding="8"
-                                    CornerRadius="4" Margin="16,0,0,0"
-                                    IsVisible="{Binding QrCodeBitmap, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                <Image Source="{Binding QrCodeBitmap}"
-                                       Width="140" Height="140"
-                                       Stretch="Uniform"/>
+                        <StackPanel Spacing="12">
+                            <!-- Dual QR Code Display -->
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
+                                <!-- Local Network QR -->
+                                <Border Grid.Column="0" Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                        CornerRadius="8" Padding="12" Margin="0,0,8,0">
+                                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="Local Network" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <Border Background="White" Padding="8" CornerRadius="4"
+                                                HorizontalAlignment="Center"
+                                                IsVisible="{Binding LocalQrCodeBitmap, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <Image Source="{Binding LocalQrCodeBitmap}"
+                                                   Width="120" Height="120" Stretch="Uniform"/>
+                                        </Border>
+                                        <TextBlock Text="QR code available when server is running"
+                                                   FontSize="10" Opacity="0.5" TextWrapping="Wrap"
+                                                   HorizontalAlignment="Center" TextAlignment="Center"
+                                                   IsVisible="{Binding !IsWebRunning}"/>
+                                        <TextBlock Text="{Binding LocalNetworkUrl}"
+                                                   FontSize="11" FontFamily="Consolas"
+                                                   HorizontalAlignment="Center" TextWrapping="Wrap"
+                                                   IsVisible="{Binding IsLocalNetworkAvailable}"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                                            <Ellipse Width="8" Height="8"
+                                                     Fill="{Binding IsLocalNetworkAvailable, Converter={StaticResource BoolToColorConverter}}"/>
+                                            <TextBlock Text="{Binding LocalNetworkStatus}" FontSize="11" Opacity="0.7"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Same WiFi required" FontSize="10" Opacity="0.5"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Tailscale QR -->
+                                <Border Grid.Column="1" Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                        CornerRadius="8" Padding="12" Margin="8,0,0,0">
+                                    <StackPanel Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="Tailscale (Remote)" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <Border Background="White" Padding="8" CornerRadius="4"
+                                                HorizontalAlignment="Center"
+                                                IsVisible="{Binding TailscaleQrCodeBitmap, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <Image Source="{Binding TailscaleQrCodeBitmap}"
+                                                   Width="120" Height="120" Stretch="Uniform"/>
+                                        </Border>
+                                        <!-- Show setup button when Tailscale not available -->
+                                        <StackPanel IsVisible="{Binding !IsTailscaleAvailable}"
+                                                    Spacing="8" HorizontalAlignment="Center">
+                                            <TextBlock Text="Not configured" FontSize="11" Opacity="0.7"
+                                                       HorizontalAlignment="Center"/>
+                                            <Button Content="Setup Tailscale"
+                                                    Command="{Binding OpenTailscaleGuideCommand}"
+                                                    Padding="12,6" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="Access from anywhere" FontSize="10" Opacity="0.5"
+                                                       HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <!-- Show URL when Tailscale is available -->
+                                        <StackPanel IsVisible="{Binding IsTailscaleAvailable}" Spacing="4">
+                                            <TextBlock Text="{Binding TailscaleUrl}"
+                                                       FontSize="11" FontFamily="Consolas"
+                                                       HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                                                <Ellipse Width="8" Height="8" Fill="Green"/>
+                                                <TextBlock Text="{Binding TailscaleStatus}" FontSize="11" Opacity="0.7"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Works from anywhere" FontSize="10" Opacity="0.5"
+                                                       HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Instructions -->
+                            <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                                    CornerRadius="4" Padding="12">
+                                <StackPanel Spacing="4">
+                                    <TextBlock TextWrapping="Wrap" FontSize="12">
+                                        <Run FontWeight="SemiBold">Scan QR code</Run> with your phone camera to open FlipKit in your browser.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                        Local Network: Use when phone is on same WiFi as this computer.
+                                    </TextBlock>
+                                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                        Tailscale: Use for remote access from anywhere (requires Tailscale app on both devices).
+                                    </TextBlock>
+                                </StackPanel>
                             </Border>
-                        </Grid>
+
+                            <!-- Refresh Button -->
+                            <Button Content="Refresh Network Status"
+                                    Command="{Binding RefreshNetworkStatusCommand}"
+                                    HorizontalAlignment="Left" Padding="12,6"/>
+                        </StackPanel>
                     </Border>
 
                     <!-- Server Configuration -->
