@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eBay → Whatnot · CSV Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --paper:        #f3ede1;
+    --paper-deep:   #e9e0cd;
+    --ink:          #1a1612;
+    --ink-soft:     #4a423a;
+    --ink-faint:    #8a8175;
+    --accent:       #b8412a;
+    --accent-deep:  #8c2f1e;
+    --olive:        #6b7244;
+    --rule:         #d4c8ae;
+    --shadow:       0 1px 0 rgba(26,22,18,0.04), 0 4px 16px rgba(26,22,18,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper); color: var(--ink);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 14px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.10 0 0 0 0 0.08 0 0 0 0 0.07 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.55; z-index: 0;
+  }
+  .wrap { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; padding: 56px 32px 80px; }
+
+  header {
+    border-bottom: 1px solid var(--rule); padding-bottom: 28px; margin-bottom: 40px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  h1 {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-weight: 400; font-size: 56px; line-height: 0.95;
+    margin: 0 0 8px; letter-spacing: -0.01em;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+  .tagline { font-size: 12px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.12em; max-width: 380px; }
+  .meta { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.18em; text-align: right; line-height: 1.7; }
+  .meta b { color: var(--olive); font-weight: 500; }
+
+  .step { margin-bottom: 36px; position: relative; }
+  .step-label { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+  .step-num { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 28px; color: var(--accent); line-height: 1; }
+  .step-title { font-family: 'Instrument Serif', serif; font-size: 22px; font-weight: 400; }
+  .step-hint { font-size: 12px; color: var(--ink-faint); margin-left: auto; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  .dropzone {
+    border: 1.5px dashed var(--ink-faint); background: var(--paper-deep);
+    padding: 44px 28px; text-align: center; cursor: pointer;
+    transition: all 0.18s ease; box-shadow: var(--shadow);
+  }
+  .dropzone:hover { border-color: var(--accent); background: #efe5cf; }
+  .dropzone.drag { border-color: var(--accent); border-style: solid; background: #efe5cf; transform: scale(1.005); }
+  .dropzone.loaded { border-style: solid; border-color: var(--olive); background: #ece6d2; }
+  .dropzone-icon { font-family: 'Instrument Serif', serif; font-size: 44px; line-height: 1; color: var(--ink-soft); margin-bottom: 8px; }
+  .dropzone.loaded .dropzone-icon { color: var(--olive); }
+  .dropzone-text { font-size: 13px; color: var(--ink-soft); }
+  .dropzone-text strong { color: var(--ink); font-weight: 600; }
+  .dropzone input { display: none; }
+
+  .summary {
+    display: none; margin-top: 18px; padding: 18px 20px;
+    background: #fffaf0; border: 1px solid var(--rule); box-shadow: var(--shadow);
+  }
+  .summary.show { display: block; }
+  .summary-row { display: flex; justify-content: space-between; gap: 16px; padding: 4px 0; font-size: 12px; }
+  .summary-row + .summary-row { border-top: 1px dotted var(--rule); }
+  .summary-row span:first-child { color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .summary-row span:last-child  { color: var(--ink); text-align: right; max-width: 60%; word-break: break-word; }
+  .summary-row .ok { color: var(--olive); }
+  .summary-row .miss { color: var(--accent); font-style: italic; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-soft); font-weight: 500;
+  }
+  .field label .req { color: var(--accent); margin-left: 2px; }
+  .field input, .field select {
+    background: #fffaf0; border: 1px solid var(--rule);
+    padding: 11px 14px; font-family: inherit; font-size: 13px;
+    color: var(--ink); border-radius: 0;
+    transition: border-color 0.15s ease;
+    appearance: none; -webkit-appearance: none;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8175'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+  .field select:disabled { background-color: var(--paper-deep); color: var(--ink-faint); cursor: not-allowed; }
+  .field-help { font-size: 11px; color: var(--ink-faint); line-height: 1.4; margin-top: 2px; }
+  .full-width { grid-column: 1 / -1; }
+
+  .actions { margin-top: 36px; }
+  .btn {
+    background: var(--ink); color: var(--paper); border: none;
+    padding: 16px 32px; font-family: inherit; font-size: 13px;
+    font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.18s ease;
+    box-shadow: 3px 3px 0 var(--accent); width: 100%;
+  }
+  .btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--accent); }
+  .btn:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--accent); }
+  .btn:disabled { background: var(--ink-faint); box-shadow: 3px 3px 0 var(--rule); cursor: not-allowed; opacity: 0.7; }
+
+  .result {
+    display: none; margin-top: 32px; padding: 24px;
+    background: #fffaf0; border: 1px solid var(--olive); box-shadow: var(--shadow);
+  }
+  .result.show { display: block; }
+  .result-head { font-family: 'Instrument Serif', serif; font-size: 26px; color: var(--olive); margin-bottom: 6px; }
+  .result-head em { font-style: italic; }
+  .result-stats { font-size: 12px; color: var(--ink-soft); margin-bottom: 18px; line-height: 1.7; }
+  .result-stats .skip { color: var(--accent); }
+  .result-stats b { color: var(--ink); font-weight: 600; }
+
+  .download-link {
+    display: inline-block; background: var(--olive); color: var(--paper);
+    padding: 12px 24px; text-decoration: none;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    transition: background 0.15s ease;
+  }
+  .download-link:hover { background: #555c34; }
+
+  .preview-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-faint); margin: 24px 0 8px; }
+  .preview-wrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--paper-deep); }
+  table.preview { width: 100%; border-collapse: collapse; font-size: 11px; }
+  table.preview th, table.preview td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  table.preview th { background: var(--paper); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; font-size: 10px; }
+  table.preview td { color: var(--ink-soft); }
+  table.preview td.title-cell { max-width: 240px; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+
+  .err {
+    display: none; margin-top: 18px; padding: 14px 18px;
+    background: #fae6df; border-left: 3px solid var(--accent);
+    color: var(--accent-deep); font-size: 12px; white-space: pre-wrap;
+  }
+  .err.show { display: block; }
+
+  footer {
+    margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule);
+    font-size: 11px; color: var(--ink-faint); line-height: 1.6;
+  }
+  footer em { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 13px; color: var(--olive); }
+
+  @media (max-width: 600px) {
+    .wrap { padding: 32px 20px 60px; }
+    h1 { font-size: 40px; }
+    .form-grid { grid-template-columns: 1fr; }
+    .meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>eBay <em>→</em> Whatnot</h1>
+      <div class="tagline">Cross-list converter for active inventory</div>
+    </div>
+    <div class="meta">
+      v.3 · whole-dollar prices<br>
+      <b>nothing uploaded</b>
+    </div>
+  </header>
+
+  <section class="step">
+    <div class="step-label">
+      <span class="step-num">i.</span>
+      <span class="step-title">Drop your eBay export</span>
+      <span class="step-hint">.csv only</span>
+    </div>
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="file-input" accept=".csv,text/csv">
+      <div class="dropzone-icon" id="dz-icon">+</div>
+      <div class="dropzone-text" id="dz-text">
+        <strong>Click to choose</strong> or drag a CSV file here<br>
+        <span style="color: var(--ink-faint);">From Seller Hub Reports or Active Listings export</span>
+      </div>
+    </label>
+    <div class="summary" id="summary"></div>
+    <div class="err" id="err"></div>
+  </section>
+
+  <section class="step">
+    <div class="step-label">
+      <span class="step-num">ii.</span>
+      <span class="step-title">Whatnot defaults</span>
+      <span class="step-hint">All values from official template</span>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Category <span class="req">*</span></label>
+        <select id="category"><option value="">— choose category —</option></select>
+        <div class="field-help">37 categories from Whatnot's official Values list</div>
+      </div>
+      <div class="field">
+        <label>Sub Category</label>
+        <select id="subcategory" disabled><option value="">— choose category first —</option></select>
+        <div class="field-help">Filters automatically based on category</div>
+      </div>
+      <div class="field">
+        <label>Shipping Profile <span class="req">*</span></label>
+        <select id="shipping"><option value="">— choose weight —</option></select>
+        <div class="field-help">Pick the bucket that fits your average package weight</div>
+      </div>
+      <div class="field">
+        <label>Default Type</label>
+        <select id="default-type">
+          <option value="Buy it Now" selected>Buy it Now</option>
+          <option value="Auction">Auction</option>
+          <option value="Giveaway">Giveaway</option>
+        </select>
+        <div class="field-help">eBay "FixedPrice" auto-maps to Buy it Now</div>
+      </div>
+      <div class="field">
+        <label>Default Condition</label>
+        <select id="condition" disabled><option value="">— choose category first —</option></select>
+        <div class="field-help">eBay condition auto-maps when possible; this is the fallback</div>
+      </div>
+      <div class="field">
+        <label>Hazmat</label>
+        <select id="hazmat"></select>
+        <div class="field-help">Almost everything is "Not Hazmat" unless it ships with a battery or chemicals</div>
+      </div>
+      <div class="field">
+        <label>Offerable</label>
+        <select id="offerable">
+          <option value="TRUE" selected>TRUE — accept offers</option>
+          <option value="FALSE">FALSE — fixed price only</option>
+        </select>
+        <div class="field-help">Only applies to Buy it Now listings; auctions ignore this</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step actions">
+    <button class="btn" id="convert-btn" disabled>Convert and download</button>
+  </section>
+
+  <section class="result" id="result"></section>
+
+  <footer>
+    All processing happens in your browser. The CSV file is never sent anywhere — close this tab and the data is gone. <em>Save this file locally to use it offline.</em>
+    <br><br>Reference values extracted from Whatnot's official CSV template (Categories, Sub-categories, Shipping Profiles, Conditions, Hazmat).
+  </footer>
+
+</div>
+
+<script>
+// ============================================================== //
+//  Whatnot reference values (extracted from official template)    //
+// ============================================================== //
+const WHATNOT = {"categories":["Action Figures","Antiques, Vintage & Ephemera","Arts & Handmade","Baby & Kids","Bags & Accessories","Beauty","Books","Candles & Aromatherapy","Car Parts","Case Packs & Bundles","Coins & Money","Comics & Manga","Disneyana","Electronics","Entertainment Cards","Estate Sales & Storage Units","Food & Drink","Home & Garden","Jewelry","Knives & Hunting","Men's Fashion","Movies","Music","Outdoor Gear","Pallets","Pet Supplies","Rocks & Crystals","Sneakers & Streetwear","Sporting Gear","Sports Cards","Sports Memorabilia","Toys & Hobbies","Trading Card Games","Video Games","Watches","Women's Fashion","and Whatnot"],"shipping_profiles":["0-1 oz","1-3 oz","4-7 oz","8-11 oz","12-15 oz","1 lb","1-2 lbs","2-3 lbs","3-4 lbs","4-6 lbs","10-14 lbs","Sports singles (3oz)","0 to <20 grams","20 to <100 grams","100 to <250 grams","250 to <500 grams","500 to <750 grams","750 grams to <1 KGs","1 KGs to <2 KGs","2 KGs to <3 KGs","3 KGs to <5 KGs","5 KGs to <7 KGs","7 to <10 KGs"],"hazmat":["Not Hazmat","Hazmat - Standard","Hazmat - Lithium Battery"],"subcategories":{"Action Figures":["Anime Figures","DC Figures","G.I. Joe Figures","Hot Toys","MOTU Figures","Marvel Figures","Other Action Figures","Power Rangers","Simpsons Figures","Star Wars Figures","TMNT Figures","Transformers Figures","Wrestling Figures"],"Antiques, Vintage & Ephemera":["Antiques","Ephemera & Postcards","Postage Stamps","Vintage Decor"],"Arts & Handmade":["3D Prints","Art & Prints","Artisan Home Goods","Beads, Pens & Keychains","Craft Stamps","Embroidery and Needlework","Fiber Arts & Sewing Supplies","Glass Art","Handmade Clothing & Accessories","Heat Transfers & Wraps","Jewelry Making Supplies","Other Craft Supplies","Resin Art","Scrapbooks","Stickers","Woodworking"],"Baby & Kids":["Baby & Kids Clothes","Baby & Kids Shoes","Baby & Kids Supplies"],"Bags & Accessories":["Luxury Bags & Accessories","Midrange & Fashion Bags","Other Accessories","Sunglasses & Eyewear"],"Beauty":["Bath & Body Essentials","Fragrances","Hair Products","Makeup & Skincare","Men's Grooming","Nails","Other Beauty"],"Books":["Graphic Novels","Magazines","New & Used Books","Rare & Vintage Books"],"Coins & Money":["Coins & Bullion","Paper Money & Currency"],"Comics & Manga":["Anime & Manga","Comic Art","Modern Comics","Pop Culture Memorabilia","Vintage Comics"],"Disneyana":["Disney Accessories","Disney Clothing","Disney Original & Animation Art","Disney Pins","Loungefly","Other Disneyana"],"Electronics":["Cameras & Photography","Everyday Electronics","Headphones and Speakers","Other Electronics","Tools"],"Entertainment Cards":["Disney Cards","Garbage Pail Kids","Marvel Cards","Other Entertainment Cards","Star Wars Cards","TV & Movie Cards"],"Estate Sales & Storage Units":["Deal Hunting","Estate Sales","Garage Sales","Other Estate Sales & Storage Units ","Storage Unit Finds"],"Food & Drink":["Baked Goods","Candy","Chocolate","Coffee & Tea","Condiments & Sauces","Fresh & Specialty Food","Fresh Produce","Other Food & Drink","Snacks","Soda & Drinks","Supplements"],"Home & Garden":["Hand Tools","Holiday Decor","Home Decor","Hydration","Kitchen & Dining","Other Home & Garden","Plants & Garden"],"Jewelry":["Contemporary Costume","Fine & Precious Metals","Handcrafted & Artisan Jewelry","Men's Jewelry","Vintage & Antique Jewelry"],"Men's Fashion":["Men's Modern","Men's Vintage Clothing","Other Men's Fashion","Sports Jerseys"],"Movies":["Blu-ray","DVDs","Movie Memorabilia","VHS"],"Music":["CDs & Cassettes","Instruments & Accessories","Music Memorabilia","Other Music","Vinyl Records"],"Outdoor Gear":["Camping and Hiking Gear","Lures","Other Fishing Equipment","Other Outdoors Gear","Reels","Rods","Winter Sports"],"Pet Supplies":["Dogs & Cats","Horse Tack","Other Pets","Pet Fish"],"Rocks & Crystals":["Crystals & Gems","Fossils","Other Rocks"],"Sneakers & Streetwear":["Sneakers","Streetwear"],"Sporting Gear":["Baseball & Softball","Cycling","Disc Golf","Football","Golf Accessories","Golf Apparel","Golf Bags","Golf Balls","Golf Clubs","Golf Shoes","Other Golf Items","Other Sporting Goods","Racquet Sports","Skateboarding","Soccer"],"Sports Cards":["AFL Breaks","AFL Mystery","AFL Singles","Baseball Breaks","Baseball Mystery","Baseball Singles","Basketball Breaks","Basketball Mystery","Basketball Singles","F1 Cards","Football Breaks","Football Mystery","Football Singles","Hockey Breaks","Hockey Mystery","Hockey Singles","NASCAR Cards","Other Sports Cards","Soccer Breaks","Soccer Mystery","Soccer Singles","UFC Breaks","UFC Mystery","UFC Singles","Wrestling Breaks","Wrestling Mystery","Wrestling Singles"],"Sports Memorabilia":["Baseball Bats","Baseball Jerseys","Baseball Photos","Baseballs","Basketball Jerseys","Basketball Photos","Basketballs","Football Jerseys","Football Photos","Footballs","Helmets","Other Baseball Memorabilia","Other Basketball Memorabilia","Other Football Memorabilia","Other Soccer Memorabilia","Other Sports Memorabilia","Soccer Balls","Soccer Jerseys","Soccer Photos"],"Toys & Hobbies":["Baby & Kids Toys ","Barbie","Beanie Babies & Boos","Bearbrick","Board Games","D&D & Role-playing Games","Diecast Cars","Disney Plush","Fast Food & Cereal Toys","FigPin","Funko Pop!","Funko Soda","Kawaii","LEGO Minifigures","LEGO Sets","Labubu & Blindboxes","Littlest Pet Shop","Models & Kits","Monster High","Other Designer Toys","Other Diecast","Other Dolls","Other Funko Products","Other LEGO","Other Plush","Other Tabletop Games","Other Toys","Pokémon Plush","Puzzles","Radio Control Vehicles & Toys","Slime & Squishy Toys","Slot Cars","Sonny Angel and Smiski","Squishmallows","Thrilljoy","Vintage Toys","Warhammer 40k & Wargames"],"Trading Card Games":["Akora","DC Cards","Digimon Cards","Dragon Ball Cards","Flesh & Blood","Gundam","Kickstarter & Other Cards","Kryptik","Lorcana","Magic: The Gathering","MetaZoo","Naruto Cards","One Piece Cards","Pokémon Cards","Riftbound","Sorcery: Contested Realm","TCG Accessories","UniVersus Cards","Union Arena","VeeFriends","Weiß Schwarz","Yu-Gi-Oh! Cards"],"Video Games":["Consoles & Accessories","Modern Games","Retro Games","Strategy Guides, Manuals, Replacement Cases"],"Women's Fashion":["Other Women's Fashion","Women's Activewear","Women's Contemporary","Women's Shoes","Women's True Vintage","Y2K"],"and Whatnot":["Breweriana","Other"]},"conditions":{"Action Figures":["Mint","Near Mint","Good","Fair","Poor"],"Akora":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Anime & Manga":["Graded","Gem Mint","Mint","Near Mint","Very Fine","Fine","Very Good","Good","Fair","Poor"],"Anime Figures":["Mint","Near Mint","Good","Fair","Poor"],"Antiques":["Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Antiques, Vintage & Ephemera":["Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Art & Prints":["Brand New","Like New","Very Good","Good","Fair","Poor"],"Baby & Kids":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Baby & Kids Clothes":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Baby & Kids Shoes":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Baby & Kids Supplies":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Bags & Accessories":["New With Tags","New Without Tags","New With Defects","Pre-owned - Excellent","Pre-owned - Very Good","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Poor"],"Baseball Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Basketball Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Beads, Pens & Keychains":["New","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Beanie Babies & Boos":["New","Used"],"Blu-ray":["Brand New","Like New","Very Good","Good","Fair","Poor"],"Books":["Brand New","Like New","Very Good","Good","Fair","Poor"],"CDs & Cassettes":["Mint (M)","Near mint (NM)","Excellent (EX)","Very Good Plus (VG+)","Very Good (VG), Good Plus (G+)","Good (G)","Poor (P)","Fair (F)"],"Cameras & Photography":["Brand New","Open-box","Refurbished - Excellent","Refurbished - Very Good","Refurbished - Good","Refurbished - Fair","Used and fully functioning","For parts, not fully functioning, or untested"],"Camping and Hiking Gear":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Coins & Bullion":["Poor - Fair","Good - Extremely Fine","Uncirculated - Mint"],"Comic Art":["Graded","Gem Mint","Mint","Near Mint","Very Fine","Fine","Very Good","Good","Fair","Poor"],"Consoles & Accessories":["Brand New, Factory Sealed","Open Box","Refurbished","Used","For Parts or Not Working"],"Contemporary Costume":["New","New with defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"DC Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"DC Figures":["Mint","Near Mint","Good","Fair","Poor"],"DVDs":["Brand New","Like New","Very Good","Good","Fair","Poor"],"Diecast Cars":["Mint","Near Mint","Good","Fair","Poor"],"Digimon Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Disney Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Disney Pins":["New","Used"],"Disney Plush":["New","Used"],"Dragon Ball Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Electronics":["Brand New","Open-box","Refurbished - Excellent","Refurbished - Very Good","Refurbished - Good","Refurbished - Fair","Used and fully functioning","For parts, not fully functioning, or untested"],"Entertainment Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Ephemera & Postcards":["Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Everyday Electronics":["Brand New","Open-box","Refurbished - Excellent","Refurbished - Very Good","Refurbished - Good","Refurbished - Fair","Used and fully functioning","For parts, not fully functioning, or untested"],"Fiber Arts & Sewing Supplies":["New","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Fine & Precious Metals":["New","New with defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Flesh & Blood":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Football Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Funko Pop!":["Mint","Near Mint","Good","Fair","Poor"],"Funko Soda":["Mint","Near Mint","Good","Fair","Poor"],"G.I. Joe Figures":["Mint","Near Mint","Good","Fair","Poor"],"Garbage Pail Kids":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Golf Accessories":["New","Used"],"Golf Apparel":["New","Used"],"Golf Bags":["New","Used"],"Golf Balls":["New","Used"],"Golf Clubs":["New","Used"],"Golf Shoes":["New","Used"],"Graphic Novels":["Brand New","Like New","Very Good","Good","Fair","Poor"],"Gundam":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Hand Tools":["New with box","New without box","New with defects","Refurbished","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Handcrafted & Artisan Jewelry":["New","New with defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Headphones and Speakers":["Brand New","Open-box","Refurbished - Excellent","Refurbished - Very Good","Refurbished - Good","Refurbished - Fair","Used and fully functioning","For parts, not fully functioning, or untested"],"Hockey Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Home Decor":["New with box","New without box","New with defects","Refurbished","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Hot Toys":["Mint","Near Mint","Good","Fair","Poor"],"Instruments & Accessories":["Mint","Excellent","Very Good","Good, Fair","Poor"],"Jewelry":["New","New with defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Jewelry Making Supplies":["New","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Kickstarter & Other Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Kitchen & Dining":["New with box","New without box","New with defects","Refurbished","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Knives & Hunting":["New with box","New without box","New with defects","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Kryptik":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"LEGO Minifigures":["New in box","New with damaged box","New without box","Used - Like New","Used - Good","Used - Fair","Used - Poor"],"LEGO Sets":["New in box","New with damaged box","New without box","Used - Like New","Used - Good","Used - Fair","Used - Poor"],"Lorcana":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Lures":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Luxury Bags & Accessories":["New With Tags","New Without Tags","New With Defects","Excellent","Very Good","Good","Fair","Poor"],"MOTU Figures":["Mint","Near Mint","Good","Fair","Poor"],"Magazines":["Brand New","Like New","Very Good","Good","Fair","Poor"],"Magic: The Gathering":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Marvel Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Marvel Figures":["Mint","Near Mint","Good","Fair","Poor"],"Men's Fashion":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Men's Jewelry":["New","New with defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Men's Modern":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Men's Vintage Clothing":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"MetaZoo":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Midrange & Fashion Bags":["New With Tags","New Without Tags","New with Defects","Excellent","Very Good","Good","Fair","Poor"],"Modern Comics":["Graded","Gem Mint","Mint","Near Mint","Very Fine","Fine","Very Good","Good","Fair","Poor"],"Modern Games":["Brand New, Factory Sealed","Complete in Box","Missing Manual","Loose","Graded"],"Movie Memorabilia":["Mint","Excellent","Very Good","Good","Fair","Poor"],"Music Memorabilia":["Mint","Excellent","Very Good","Good, Fair","Poor"],"Naruto Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"New & Used Books":["Brand New","Like New","Very Good","Good","Fair","Poor"],"One Piece Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Other Accessories":["New With Tags","New Without Tags","New With Defects","Excellent","Very Good","Good","Fair","Poor"],"Other Action Figures":["Mint","Near Mint","Good","Fair","Poor"],"Other Craft Supplies":["New","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Other Diecast":["Mint","Near Mint","Good","Fair","Poor"],"Other Electronics":["Brand New","Open-box","Refurbished - Excellent","Refurbished - Very Good","Refurbished - Good","Refurbished - Fair","Used and fully functioning","For parts, not fully functioning, or untested"],"Other Entertainment Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Other Fishing Equipment":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Other Funko Products":["Mint","Near Mint","Good","Fair","Poor"],"Other Home & Garden":["New with box","New without box","New with defects","Refurbished","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Other LEGO":["New in box","New with damaged box","New without box","Used - Like New","Used - Good","Used - Fair","Used - Poor"],"Other Men's Fashion":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Other Outdoors Gear":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Other Plush":["New","Used"],"Other Sports Cards":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Other Women's Fashion":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Paper Money & Currency":["Gem Uncirculated","Uncirculated","Very Fine","Fine","Good","Poor"],"Pokémon Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Pokémon Plush":["New","Used"],"Pop Culture Memorabilia":["Graded","Gem Mint","Mint","Near Mint","Very Fine","Fine","Very Good","Good","Fair","Poor"],"Postage Stamps":["Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Power Rangers":["Mint","Near Mint","Good","Fair","Poor"],"Rare & Vintage Books":["Brand New","Like New","Very Good","Good","Fair","Poor"],"Reels":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Retro Games":["Brand New, Factory Sealed","Complete in Box","Missing Manual","Loose","Graded"],"Riftbound":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Rods":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Simpsons Figures":["Mint","Near Mint","Good","Fair","Poor"],"Sneakers":["New","New With Defects","Used","Not Specified"],"Soccer Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Sorcery: Contested Realm":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Sports Jerseys":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Squishmallows":["New","Used"],"Star Wars Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Star Wars Figures":["Mint","Near Mint","Good","Fair","Poor"],"Strategy Guides, Manuals, Replacement Cases":["Brand New","Like New","Very Good","Good","Acceptable"],"Streetwear":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Sunglasses & Eyewear":["New With Tags","New Without Tags","New With Defects","Pre-owned - Excellent","Pre-owned - Very Good","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Poor"],"TCG Accessories":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"TMNT Figures":["Mint","Near Mint","Good","Fair","Poor"],"TV & Movie Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Tools":["Brand New","Open-box","Refurbished - Excellent","Refurbished - Very Good","Refurbished - Good","Refurbished - Fair","Used and fully functioning","For parts, not fully functioning, or untested"],"Trading Card Games":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Transformers Figures":["Mint","Near Mint","Good","Fair","Poor"],"UFC Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"UniVersus Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Union Arena":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"VHS":["Brand New","Like New","Very Good","Good","Fair","Poor"],"VeeFriends":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Vintage & Antique Jewelry":["New","New with defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Vintage Comics":["Graded","Gem Mint","Mint","Near Mint","Very Fine","Fine","Very Good","Good","Fair","Poor"],"Vintage Decor":["Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Vinyl Records":["Mint (M)","Near Mint (NM or M-)","Excellent (EX)","Very Good Plus (VG+)","Very Good (VG)","Good Plus (G+)","Good (G)","Fair (F)"],"Weiß Schwarz":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"],"Winter Sports":["New","pre-owned - Excellent","pre-owned - good","pre-owned - fair","pre-owned - damaged"],"Women's Activewear":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Women's Contemporary":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Women's Fashion":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Women's Shoes":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Women's True Vintage":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Wrestling Figures":["Mint","Near Mint","Good","Fair","Poor"],"Wrestling Singles":["Graded","Raw - Near Mint or Better","Raw - Excellent","Raw - Very Good","Raw - Poor"],"Y2K":["New With Tags","New without Tags","New with Defects","Pre-owned - Excellent","Pre-owned - Good","Pre-owned - Fair","Pre-owned - Damaged"],"Yu-Gi-Oh! Cards":["Graded","New","Mint","Near Mint","Light Played","Moderately Played","Heavily Played","Damaged"]}};
+
+const WHATNOT_COLUMNS = [
+  "Category", "Sub Category", "Title", "Description",
+  "Quantity", "Type", "Price", "Shipping Profile",
+  "Offerable", "Hazmat", "Condition", "Cost Per Item", "SKU",
+  "Image URL 1", "Image URL 2", "Image URL 3", "Image URL 4",
+  "Image URL 5", "Image URL 6", "Image URL 7", "Image URL 8",
+];
+
+const EBAY_FIELD_ALIASES = {
+  title:       ["Title", "Item title", "ItemTitle"],
+  price:       ["Current price", "Start price", "StartPrice", "BuyItNowPrice",
+                "Buy It Now price", "Price", "CurrentPrice"],
+  quantity:    ["Available quantity", "Quantity", "AvailableQuantity", "Quantity available"],
+  sku:         ["Custom label (SKU)", "Custom label", "CustomLabel", "SKU"],
+  format:      ["Format", "ListingType", "Listing type"],
+  condition:   ["Condition", "ConditionDisplayName"],
+  description: ["Description"],
+};
+
+const state = { rows: null, cols: null, fileName: null };
+
+// ---------- helpers ----------
+function findColumn(fieldnames, aliases) {
+  const lowered = {};
+  fieldnames.forEach(f => { if (f) lowered[f.toLowerCase().trim()] = f; });
+  for (const alias of aliases) {
+    if (lowered[alias.toLowerCase()]) return lowered[alias.toLowerCase()];
+  }
+  return null;
+}
+
+function detectColumns(fieldnames) {
+  const out = {};
+  for (const [key, aliases] of Object.entries(EBAY_FIELD_ALIASES)) out[key] = findColumn(fieldnames, aliases);
+  return out;
+}
+
+function cleanPrice(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  const cleaned = s.replace(/[^0-9.\-]/g, '');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+function mapListingType(ebayFormat, fallback) {
+  if (!ebayFormat) return fallback;
+  const f = String(ebayFormat).trim().toLowerCase();
+  if (f.includes('auction')) return 'Auction';
+  if (f.includes('fixed') || f.includes('buy') || f.includes('gtc')) return 'Buy it Now';
+  return fallback;
+}
+
+function buildDescription(title, condition) {
+  const parts = [];
+  if (title)     parts.push(title.trim());
+  if (condition) parts.push(`Condition: ${condition.trim()}`);
+  return parts.length ? parts.join('. ') : 'No description provided.';
+}
+
+// Best-effort map from eBay condition text to one of Whatnot's allowed conditions
+// for the chosen subcategory/category. Returns the matched value or null.
+function mapEbayCondition(ebayCondition, allowedConditions) {
+  if (!ebayCondition || !allowedConditions || allowedConditions.length === 0) return null;
+  const ec = ebayCondition.toLowerCase();
+  // exact match first (case-insensitive)
+  for (const c of allowedConditions) if (c.toLowerCase() === ec) return c;
+  // common eBay → Whatnot heuristics
+  // Each rule lists alternatives in priority order — first one that exists in
+  // the allowed list wins. Covers both general (New/Used) and card-grading
+  // (Mint/Near Mint/Played/Damaged) condition vocabularies.
+  const rules = [
+    [/\bbrand new\b|\bnew with tags?\b|\bnwt\b|\bsealed\b|^new$/,
+      ['New', 'Sealed', 'Brand New', 'Mint']],
+    [/\bnew without\b|\bnwot\b|\bopen box\b/,
+      ['New', 'Mint', 'Near Mint']],
+    [/\blike new\b/,
+      ['Mint', 'Near Mint', 'Excellent', 'New']],
+    [/\bmint\b/,
+      ['Mint', 'Near Mint']],
+    [/\bnear mint\b/,
+      ['Near Mint', 'Mint', 'Excellent']],
+    [/\bexcellent\b|\bvery good\b/,
+      ['Excellent', 'Near Mint', 'Very Good', 'Good', 'Light Played']],
+    [/\bgood\b/,
+      ['Good', 'Light Played', 'Used', 'Lightly Used']],
+    [/\bused\b|\bpre[- ]?owned\b/,
+      ['Used', 'Good', 'Light Played', 'Pre-Owned']],
+    [/\bacceptable\b|\bfair\b/,
+      ['Fair', 'Moderately Played', 'Played', 'Used', 'Heavily Played']],
+    [/\bfor parts\b|\bnot working\b|\bpoor\b|\bdamaged\b/,
+      ['Damaged', 'Heavily Played', 'Heavy Played', 'Poor', 'For Parts', 'Played']],
+  ];
+  for (const [re, prefs] of rules) {
+    if (re.test(ec)) {
+      for (const pref of prefs) {
+        const hit = allowedConditions.find(c => c.toLowerCase() === pref.toLowerCase());
+        if (hit) return hit;
+      }
+    }
+  }
+  return null;
+}
+
+function getConditionsFor(category, subcategory) {
+  // Conditions are keyed mostly by sub-category, sometimes by category.
+  if (subcategory && WHATNOT.conditions[subcategory]) return WHATNOT.conditions[subcategory];
+  if (category    && WHATNOT.conditions[category])    return WHATNOT.conditions[category];
+  return [];
+}
+
+// ---------- DOM refs ----------
+const dz       = document.getElementById('dropzone');
+const fileIn   = document.getElementById('file-input');
+const dzIcon   = document.getElementById('dz-icon');
+const dzText   = document.getElementById('dz-text');
+const summary  = document.getElementById('summary');
+const errBox   = document.getElementById('err');
+const convertBtn = document.getElementById('convert-btn');
+const result   = document.getElementById('result');
+
+const catSel   = document.getElementById('category');
+const subSel   = document.getElementById('subcategory');
+const shipSel  = document.getElementById('shipping');
+const typeSel  = document.getElementById('default-type');
+const condSel  = document.getElementById('condition');
+const hazSel   = document.getElementById('hazmat');
+const offerSel = document.getElementById('offerable');
+
+// ---------- populate static dropdowns ----------
+function populateOptions(selectEl, values, opts={}) {
+  const { keepFirst=false, placeholder=null, defaultValue=null } = opts;
+  if (!keepFirst) selectEl.innerHTML = '';
+  if (placeholder) {
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = placeholder;
+    selectEl.appendChild(o);
+  }
+  for (const v of values) {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    if (defaultValue && v === defaultValue) o.selected = true;
+    selectEl.appendChild(o);
+  }
+}
+
+populateOptions(catSel,  WHATNOT.categories,        { placeholder: '— choose category —' });
+populateOptions(shipSel, WHATNOT.shipping_profiles, { placeholder: '— choose weight —' });
+populateOptions(hazSel,  WHATNOT.hazmat,            { defaultValue: 'Not Hazmat' });
+
+// ---------- cascading: category → sub & condition ----------
+catSel.addEventListener('change', () => {
+  const cat = catSel.value;
+  // Sub Category
+  if (cat && WHATNOT.subcategories[cat]) {
+    subSel.disabled = false;
+    populateOptions(subSel, WHATNOT.subcategories[cat], { placeholder: '— choose sub-category —' });
+  } else {
+    subSel.disabled = true;
+    subSel.innerHTML = '<option value="">— none for this category —</option>';
+  }
+  // Condition
+  refreshConditions();
+  updateConvertBtn();
+});
+
+subSel.addEventListener('change', () => {
+  refreshConditions();
+  updateConvertBtn();
+});
+
+function refreshConditions() {
+  const conds = getConditionsFor(catSel.value, subSel.value);
+  if (conds.length) {
+    condSel.disabled = false;
+    populateOptions(condSel, conds, { placeholder: '— choose default —' });
+  } else {
+    condSel.disabled = true;
+    condSel.innerHTML = '<option value="">— no condition list for this category —</option>';
+  }
+}
+
+[shipSel, typeSel, condSel, hazSel, offerSel].forEach(el =>
+  el.addEventListener('change', updateConvertBtn));
+
+// ---------- file load ----------
+function showError(msg) { errBox.textContent = msg; errBox.classList.add('show'); }
+function clearError() { errBox.classList.remove('show'); errBox.textContent = ''; }
+
+['dragenter','dragover'].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev =>
+  dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+
+dz.addEventListener('drop',  e => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+fileIn.addEventListener('change', e => { const f = e.target.files[0]; if (f) handleFile(f); });
+
+function handleFile(file) {
+  clearError();
+  result.classList.remove('show');
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    showError("That doesn't look like a .csv file. Please choose your eBay CSV export.");
+    return;
+  }
+  state.fileName = file.name;
+  Papa.parse(file, {
+    header: true, skipEmptyLines: 'greedy',
+    transformHeader: h => h.replace(/^\uFEFF/, ''),
+    complete: res => {
+      if (!res.meta.fields || res.meta.fields.length === 0) {
+        showError("No columns found. Is this a valid CSV?"); return;
+      }
+      state.rows = res.data;
+      state.cols = detectColumns(res.meta.fields);
+      if (!state.cols.title || !state.cols.price) {
+        showError("Couldn't find required Title and price columns.\nColumns I see: " + res.meta.fields.join(', '));
+        return;
+      }
+      renderSummary();
+      dz.classList.add('loaded');
+      dzIcon.textContent = '✓';
+      dzText.innerHTML = `<strong>${file.name}</strong><br><span style="color: var(--ink-faint);">${state.rows.length} rows · click to choose a different file</span>`;
+      updateConvertBtn();
+    },
+    error: err => showError("Could not parse CSV: " + err.message),
+  });
+}
+
+function renderSummary() {
+  const { cols, rows } = state;
+  const sample = rows[0] || {};
+  const fields = ['title','price','quantity','format','condition','sku','description'];
+  let html = '';
+  for (const key of fields) {
+    const col = cols[key];
+    const cls = col ? 'ok' : 'miss';
+    const label = col ? `→ ${col}` : '(not found)';
+    html += `<div class="summary-row"><span>${key}</span><span class="${cls}">${label}</span></div>`;
+  }
+  if (cols.title && sample[cols.title]) {
+    const t = String(sample[cols.title]).slice(0, 70);
+    const p = cols.price ? sample[cols.price] : '';
+    html += `<div class="summary-row" style="margin-top:8px;border-top:1px solid var(--rule);padding-top:10px;"><span>sample row</span><span style="color:var(--ink);">${escapeHtml(t)} · ${escapeHtml(String(p))}</span></div>`;
+  }
+  summary.innerHTML = html;
+  summary.classList.add('show');
+}
+
+// ---------- convert button gate ----------
+function updateConvertBtn() {
+  const ready = state.rows && catSel.value && shipSel.value;
+  convertBtn.disabled = !ready;
+}
+
+// ---------- conversion ----------
+convertBtn.addEventListener('click', () => {
+  if (!state.rows || !state.cols) return;
+  const cat = catSel.value;
+  const sub = subSel.value || '';
+  const allowedConditions = getConditionsFor(cat, sub);
+  const defaults = {
+    category: cat, subcategory: sub,
+    shipping: shipSel.value, type: typeSel.value,
+    condition: condSel.value || '',
+    hazmat: hazSel.value, offerable: offerSel.value,
+  };
+
+  const out = [];
+  let skipped = 0, mappedConditions = 0, fallbackConditions = 0, priceRounded = 0;
+  const cols = state.cols;
+
+  for (const row of state.rows) {
+    const title = (row[cols.title] || '').trim();
+    const price = cleanPrice(row[cols.price]);
+    if (!title || price === null) { skipped++; continue; }
+
+    let qty = 1;
+    if (cols.quantity) {
+      const n = parseInt(parseFloat(row[cols.quantity]), 10);
+      if (!isNaN(n) && n >= 1) qty = n;
+    }
+
+    const sku       = cols.sku       ? (row[cols.sku]       || '').trim() : '';
+    const ebayCond  = cols.condition ? (row[cols.condition] || '').trim() : '';
+    const ebayFmt   = cols.format    ? row[cols.format] : null;
+    const existing  = cols.description ? (row[cols.description] || '').trim() : '';
+
+    // Try to map this row's eBay condition to a Whatnot condition
+    let rowCondition = '';
+    const mapped = mapEbayCondition(ebayCond, allowedConditions);
+    if (mapped) {
+      rowCondition = mapped;
+      mappedConditions++;
+    } else {
+      rowCondition = defaults.condition;
+      if (ebayCond) fallbackConditions++;
+    }
+
+    const listingType = mapListingType(ebayFmt, defaults.type);
+    const intPrice = Math.max(1, Math.round(price));
+    if (Math.abs(price - intPrice) > 0.001) priceRounded++;
+
+    const rec = {
+      "Category":         defaults.category,
+      "Sub Category":     defaults.subcategory,
+      "Title":            title.slice(0, 80),
+      "Description":      existing || buildDescription(title, ebayCond),
+      "Quantity":         qty,
+      "Type":             listingType,
+      "Price":            intPrice,
+      "Shipping Profile": defaults.shipping,
+      "Offerable":        listingType === 'Buy it Now' ? defaults.offerable : '',
+      "Hazmat":           defaults.hazmat,
+      "Condition":        rowCondition,
+      "Cost Per Item":    "",
+      "SKU":              sku,
+      "Image URL 1":      "", "Image URL 2": "", "Image URL 3": "", "Image URL 4": "",
+      "Image URL 5":      "", "Image URL 6": "", "Image URL 7": "", "Image URL 8": "",
+    };
+    out.push(rec);
+  }
+
+  renderResult(out, { skipped, mappedConditions, fallbackConditions, priceRounded, defaults });
+});
+
+function renderResult(out, info) {
+  if (out.length === 0) {
+    showError("No valid listings could be converted. Every row was missing a title or price.");
+    return;
+  }
+  const csv  = Papa.unparse(out, { columns: WHATNOT_COLUMNS });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const baseName = (state.fileName || 'whatnot').replace(/\.csv$/i, '');
+  const downloadName = `${baseName}_whatnot.csv`;
+
+  const previewRows = out.slice(0, 4).map(r => `
+    <tr>
+      <td class="title-cell">${escapeHtml(r.Title)}</td>
+      <td>$${escapeHtml(r.Price)}</td>
+      <td>${escapeHtml(String(r.Quantity))}</td>
+      <td>${escapeHtml(r.Type)}</td>
+      <td>${escapeHtml(r.Condition)}</td>
+      <td>${escapeHtml(r["Shipping Profile"])}</td>
+    </tr>`).join('');
+
+  const d = info.defaults;
+  result.innerHTML = `
+    <div class="result-head">Done. <em>${out.length} listings ready.</em></div>
+    <div class="result-stats">
+      Category: <b>${escapeHtml(d.category)}</b>${d.subcategory ? ` › <b>${escapeHtml(d.subcategory)}</b>` : ''}<br>
+      Shipping: <b>${escapeHtml(d.shipping)}</b> · Hazmat: <b>${escapeHtml(d.hazmat)}</b> · Offerable: <b>${escapeHtml(d.offerable)}</b><br>
+      Conditions: <b>${info.mappedConditions}</b> auto-mapped from eBay${info.fallbackConditions ? `, <b>${info.fallbackConditions}</b> used the default` : ''}.
+      ${info.priceRounded ? `<br><span style="color:var(--accent);">Note: <b>${info.priceRounded}</b> price${info.priceRounded===1?'':'s'} had cents and were rounded to the nearest dollar (Whatnot requires whole-number prices).</span>` : ''}
+      ${info.skipped ? `<br><span class="skip">Skipped ${info.skipped} row${info.skipped===1?'':'s'} missing title or price.</span>` : ''}
+    </div>
+    <a class="download-link" href="${url}" download="${downloadName}">↓ Download ${downloadName}</a>
+    <div class="preview-title">First few rows of output</div>
+    <div class="preview-wrap">
+      <table class="preview">
+        <thead><tr><th>Title</th><th>Price</th><th>Qty</th><th>Type</th><th>Condition</th><th>Shipping</th></tr></thead>
+        <tbody>${previewRows}</tbody>
+      </table>
+    </div>
+  `;
+  result.classList.add('show');
+  result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"\']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>
