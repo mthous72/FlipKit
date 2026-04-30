@@ -111,7 +111,10 @@ namespace FlipKit.Desktop
                         return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
                     });
                 }
-                services.AddSingleton<IScannerService, OpenRouterScannerService>();
+                // Scanner services - Ximilar checked first, then falls back to OpenRouter LLM
+                services.AddSingleton<IXimilarService, XimilarService>();
+                services.AddSingleton<OpenRouterScannerService>();
+                services.AddSingleton<IScannerService, CompositeScannerService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();

@@ -10,5 +10,6 @@ namespace FlipKit.Core.Services
         bool HasValidConfig();
         Task<bool> TestOpenRouterConnectionAsync(string apiKey);
         Task<bool> TestImgBBConnectionAsync(string apiKey);
+        Task<bool> TestXimilarConnectionAsync(string apiKey);
     }
 }
