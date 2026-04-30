@@ -111,6 +111,18 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _apiServerLogs = string.Empty;
         [ObservableProperty] private Bitmap? _qrCodeBitmap;
 
+        // Dual QR Code Support
+        [ObservableProperty] private string? _localNetworkIp;
+        [ObservableProperty] private string? _tailscaleIp;
+        [ObservableProperty] private string _localNetworkUrl = string.Empty;
+        [ObservableProperty] private string _tailscaleUrl = string.Empty;
+        [ObservableProperty] private bool _isLocalNetworkAvailable;
+        [ObservableProperty] private bool _isTailscaleAvailable;
+        [ObservableProperty] private Bitmap? _localQrCodeBitmap;
+        [ObservableProperty] private Bitmap? _tailscaleQrCodeBitmap;
+        [ObservableProperty] private string _localNetworkStatus = "Checking...";
+        [ObservableProperty] private string _tailscaleStatus = "Not configured";
+
         public SettingsViewModel(ISettingsService settingsService, IBrowserService browserService,
             IServiceProvider services, IServerManagementService serverManagement)
         {
@@ -568,99 +580,97 @@ namespace FlipKit.Desktop.ViewModels
         {
             try
             {
-                var localIPs = new List<string>();
-                var tailscaleIPs = new List<string>();
+                // Use NetworkHelper for IP detection
+                var networkInfo = NetworkHelper.GetNetworkInfo();
 
-                foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-                {
-                    if (ni.OperationalStatus == OperationalStatus.Up)
-                    {
-                        foreach (var ip in ni.GetIPProperties().UnicastAddresses)
-                        {
-                            if (ip.Address.AddressFamily == AddressFamily.InterNetwork &&
-                                !ip.Address.ToString().StartsWith("127."))
-                            {
-                                var ipStr = ip.Address.ToString();
+                LocalNetworkIp = networkInfo.LocalIpAddress;
+                TailscaleIp = networkInfo.TailscaleIpAddress;
+                IsLocalNetworkAvailable = networkInfo.IsLocalNetworkAvailable;
+                IsTailscaleAvailable = networkInfo.IsTailscaleAvailable;
 
-                                // Detect Tailscale IPs (100.64.0.0/10 CGNAT range)
-                                if (ipStr.StartsWith("100."))
-                                {
-                                    tailscaleIPs.Add(ipStr);
-                                }
-                                // Regular network interfaces
-                                else if (ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
-                                         ni.NetworkInterfaceType == NetworkInterfaceType.Ethernet)
-                                {
-                                    localIPs.Add(ipStr);
-                                }
-                            }
-                        }
-                    }
-                }
+                // Update status messages
+                LocalNetworkStatus = IsLocalNetworkAvailable ? "Available" : "No network";
+                TailscaleStatus = IsTailscaleAvailable ? "Connected" : "Not configured";
 
                 if (IsWebRunning)
                 {
-                    string primaryIp;
-                    string networkType;
-                    string additionalInfo = "";
-
-                    // Prioritize Tailscale if available
-                    if (tailscaleIPs.Count > 0)
+                    // Generate URLs and QR codes for both networks
+                    if (IsLocalNetworkAvailable && LocalNetworkIp != null)
                     {
-                        primaryIp = tailscaleIPs[0];
-                        networkType = "🌐 Tailscale (Remote Access)";
-
-                        if (localIPs.Count > 0)
-                        {
-                            var localIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
-                            additionalInfo = $"\n📱 Local Network: http://{localIp}:{ActualWebPort}";
-                        }
+                        LocalNetworkUrl = $"http://{LocalNetworkIp}:{ActualWebPort}";
+                        LocalQrCodeBitmap = GenerateQrCodeBitmap(LocalNetworkUrl);
                     }
-                    else if (localIPs.Count > 0)
+                    else
                     {
-                        primaryIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
-                        networkType = "📱 Local Network";
+                        LocalNetworkUrl = string.Empty;
+                        LocalQrCodeBitmap = null;
+                    }
+
+                    if (IsTailscaleAvailable && TailscaleIp != null)
+                    {
+                        TailscaleUrl = $"http://{TailscaleIp}:{ActualWebPort}";
+                        TailscaleQrCodeBitmap = GenerateQrCodeBitmap(TailscaleUrl);
+                    }
+                    else
+                    {
+                        TailscaleUrl = string.Empty;
+                        TailscaleQrCodeBitmap = null;
+                    }
+
+                    // Legacy property for backward compatibility
+                    if (IsTailscaleAvailable)
+                    {
+                        LocalIpAddresses = $"🌐 Tailscale: {TailscaleUrl}";
+                        if (IsLocalNetworkAvailable)
+                        {
+                            LocalIpAddresses += $"\n📱 Local: {LocalNetworkUrl}";
+                        }
+                        QrCodeBitmap = TailscaleQrCodeBitmap;
+                    }
+                    else if (IsLocalNetworkAvailable)
+                    {
+                        LocalIpAddresses = $"📱 Local Network: {LocalNetworkUrl}";
+                        QrCodeBitmap = LocalQrCodeBitmap;
                     }
                     else
                     {
                         LocalIpAddresses = "No network connection";
                         QrCodeBitmap = null;
-                        return;
                     }
-
-                    var url = $"http://{primaryIp}:{ActualWebPort}";
-                    LocalIpAddresses = $"{networkType}\n{url}{additionalInfo}";
-
-                    // Generate QR code for the primary URL
-                    GenerateQrCode(url);
                 }
                 else
                 {
-                    if (tailscaleIPs.Count > 0)
+                    // Server not running - clear QR codes but show IP info
+                    LocalQrCodeBitmap = null;
+                    TailscaleQrCodeBitmap = null;
+                    QrCodeBitmap = null;
+                    LocalNetworkUrl = string.Empty;
+                    TailscaleUrl = string.Empty;
+
+                    if (IsTailscaleAvailable)
                     {
-                        LocalIpAddresses = $"🌐 Tailscale IP: {tailscaleIPs[0]}\n(Web server not running)";
+                        LocalIpAddresses = $"🌐 Tailscale IP: {TailscaleIp}\n(Web server not running)";
                     }
-                    else if (localIPs.Count > 0)
+                    else if (IsLocalNetworkAvailable)
                     {
-                        var localIp = localIPs.FirstOrDefault(ip => ip.StartsWith("192.168.")) ?? localIPs[0];
-                        LocalIpAddresses = $"📱 Local IP: {localIp}\n(Web server not running)";
+                        LocalIpAddresses = $"📱 Local IP: {LocalNetworkIp}\n(Web server not running)";
                     }
                     else
                     {
                         LocalIpAddresses = "No network connection";
                     }
-
-                    QrCodeBitmap = null;
                 }
             }
             catch (Exception ex)
             {
                 LocalIpAddresses = $"Error detecting network: {ex.Message}";
+                LocalQrCodeBitmap = null;
+                TailscaleQrCodeBitmap = null;
                 QrCodeBitmap = null;
             }
         }
 
-        private void GenerateQrCode(string url)
+        private Bitmap? GenerateQrCodeBitmap(string url)
         {
             try
             {
@@ -671,13 +681,39 @@ namespace FlipKit.Desktop.ViewModels
 
                 // Convert byte array to Avalonia Bitmap
                 using var stream = new MemoryStream(qrCodeImage);
-                QrCodeBitmap = new Bitmap(stream);
+                return new Bitmap(stream);
             }
-            catch (Exception)
+            catch
             {
-                // Failed to generate QR code - silently fail and leave QR code as null
-                QrCodeBitmap = null;
+                return null;
             }
+        }
+
+        [RelayCommand]
+        private void OpenTailscaleGuide()
+        {
+            // Detect OS and open appropriate guide
+            var guidePath = OperatingSystem.IsWindows() ? "Tailscale-Setup-Windows.md"
+                : OperatingSystem.IsMacOS() ? "Tailscale-Setup-Mac.md"
+                : "Tailscale-Setup-Linux.md";
+
+            // Try to open local documentation first
+            var docsPath = Path.Combine(AppContext.BaseDirectory, "Docs", guidePath);
+            if (File.Exists(docsPath))
+            {
+                _browserService.OpenUrl(docsPath);
+            }
+            else
+            {
+                // Fall back to Tailscale download page
+                _browserService.OpenUrl("https://tailscale.com/download");
+            }
+        }
+
+        [RelayCommand]
+        private void RefreshNetworkStatus()
+        {
+            UpdateLocalIpAddresses();
         }
 
         public void Dispose()
