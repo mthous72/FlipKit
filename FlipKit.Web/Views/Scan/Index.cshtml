@@ -64,10 +64,34 @@
                             </div>
                         </div>
 
+                        <!-- Ximilar Scan Mode -->
+                        <div class="mb-4">
+                            <label for="ximilarMode" class="form-label">
+                                <strong>Card Recognition</strong>
+                            </label>
+                            <select class="form-select form-select-lg" id="ximilarMode" name="ximilarMode">
+                                <option value="Standard" selected="@(Model.XimilarMode == FlipKit.Core.Models.Enums.XimilarScanMode.Standard)">
+                                    Ximilar Scan
+                                </option>
+                                <option value="Magic" selected="@(Model.XimilarMode == FlipKit.Core.Models.Enums.XimilarScanMode.Magic)">
+                                    Ximilar Scan with Magic
+                                </option>
+                                <option value="Disabled" selected="@(Model.XimilarMode == FlipKit.Core.Models.Enums.XimilarScanMode.Disabled)">
+                                    No Ximilar Scan
+                                </option>
+                            </select>
+                            <small class="text-muted d-block mt-2" style="line-height: 1.5;">
+                                <i class="bi bi-info-circle"></i>
+                                <strong>Ximilar Scan:</strong> Fast database lookup.
+                                <strong>With Magic:</strong> Extra tokens for newer/short print cards.
+                                <strong>No Ximilar:</strong> AI vision only.
+                            </small>
+                        </div>
+
                         <!-- Model Selection -->
                         <div class="mb-4">
                             <label for="selectedModel" class="form-label">
-                                <strong>AI Model</strong>
+                                <strong>AI Model</strong> <span class="text-muted">(fallback when Ximilar doesn't match)</span>
                             </label>
                             <select class="form-select form-select-lg" id="selectedModel" name="selectedModel">
                                 <optgroup label="Free Models (Recommended)">

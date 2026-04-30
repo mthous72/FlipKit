@@ -3,10 +3,19 @@ using System.Text.Json.Serialization;
 
 namespace FlipKit.Core.Services.ApiModels
 {
+    // Request models
     public class XimilarRequest
     {
         [JsonPropertyName("records")]
         public List<XimilarRecord> Records { get; set; } = new();
+
+        /// <summary>
+        /// When true, uses extra tokens to identify newer cards and short prints
+        /// that may not be in the standard database.
+        /// </summary>
+        [JsonPropertyName("magic_ai")]
+        [System.Text.Json.Serialization.JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool MagicAi { get; set; }
     }
 
     public class XimilarRecord
@@ -18,6 +27,7 @@ namespace FlipKit.Core.Services.ApiModels
         public string? Url { get; set; }
     }
 
+    // Response models
     public class XimilarResponse
     {
         [JsonPropertyName("records")]
@@ -44,8 +54,8 @@ namespace FlipKit.Core.Services.ApiModels
         [JsonPropertyName("_objects")]
         public List<XimilarObject>? Objects { get; set; }
 
-        [JsonPropertyName("best")]
-        public XimilarBestMatch? Best { get; set; }
+        [JsonPropertyName("Category")]
+        public string? Category { get; set; }
     }
 
     public class XimilarRecordStatus
@@ -71,11 +81,38 @@ namespace FlipKit.Core.Services.ApiModels
         [JsonPropertyName("bound_box")]
         public List<int>? BoundBox { get; set; }
 
-        [JsonPropertyName("labels")]
-        public List<XimilarLabel>? Labels { get; set; }
+        [JsonPropertyName("_tags")]
+        public XimilarTags? Tags { get; set; }
+
+        [JsonPropertyName("_tags_simple")]
+        public List<string>? TagsSimple { get; set; }
+
+        [JsonPropertyName("_identification")]
+        public XimilarIdentification? Identification { get; set; }
     }
 
-    public class XimilarLabel
+    public class XimilarTags
+    {
+        [JsonPropertyName("Category")]
+        public List<XimilarTagValue>? Category { get; set; }
+
+        [JsonPropertyName("Side")]
+        public List<XimilarTagValue>? Side { get; set; }
+
+        [JsonPropertyName("Subcategory")]
+        public List<XimilarTagValue>? Subcategory { get; set; }
+
+        [JsonPropertyName("Autograph")]
+        public List<XimilarTagValue>? Autograph { get; set; }
+
+        [JsonPropertyName("Foil/Holo")]
+        public List<XimilarTagValue>? FoilHolo { get; set; }
+
+        [JsonPropertyName("Graded")]
+        public List<XimilarTagValue>? Graded { get; set; }
+    }
+
+    public class XimilarTagValue
     {
         [JsonPropertyName("name")]
         public string? Name { get; set; }
@@ -87,60 +124,60 @@ namespace FlipKit.Core.Services.ApiModels
         public string? Id { get; set; }
     }
 
+    public class XimilarIdentification
+    {
+        [JsonPropertyName("best_match")]
+        public XimilarBestMatch? BestMatch { get; set; }
+
+        [JsonPropertyName("alternatives")]
+        public List<XimilarBestMatch>? Alternatives { get; set; }
+
+        [JsonPropertyName("distances")]
+        public List<double>? Distances { get; set; }
+    }
+
     public class XimilarBestMatch
     {
-        [JsonPropertyName("_id")]
-        public string? Id { get; set; }
-
-        [JsonPropertyName("_url")]
-        public string? Url { get; set; }
-
-        [JsonPropertyName("_score")]
-        public double Score { get; set; }
-
-        [JsonPropertyName("player_name")]
-        public string? PlayerName { get; set; }
-
         [JsonPropertyName("year")]
         public string? Year { get; set; }
 
-        [JsonPropertyName("brand")]
-        public string? Brand { get; set; }
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }  // Player name
 
-        [JsonPropertyName("manufacturer")]
-        public string? Manufacturer { get; set; }
+        [JsonPropertyName("set_name")]
+        public string? SetName { get; set; }
+
+        [JsonPropertyName("card_type")]
+        public string? CardType { get; set; }  // e.g., "Rookie Card"
 
         [JsonPropertyName("card_number")]
         public string? CardNumber { get; set; }
 
-        [JsonPropertyName("team")]
-        public string? Team { get; set; }
+        [JsonPropertyName("subcategory")]
+        public string? Subcategory { get; set; }  // Sport (MMA, Football, etc.)
 
-        [JsonPropertyName("sport")]
-        public string? Sport { get; set; }
+        [JsonPropertyName("sub_set")]
+        public string? SubSet { get; set; }  // e.g., "UFC"
 
-        [JsonPropertyName("parallel")]
-        public string? Parallel { get; set; }
+        [JsonPropertyName("company")]
+        public string? Company { get; set; }  // Manufacturer (Panini, Topps)
 
-        [JsonPropertyName("variation")]
-        public string? Variation { get; set; }
+        [JsonPropertyName("full_name")]
+        public string? FullName { get; set; }
 
-        [JsonPropertyName("serial_numbered")]
-        public string? SerialNumbered { get; set; }
+        [JsonPropertyName("links")]
+        public XimilarLinks? Links { get; set; }
+    }
 
-        [JsonPropertyName("is_rookie")]
-        public bool? IsRookie { get; set; }
+    public class XimilarLinks
+    {
+        [JsonPropertyName("ebay.com")]
+        public string? Ebay { get; set; }
 
-        [JsonPropertyName("is_auto")]
-        public bool? IsAuto { get; set; }
+        [JsonPropertyName("comc.com")]
+        public string? Comc { get; set; }
 
-        [JsonPropertyName("is_relic")]
-        public bool? IsRelic { get; set; }
-
-        [JsonPropertyName("ebay_url")]
-        public string? EbayUrl { get; set; }
-
-        [JsonPropertyName("price")]
-        public decimal? Price { get; set; }
+        [JsonPropertyName("beckett.com")]
+        public string? Beckett { get; set; }
     }
 }

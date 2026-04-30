@@ -388,3 +388,4 @@ appsettings.Development.json
 # JetBrains Rider
 .idea/
 *.sln.iml
+/.claude/settings.local.json

@@ -46,9 +46,16 @@ namespace FlipKit.Web.Controllers
 
             var scanMode = HttpContext.Session.GetString("ScanMode") ?? "selling";
 
+            // Get Ximilar mode from session (persists user's selection)
+            var ximilarModeStr = HttpContext.Session.GetString("XimilarScanMode") ?? "Standard";
+            var ximilarMode = Enum.TryParse<XimilarScanMode>(ximilarModeStr, out var parsedMode)
+                ? parsedMode
+                : XimilarScanMode.Standard;
+
             var viewModel = new ScanUploadViewModel
             {
-                ScanMode = scanMode
+                ScanMode = scanMode,
+                XimilarMode = ximilarMode
             };
 
             return View(viewModel);
@@ -57,7 +64,7 @@ namespace FlipKit.Web.Controllers
         // POST: Scan/Upload
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Upload(IFormFile? frontImage, IFormFile? backImage, string? selectedModel)
+        public async Task<IActionResult> Upload(IFormFile? frontImage, IFormFile? backImage, string? selectedModel, string? ximilarMode)
         {
             if (frontImage == null || frontImage.Length == 0)
             {
@@ -67,6 +74,14 @@ namespace FlipKit.Web.Controllers
 
             try
             {
+                // Parse and store Ximilar mode in session (persists for future scans)
+                var parsedXimilarMode = XimilarScanMode.Standard;
+                if (!string.IsNullOrEmpty(ximilarMode) && Enum.TryParse<XimilarScanMode>(ximilarMode, out var mode))
+                {
+                    parsedXimilarMode = mode;
+                    HttpContext.Session.SetString("XimilarScanMode", ximilarMode);
+                }
+
                 // Save uploaded images to temp directory
                 var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads");
                 Directory.CreateDirectory(uploadsPath);
@@ -91,9 +106,9 @@ namespace FlipKit.Web.Controllers
                 var settings = _settingsService.Load();
                 var model = selectedModel ?? settings.DefaultModel ?? "nvidia/nemotron-nano-12b-v2-vl:free";
 
-                // Scan the card using AI
-                _logger.LogInformation("Scanning card with model {Model}", model);
-                var scanResult = await _scannerService.ScanCardAsync(frontImagePath, backImagePath, model);
+                // Scan the card using AI with the selected Ximilar mode
+                _logger.LogInformation("Scanning card with model {Model}, Ximilar mode: {XimilarMode}", model, parsedXimilarMode);
+                var scanResult = await _scannerService.ScanCardAsync(frontImagePath, backImagePath, model, parsedXimilarMode);
 
                 if (scanResult == null)
                 {
@@ -190,6 +205,14 @@ namespace FlipKit.Web.Controllers
                 if (costBasis.HasValue)
                     card.CostBasis = costBasis.Value;
 
+                // Ensure required fields have defaults (JSON deserialization may set them to null)
+                if (string.IsNullOrEmpty(card.VariationType))
+                    card.VariationType = "Base";
+                if (string.IsNullOrEmpty(card.Condition))
+                    card.Condition = "Near Mint";
+                if (string.IsNullOrEmpty(card.PlayerName))
+                    card.PlayerName = "Unknown";
+
                 // Set default status
                 card.Status = CardStatus.Draft;
                 card.CreatedAt = DateTime.UtcNow;
@@ -280,6 +303,14 @@ namespace FlipKit.Web.Controllers
                 }
 
                 var card = scanViewModel.ScannedCard;
+
+                // Ensure required fields have defaults (JSON deserialization may set them to null)
+                if (string.IsNullOrEmpty(card.VariationType))
+                    card.VariationType = "Base";
+                if (string.IsNullOrEmpty(card.Condition))
+                    card.Condition = "Near Mint";
+                if (string.IsNullOrEmpty(card.PlayerName))
+                    card.PlayerName = "Unknown";
 
                 // Set defaults and save
                 card.Status = CardStatus.Draft;

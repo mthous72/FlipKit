@@ -4,6 +4,13 @@ namespace FlipKit.Core.Models.Enums
     {
         Football,
         Baseball,
-        Basketball
+        Basketball,
+        Hockey,
+        Soccer,
+        MMA,
+        Wrestling,
+        Golf,
+        Tennis,
+        Racing
     }
 }

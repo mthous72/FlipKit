@@ -18,15 +18,15 @@ namespace FlipKit.Core.Services
     {
         private const string ApiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
-        // Free vision models currently available on OpenRouter (verified Feb 2025)
+        // Free vision models currently available on OpenRouter (verified Apr 2026)
         // All support vision-language input with text output
         public static readonly string[] FreeVisionModels = new[]
         {
-            "google/gemma-3-27b-it:free",              // 27B, best free model, 131K context
-            "mistralai/mistral-small-3.1-24b-instruct:free",  // 24B, strong multimodal
-            "google/gemma-3-12b-it:free",              // 12B, good balance
+            "google/gemma-4-31b-it:free",              // 31B, best free model
+            "google/gemma-4-26b-a4b-it:free",          // 26B, strong vision
+            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", // 30B, reasoning model
             "nvidia/nemotron-nano-12b-v2-vl:free",     // 12B, optimized for video/documents
-            "google/gemma-3-4b-it:free"                // 4B, fastest but less capable
+            "google/gemma-3-27b-it:free"               // 27B, reliable fallback
         };
 
         // Premium vision models (paid, higher quality and more reliable)
@@ -124,7 +124,11 @@ Return ONLY the JSON, no other text or markdown.";
             _logger = logger;
         }
 
-        public async Task<ScanResult> ScanCardAsync(string imagePath, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
+        public async Task<ScanResult> ScanCardAsync(
+            string imagePath,
+            string? backImagePath = null,
+            string model = "nvidia/nemotron-nano-12b-v2-vl:free",
+            XimilarScanMode ximilarMode = XimilarScanMode.Standard)
         {
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
 
@@ -139,39 +143,85 @@ Return ONLY the JSON, no other text or markdown.";
                 prompt = "Analyze this sports card image and extract all identifying information." + ScanPromptBody;
             }
 
-            var content = await SendVisionRequestAsync(dataUrls, prompt, model);
-            content = StripCodeBlocks(content);
+            // Build fallback chain and try each model until one succeeds
+            var settings = _settingsService.Load();
+            var apiKey = settings.OpenRouterApiKey;
 
-            ScannedCardData? scannedData;
-            try
+            if (string.IsNullOrWhiteSpace(apiKey))
+                throw new InvalidOperationException("OpenRouter API key is not configured. Go to Settings to enter your key.");
+
+            var modelsToTry = GetFallbackChain(model);
+            Exception? lastException = null;
+            var failedModels = new List<string>();
+
+            foreach (var currentModel in modelsToTry)
             {
-                scannedData = JsonSerializer.Deserialize<ScannedCardData>(content);
-                if (scannedData == null)
-                    throw new InvalidOperationException("Failed to parse AI response as card data.");
+                try
+                {
+                    _logger.LogInformation("Attempting scan with model {Model}...", currentModel);
+
+                    // Send request
+                    var content = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey);
+                    content = StripCodeBlocks(content);
+
+                    // Parse JSON response
+                    var scannedData = JsonSerializer.Deserialize<ScannedCardData>(content);
+                    if (scannedData == null)
+                        throw new JsonException("Deserialized to null");
+
+                    _logger.LogInformation("Scan succeeded with model {Model}", currentModel);
+
+                    // Build result
+                    var card = MapToCard(scannedData, imagePath);
+                    if (!string.IsNullOrEmpty(backImagePath))
+                        card.ImagePathBack = backImagePath;
+
+                    var visualCues = MapToVisualCues(scannedData.VisualCues);
+                    var confidences = MapToConfidences(scannedData.Confidence);
+
+                    return new ScanResult
+                    {
+                        Card = card,
+                        VisualCues = visualCues,
+                        AllVisibleText = scannedData.AllVisibleText ?? new List<string>(),
+                        Confidences = confidences
+                    };
+                }
+                catch (HttpRequestException ex) when (IsRetryableHttpError(ex))
+                {
+                    _logger.LogWarning("Model {Model} failed: {Error}. Trying next model...", currentModel, ex.Message);
+                    failedModels.Add(currentModel);
+                    lastException = ex;
+                    continue;
+                }
+                catch (TaskCanceledException ex)
+                {
+                    _logger.LogWarning("Model {Model} timed out. Trying next model...", currentModel);
+                    failedModels.Add(currentModel);
+                    lastException = ex;
+                    continue;
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning("Model {Model} returned invalid JSON: {Error}. Trying next model...", currentModel, ex.Message);
+                    failedModels.Add(currentModel);
+                    lastException = ex;
+                    continue;
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("No response content"))
+                {
+                    _logger.LogWarning("Model {Model} returned no content. Trying next model...", currentModel);
+                    failedModels.Add(currentModel);
+                    lastException = ex;
+                    continue;
+                }
             }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "JSON parsing failed. Raw response (first 500 chars): {Response}",
-                    content.Length > 500 ? content.Substring(0, 500) + "..." : content);
-                throw new InvalidOperationException(
-                    $"Scan Failed: The AI model returned invalid JSON. This may be due to the response being cut off. " +
-                    $"Error: {ex.Message}. Please try scanning again or try a different AI model.", ex);
-            }
 
-            var card = MapToCard(scannedData, imagePath);
-            if (!string.IsNullOrEmpty(backImagePath))
-                card.ImagePathBack = backImagePath;
-
-            var visualCues = MapToVisualCues(scannedData.VisualCues);
-            var confidences = MapToConfidences(scannedData.Confidence);
-
-            return new ScanResult
-            {
-                Card = card,
-                VisualCues = visualCues,
-                AllVisibleText = scannedData.AllVisibleText ?? new List<string>(),
-                Confidences = confidences
-            };
+            // All models failed
+            _logger.LogError(lastException, "All {Count} models failed: {Models}", modelsToTry.Count, string.Join(", ", failedModels));
+            throw new InvalidOperationException(
+                $"Scan failed: All {modelsToTry.Count} AI models failed. Last error: {lastException?.Message}. " +
+                "Please try again later or check your network connection.", lastException);
         }
 
         public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
@@ -319,8 +369,9 @@ Return ONLY the JSON, no other text or markdown.";
         private static bool IsRetryableHttpError(HttpRequestException ex)
         {
             var msg = ex.Message;
-            // Rate limit (429) or server errors (5xx)
-            return msg.Contains("429") || msg.Contains("500") || msg.Contains("502")
+            // Retry on: model not found (404), rate limit (429), or server errors (5xx)
+            return msg.Contains("404") || msg.Contains("NotFound")
+                || msg.Contains("429") || msg.Contains("500") || msg.Contains("502")
                 || msg.Contains("503") || msg.Contains("504");
         }
 

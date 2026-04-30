@@ -12,10 +12,6 @@ namespace FlipKit.Core.Services
     /// </summary>
     public class CompositeScannerService : IScannerService
     {
-        // Set to false to skip Ximilar and use OpenRouter directly.
-        // Ximilar Collectibles Recognition provides faster card lookups from their database.
-        private const bool EnableXimilar = true;
-
         private readonly IXimilarService _ximilarService;
         private readonly OpenRouterScannerService _openRouterService;
         private readonly ILogger<CompositeScannerService> _logger;
@@ -30,14 +26,23 @@ namespace FlipKit.Core.Services
             _logger = logger;
         }
 
-        public async Task<ScanResult> ScanCardAsync(string imagePath, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
+        public async Task<ScanResult> ScanCardAsync(
+            string imagePath,
+            string? backImagePath = null,
+            string model = "nvidia/nemotron-nano-12b-v2-vl:free",
+            XimilarScanMode ximilarMode = XimilarScanMode.Standard)
         {
-            // Try Ximilar first if enabled and configured (cheaper, uses existing card database)
-            if (EnableXimilar && _ximilarService.IsConfigured)
-            {
-                _logger.LogInformation("Attempting Ximilar recognition first...");
+            // Check if Ximilar should be used based on mode
+            var useXimilar = ximilarMode != XimilarScanMode.Disabled && _ximilarService.IsConfigured;
+            var useMagicAi = ximilarMode == XimilarScanMode.Magic;
 
-                var ximilarResult = await _ximilarService.RecognizeCardAsync(imagePath);
+            // Try Ximilar first if enabled and configured (cheaper, uses existing card database)
+            if (useXimilar)
+            {
+                _logger.LogInformation("Attempting Ximilar recognition (mode: {Mode}, magic_ai: {MagicAi})...",
+                    ximilarMode, useMagicAi);
+
+                var ximilarResult = await _ximilarService.RecognizeCardAsync(imagePath, useMagicAi);
 
                 if (ximilarResult?.Success == true && ximilarResult.Card != null && ximilarResult.Confidence >= 0.8)
                 {
@@ -73,7 +78,10 @@ namespace FlipKit.Core.Services
             }
             else
             {
-                _logger.LogDebug("Ximilar not configured, using OpenRouter directly");
+                if (ximilarMode == XimilarScanMode.Disabled)
+                    _logger.LogInformation("Ximilar disabled by user, using OpenRouter directly");
+                else
+                    _logger.LogDebug("Ximilar not configured, using OpenRouter directly");
             }
 
             // Fall back to OpenRouter LLM

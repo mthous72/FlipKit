@@ -5,7 +5,12 @@ namespace FlipKit.Core.Services
 {
     public interface IXimilarService
     {
-        Task<XimilarResult?> RecognizeCardAsync(string imagePath);
+        /// <summary>
+        /// Recognize a card using Ximilar Collectibles Recognition API.
+        /// </summary>
+        /// <param name="imagePath">Path to the card image</param>
+        /// <param name="useMagicAi">If true, uses extra tokens for newer/short print cards</param>
+        Task<XimilarResult?> RecognizeCardAsync(string imagePath, bool useMagicAi = false);
         Task<bool> TestConnectionAsync(string apiKey);
         bool IsConfigured { get; }
     }

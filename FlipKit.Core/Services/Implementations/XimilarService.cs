@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -39,7 +40,7 @@ namespace FlipKit.Core.Services
             }
         }
 
-        public async Task<XimilarResult?> RecognizeCardAsync(string imagePath)
+        public async Task<XimilarResult?> RecognizeCardAsync(string imagePath, bool useMagicAi = false)
         {
             var settings = _settingsService.Load();
             var apiKey = settings.XimilarApiKey;
@@ -52,7 +53,8 @@ namespace FlipKit.Core.Services
 
             try
             {
-                _logger.LogInformation("Attempting Ximilar recognition for {ImagePath}", imagePath);
+                _logger.LogInformation("Attempting Ximilar recognition for {ImagePath} (magic_ai: {MagicAi})",
+                    imagePath, useMagicAi);
 
                 var imageBytes = await File.ReadAllBytesAsync(imagePath);
                 var base64Raw = Convert.ToBase64String(imageBytes);
@@ -71,7 +73,8 @@ namespace FlipKit.Core.Services
 
                 var request = new XimilarRequest
                 {
-                    Records = new() { new XimilarRecord { Base64 = base64 } }
+                    Records = new() { new XimilarRecord { Base64 = base64 } },
+                    MagicAi = useMagicAi
                 };
 
                 var jsonRequest = JsonSerializer.Serialize(request);
@@ -112,32 +115,36 @@ namespace FlipKit.Core.Services
 
                 var record = ximilarResponse.Records[0];
 
-                // Check for best match (visual similarity search result)
-                if (record.Best != null && record.Best.Score > 0.7)
-                {
-                    var card = MapBestMatchToCard(record.Best, imagePath);
-                    _logger.LogInformation("Ximilar found match: {Player} {Year} {Brand} (score: {Score})",
-                        card.PlayerName, card.Year, card.Brand, record.Best.Score);
-
-                    return new XimilarResult
-                    {
-                        Success = true,
-                        Card = card,
-                        Confidence = record.Best.Score,
-                        RawResponse = responseBody
-                    };
-                }
-
-                // Check for object detection with labels
+                // Check for object detection with identification (best_match)
                 if (record.Objects != null && record.Objects.Count > 0)
                 {
                     var obj = record.Objects[0];
-                    if (obj.Labels != null && obj.Labels.Count > 0)
+                    var bestMatch = obj.Identification?.BestMatch;
+
+                    if (bestMatch != null)
                     {
-                        var card = MapLabelsToCard(obj, imagePath);
+                        var card = MapBestMatchToCard(bestMatch, obj.Tags, imagePath);
                         var confidence = obj.Probability;
 
-                        _logger.LogInformation("Ximilar detected card via labels (confidence: {Confidence})", confidence);
+                        _logger.LogInformation("Ximilar found match: {Player} {Year} {SetName} (confidence: {Confidence})",
+                            card.PlayerName, card.Year, card.Brand, confidence);
+
+                        return new XimilarResult
+                        {
+                            Success = true,
+                            Card = card,
+                            Confidence = confidence,
+                            RawResponse = responseBody
+                        };
+                    }
+
+                    // Fallback: Try to extract info from tags if no identification
+                    if (obj.Tags != null)
+                    {
+                        var card = MapTagsToCard(obj.Tags, imagePath);
+                        var confidence = obj.Probability;
+
+                        _logger.LogInformation("Ximilar detected card via tags (confidence: {Confidence})", confidence);
 
                         return new XimilarResult
                         {
@@ -203,75 +210,120 @@ namespace FlipKit.Core.Services
             }
         }
 
-        private static Card MapBestMatchToCard(XimilarBestMatch best, string imagePath)
+        private static Card MapBestMatchToCard(XimilarBestMatch best, XimilarTags? tags, string imagePath)
         {
+            // Determine autograph from tags
+            var isAuto = tags?.Autograph?.Count > 0 &&
+                         tags.Autograph.Any(t => t.Name?.ToLower() == "autograph" && t.Probability > 0.5);
+
+            // Determine if it's a rookie card from CardType
+            var isRookie = best.CardType?.ToLower().Contains("rookie") == true;
+
+            // Determine variation type
+            var variationType = DetermineVariationType(tags, isAuto);
+
             var card = new Card
             {
-                PlayerName = best.PlayerName ?? "Unknown Player",
+                PlayerName = best.Name ?? "Unknown Player",
                 CardNumber = best.CardNumber,
-                Team = best.Team,
-                Manufacturer = best.Manufacturer,
-                Brand = best.Brand,
-                ParallelName = best.Parallel ?? best.Variation,
-                SerialNumbered = best.SerialNumbered,
-                IsRookie = best.IsRookie ?? false,
-                IsAuto = best.IsAuto ?? false,
-                IsRelic = best.IsRelic ?? false,
+                Manufacturer = best.Company,
+                Brand = best.SetName,
+                IsRookie = isRookie,
+                IsAuto = isAuto,
                 ImagePathFront = imagePath,
                 Condition = "Near Mint",
-                VariationType = DetermineVariationType(best)
+                VariationType = variationType
             };
 
             // Parse year
             if (int.TryParse(best.Year, out var year))
                 card.Year = year;
 
-            // Parse sport
-            if (!string.IsNullOrEmpty(best.Sport) && Enum.TryParse<Sport>(best.Sport, true, out var sport))
+            // Parse sport from Subcategory (MMA, Football, Baseball, etc.)
+            var sportStr = best.Subcategory;
+            if (!string.IsNullOrEmpty(sportStr))
             {
-                card.Sport = sport;
-                card.WhatnotSubcategory = sport switch
+                // Map Ximilar sport names to our Sport enum
+                Sport? sport = sportStr.ToLower() switch
                 {
-                    Sport.Football => "Football Cards",
-                    Sport.Baseball => "Baseball Cards",
-                    Sport.Basketball => "Basketball Cards",
+                    "football" => Sport.Football,
+                    "baseball" => Sport.Baseball,
+                    "basketball" => Sport.Basketball,
+                    "hockey" => Sport.Hockey,
+                    "soccer" => Sport.Soccer,
+                    "mma" or "ufc" => Sport.MMA,
+                    "wrestling" => Sport.Wrestling,
+                    "golf" => Sport.Golf,
+                    "tennis" => Sport.Tennis,
+                    "racing" => Sport.Racing,
                     _ => null
                 };
+
+                if (sport != null)
+                {
+                    card.Sport = sport.Value;
+                    card.WhatnotSubcategory = sport.Value switch
+                    {
+                        Sport.Football => "Football Cards",
+                        Sport.Baseball => "Baseball Cards",
+                        Sport.Basketball => "Basketball Cards",
+                        Sport.Hockey => "Hockey Cards",
+                        Sport.Soccer => "Soccer Cards",
+                        Sport.MMA => "MMA Cards",
+                        _ => null
+                    };
+                }
             }
 
             // Store eBay URL in notes if available
-            if (!string.IsNullOrEmpty(best.EbayUrl))
-                card.Notes = $"Ximilar eBay ref: {best.EbayUrl}";
+            if (!string.IsNullOrEmpty(best.Links?.Ebay))
+                card.Notes = $"Ximilar eBay ref: {best.Links.Ebay}";
+
+            // Add subset info if available (e.g., "UFC" for MMA cards)
+            if (!string.IsNullOrEmpty(best.SubSet) && string.IsNullOrEmpty(card.Notes))
+                card.Notes = $"Subset: {best.SubSet}";
 
             return card;
         }
 
-        private static Card MapLabelsToCard(XimilarObject obj, string imagePath)
+        private static Card MapTagsToCard(XimilarTags tags, string imagePath)
         {
+            var isAuto = tags.Autograph?.Any(t => t.Name?.ToLower() == "autograph" && t.Probability > 0.5) == true;
+            var variationType = DetermineVariationType(tags, isAuto);
+
             var card = new Card
             {
                 PlayerName = "Unknown Player",
                 ImagePathFront = imagePath,
                 Condition = "Near Mint",
-                VariationType = "Base"
+                VariationType = variationType,
+                IsAuto = isAuto
             };
 
-            if (obj.Labels != null)
+            // Try to extract sport from Subcategory tags
+            if (tags.Subcategory != null)
             {
-                foreach (var label in obj.Labels)
+                foreach (var subcatTag in tags.Subcategory)
                 {
-                    // Ximilar labels may include category info like "Trading Card", "Sports Card", etc.
-                    // The specific field mapping depends on how Ximilar structures the response
-                    if (label.Name != null)
+                    if (subcatTag.Name != null && subcatTag.Probability > 0.5)
                     {
-                        // Try to extract useful info from label names
-                        var name = label.Name.ToLower();
-                        if (name.Contains("football"))
-                            card.Sport = Sport.Football;
-                        else if (name.Contains("baseball"))
-                            card.Sport = Sport.Baseball;
-                        else if (name.Contains("basketball"))
-                            card.Sport = Sport.Basketball;
+                        var name = subcatTag.Name.ToLower();
+                        Sport? sport = name switch
+                        {
+                            "football" => Sport.Football,
+                            "baseball" => Sport.Baseball,
+                            "basketball" => Sport.Basketball,
+                            "hockey" => Sport.Hockey,
+                            "soccer" => Sport.Soccer,
+                            "mma" or "ufc" => Sport.MMA,
+                            _ => null
+                        };
+
+                        if (sport != null)
+                        {
+                            card.Sport = sport.Value;
+                            break;
+                        }
                     }
                 }
             }
@@ -279,18 +331,28 @@ namespace FlipKit.Core.Services
             return card;
         }
 
-        private static string DetermineVariationType(XimilarBestMatch best)
+        private static string DetermineVariationType(XimilarTags? tags, bool isAuto)
         {
-            if (best.IsAuto == true && best.IsRelic == true)
-                return "Patch Auto";
-            if (best.IsAuto == true)
+            if (tags == null)
+                return isAuto ? "Auto" : "Base";
+
+            // Check for Foil/Holo
+            var isFoilHolo = tags.FoilHolo?.Any(t =>
+                (t.Name?.ToLower().Contains("foil") == true || t.Name?.ToLower().Contains("holo") == true) &&
+                t.Probability > 0.5) == true;
+
+            // Check for graded
+            var isGraded = tags.Graded?.Any(t =>
+                t.Name?.ToLower() == "graded" && t.Probability > 0.5) == true;
+
+            if (isAuto && isFoilHolo)
+                return "Foil Auto";
+            if (isAuto)
                 return "Auto";
-            if (best.IsRelic == true)
-                return "Relic";
-            if (!string.IsNullOrEmpty(best.Parallel))
-                return "Parallel";
-            if (!string.IsNullOrEmpty(best.Variation))
-                return "Insert";
+            if (isFoilHolo)
+                return "Refractor";
+            if (isGraded)
+                return "Graded";
 
             return "Base";
         }
