@@ -173,6 +173,9 @@ namespace FlipKit.Desktop.ViewModels
                 // current collection size are cleared (handles user removing a photo).
                 ApplyAdditionalPhotosToCard(_originalCard);
 
+                // Auto-fill Whatnot category/subcategory from Sport when blank.
+                WhatnotCategoryDefaulter.ApplyDefaults(_originalCard);
+
                 // Auto-upload any local images that don't yet have a hosted URL — saves
                 // the user from a separate "Upload Images" step on the Export page.
                 await TryUploadMissingUrlsAsync(_originalCard);

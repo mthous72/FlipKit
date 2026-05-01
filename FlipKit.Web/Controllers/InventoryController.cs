@@ -180,10 +180,10 @@ namespace FlipKit.Web.Controllers
                 MapViewModelToCard(viewModel, existingCard);
                 existingCard.UpdatedAt = DateTime.UtcNow;
 
-                // Auto-upload any local images that don't yet have a hosted URL,
-                // then auto-evaluate status (Ready when both images and price are
-                // present; Draft otherwise). This removes the separate "Upload Images"
-                // step on the Export page.
+                // Auto-fill Whatnot category/subcategory from Sport when blank,
+                // then auto-upload any local images, then auto-evaluate status
+                // (Ready when both images and price are present; Draft otherwise).
+                WhatnotCategoryDefaulter.ApplyDefaults(existingCard);
                 await TryUploadMissingUrlsAsync(existingCard);
                 existingCard.Status = CardStatusEvaluator.Evaluate(existingCard);
 

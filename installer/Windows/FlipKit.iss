@@ -2,7 +2,7 @@
 ; Builds a Windows installer for FlipKit Hub (Desktop + Web + API)
 
 #ifndef VERSION
-  #define VERSION "3.3.3"
+  #define VERSION "3.3.4"
 #endif
 
 #define AppName "FlipKit"

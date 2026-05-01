@@ -388,7 +388,9 @@ namespace FlipKit.Web.Controllers
                 card.ImagePathFront = scanViewModel.FrontImagePath;
                 card.ImagePathBack = scanViewModel.BackImagePath;
 
-                // Auto-upload + auto-status (Ready if images + price, else Draft).
+                // Auto-fill Whatnot category/subcategory from Sport when blank,
+                // then auto-upload + auto-status (Ready if images + price, else Draft).
+                WhatnotCategoryDefaulter.ApplyDefaults(card);
                 await TryUploadMissingUrlsAsync(card);
                 card.Status = CardStatusEvaluator.Evaluate(card);
 

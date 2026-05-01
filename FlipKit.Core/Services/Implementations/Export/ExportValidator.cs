@@ -53,11 +53,26 @@ namespace FlipKit.Core.Services.Export
 
             // Category / sub-category enum membership.
             if (!_whatnot.IsValidCategory(card.WhatnotCategory))
+            {
                 yield return Err(card, nameof(card.WhatnotCategory),
                     $"Whatnot category '{card.WhatnotCategory}' is not in the supported list.");
+            }
             else if (!_whatnot.IsValidSubcategory(card.WhatnotCategory, card.WhatnotSubcategory))
-                yield return Err(card, nameof(card.WhatnotSubcategory),
-                    $"Sub-category '{card.WhatnotSubcategory}' is not valid for category '{card.WhatnotCategory}'.");
+            {
+                if (string.IsNullOrEmpty(card.WhatnotSubcategory))
+                {
+                    var examples = string.Join(", ",
+                        _whatnot.Subcategories.TryGetValue(card.WhatnotCategory, out var subs)
+                            ? subs.Take(3) : System.Array.Empty<string>());
+                    yield return Err(card, nameof(card.WhatnotSubcategory),
+                        $"'{card.WhatnotCategory}' requires a sub-category. Examples: {examples}.");
+                }
+                else
+                {
+                    yield return Err(card, nameof(card.WhatnotSubcategory),
+                        $"Sub-category '{card.WhatnotSubcategory}' is not valid for category '{card.WhatnotCategory}'.");
+                }
+            }
 
             // Quantity must be ≥ 1.
             if (card.Quantity < 1)

@@ -29,9 +29,15 @@ namespace FlipKit.Core.Services.Export
 
         public bool IsValidSubcategory(string category, string? subcategory)
         {
-            if (string.IsNullOrEmpty(subcategory)) return true; // blank is allowed for categories without sub-cats
-            return _values.Value.Subcategories.TryGetValue(category, out var subs)
-                && subs.Contains(subcategory);
+            var hasSubcategoryList = _values.Value.Subcategories.TryGetValue(category, out var subs)
+                                     && subs != null && subs.Count > 0;
+            if (string.IsNullOrEmpty(subcategory))
+            {
+                // Blank is OK only when the category has no sub-categories defined.
+                // Whatnot rejects rows with "Subcategory not provided" otherwise.
+                return !hasSubcategoryList;
+            }
+            return hasSubcategoryList && subs!.Contains(subcategory);
         }
 
         /// <summary>

@@ -345,6 +345,12 @@ namespace FlipKit.Desktop.ViewModels
                 card.ImagePathBack = ImagePathBack;
                 ApplyAdditionalPhotosToCard(card);
 
+                // Auto-fill Whatnot category/subcategory from Sport if user left them
+                // blank (e.g. Sport=Football → WhatnotSubcategory="Football Singles").
+                // Whatnot rejects rows with a missing sub-category for categories that
+                // require one, so this defaulter saves a manual round-trip through Edit.
+                WhatnotCategoryDefaulter.ApplyDefaults(card);
+
                 // Auto-upload any local images that don't have a hosted URL yet (no
                 // separate Export-page step required). Failures here are non-fatal —
                 // the card still saves with whatever URLs were obtained, status will

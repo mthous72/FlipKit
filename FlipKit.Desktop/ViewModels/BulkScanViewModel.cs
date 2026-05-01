@@ -465,6 +465,9 @@ namespace FlipKit.Desktop.ViewModels
                     card.ImagePathFront = item.FrontImagePath;
                     card.ImagePathBack = item.BackImagePath;
 
+                    // Auto-fill Whatnot category/subcategory from Sport when blank.
+                    FlipKit.Core.Helpers.WhatnotCategoryDefaulter.ApplyDefaults(card);
+
                     // Auto-upload any local images that don't yet have a hosted URL.
                     await TryUploadMissingUrlsAsync(card);
 
