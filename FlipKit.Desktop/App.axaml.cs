@@ -119,6 +119,11 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
+                // Export pipeline — registered unconditionally (no DbContext dependency).
+                services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
+                services.AddSingleton<FlipKit.Core.Services.Export.ShippingProfileNormalizer>();
+                services.AddSingleton<FlipKit.Core.Services.Export.WhatnotExporter>();
+                services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
                 services.AddTransient<IVariationVerifier, VariationVerifierService>();
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
