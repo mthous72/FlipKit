@@ -23,6 +23,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IBulkScanErrorLogger _errorLogger;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
+        private readonly IImageUploadService _imageUploadService;
         private readonly ILogger<BulkScanViewModel> _logger;
 
         private CancellationTokenSource? _scanCts;
@@ -76,6 +77,7 @@ namespace FlipKit.Desktop.ViewModels
             IBulkScanErrorLogger errorLogger,
             IOpenRouterModelCatalog modelCatalog,
             IPaidModelConsentService consentService,
+            IImageUploadService imageUploadService,
             ILogger<BulkScanViewModel> logger)
         {
             _scannerService = scannerService;
@@ -86,6 +88,7 @@ namespace FlipKit.Desktop.ViewModels
             _errorLogger = errorLogger;
             _modelCatalog = modelCatalog;
             _consentService = consentService;
+            _imageUploadService = imageUploadService;
             _logger = logger;
 
             // Initialize from settings
@@ -461,7 +464,13 @@ namespace FlipKit.Desktop.ViewModels
                     var card = item.CardDetail!.ToCard();
                     card.ImagePathFront = item.FrontImagePath;
                     card.ImagePathBack = item.BackImagePath;
-                    card.Status = CardStatus.Draft;
+
+                    // Auto-upload any local images that don't yet have a hosted URL.
+                    await TryUploadMissingUrlsAsync(card);
+
+                    // Auto-status: Ready when both images and price are present; Draft otherwise.
+                    card.Status = FlipKit.Core.Helpers.CardStatusEvaluator.Evaluate(card);
+
                     await _cardRepository.InsertCardAsync(card);
 
                     item.Status = BulkScanStatus.Saved;
@@ -476,6 +485,44 @@ namespace FlipKit.Desktop.ViewModels
 
             IsSaving = false;
             SuccessMessage = $"Saved {saved} cards to My Cards!";
+        }
+
+        /// <summary>
+        /// Uploads any local image paths that don't yet have a corresponding hosted URL.
+        /// Updates the card's <c>ImageUrl{N}</c> fields in place. Network errors are
+        /// swallowed — the card still saves with whatever URLs were obtained.
+        /// </summary>
+        private async Task TryUploadMissingUrlsAsync(Card card)
+        {
+            var paths = new[] { card.ImagePathFront, card.ImagePathBack,
+                                card.ImagePath3, card.ImagePath4, card.ImagePath5,
+                                card.ImagePath6, card.ImagePath7, card.ImagePath8 };
+            var urls  = new[] { card.ImageUrl1, card.ImageUrl2,
+                                card.ImageUrl3, card.ImageUrl4, card.ImageUrl5,
+                                card.ImageUrl6, card.ImageUrl7, card.ImageUrl8 };
+
+            var pathsToUpload = new List<string?>(8);
+            for (int i = 0; i < 8; i++)
+                pathsToUpload.Add(string.IsNullOrEmpty(urls[i]) ? paths[i] : null);
+
+            if (!pathsToUpload.Any(p => !string.IsNullOrEmpty(p))) return;
+
+            try
+            {
+                var newUrls = await _imageUploadService.UploadCardImagesAsync(pathsToUpload);
+                if (newUrls[0] != null) card.ImageUrl1 = newUrls[0];
+                if (newUrls[1] != null) card.ImageUrl2 = newUrls[1];
+                if (newUrls[2] != null) card.ImageUrl3 = newUrls[2];
+                if (newUrls[3] != null) card.ImageUrl4 = newUrls[3];
+                if (newUrls[4] != null) card.ImageUrl5 = newUrls[4];
+                if (newUrls[5] != null) card.ImageUrl6 = newUrls[5];
+                if (newUrls[6] != null) card.ImageUrl7 = newUrls[6];
+                if (newUrls[7] != null) card.ImageUrl8 = newUrls[7];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Image upload during bulk save failed for card.");
+            }
         }
 
         [RelayCommand]

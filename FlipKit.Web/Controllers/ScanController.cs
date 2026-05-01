@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
@@ -14,6 +15,7 @@ namespace FlipKit.Web.Controllers
         private readonly IVariationVerifier _variationVerifier;
         private readonly ISettingsService _settingsService;
         private readonly IOpenRouterModelCatalog _modelCatalog;
+        private readonly IImageUploadService _imageUploadService;
         private readonly ILogger<ScanController> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly IPricerService _pricerService;
@@ -24,6 +26,7 @@ namespace FlipKit.Web.Controllers
             IVariationVerifier variationVerifier,
             ISettingsService settingsService,
             IOpenRouterModelCatalog modelCatalog,
+            IImageUploadService imageUploadService,
             ILogger<ScanController> logger,
             IWebHostEnvironment environment,
             IPricerService pricerService)
@@ -33,6 +36,7 @@ namespace FlipKit.Web.Controllers
             _variationVerifier = variationVerifier;
             _settingsService = settingsService;
             _modelCatalog = modelCatalog;
+            _imageUploadService = imageUploadService;
             _logger = logger;
             _environment = environment;
             _pricerService = pricerService;
@@ -277,8 +281,6 @@ namespace FlipKit.Web.Controllers
                 if (string.IsNullOrEmpty(card.PlayerName))
                     card.PlayerName = "Unknown";
 
-                // Set default status
-                card.Status = CardStatus.Draft;
                 card.CreatedAt = DateTime.UtcNow;
                 card.UpdatedAt = DateTime.UtcNow;
 
@@ -286,11 +288,16 @@ namespace FlipKit.Web.Controllers
                 card.ImagePathFront = scanViewModel.FrontImagePath;
                 card.ImagePathBack = scanViewModel.BackImagePath;
 
+                // Auto-upload any local images to ImgBB and auto-evaluate status —
+                // a card with both images and a price saves as Ready; otherwise Draft.
+                await TryUploadMissingUrlsAsync(card);
+                card.Status = CardStatusEvaluator.Evaluate(card);
+
                 // Save to database
                 await _cardRepository.InsertCardAsync(card);
 
-                _logger.LogInformation("Card saved: {PlayerName} - {Year} {Brand}",
-                    card.PlayerName, card.Year, card.Brand);
+                _logger.LogInformation("Card saved as {Status}: {PlayerName} - {Year} {Brand}",
+                    card.Status, card.PlayerName, card.Year, card.Brand);
 
                 TempData["SuccessMessage"] = $"Card '{card.PlayerName}' saved successfully!";
                 return RedirectToAction("Index", "Inventory");
@@ -376,12 +383,14 @@ namespace FlipKit.Web.Controllers
                 if (string.IsNullOrEmpty(card.PlayerName))
                     card.PlayerName = "Unknown";
 
-                // Set defaults and save
-                card.Status = CardStatus.Draft;
                 card.CreatedAt = DateTime.UtcNow;
                 card.UpdatedAt = DateTime.UtcNow;
                 card.ImagePathFront = scanViewModel.FrontImagePath;
                 card.ImagePathBack = scanViewModel.BackImagePath;
+
+                // Auto-upload + auto-status (Ready if images + price, else Draft).
+                await TryUploadMissingUrlsAsync(card);
+                card.Status = CardStatusEvaluator.Evaluate(card);
 
                 await _cardRepository.InsertCardAsync(card);
 
@@ -423,6 +432,44 @@ namespace FlipKit.Web.Controllers
 
             TempData["SuccessMessage"] = "Scan discarded.";
             return RedirectToAction(nameof(Index));
+        }
+
+        /// <summary>
+        /// Uploads any local image paths that don't yet have a corresponding hosted URL
+        /// to ImgBB and populates <c>ImageUrl{N}</c> on the card. Network errors are
+        /// swallowed; the card still saves with whatever URLs were obtained.
+        /// </summary>
+        private async Task TryUploadMissingUrlsAsync(Card card)
+        {
+            var paths = new[] { card.ImagePathFront, card.ImagePathBack,
+                                card.ImagePath3, card.ImagePath4, card.ImagePath5,
+                                card.ImagePath6, card.ImagePath7, card.ImagePath8 };
+            var urls  = new[] { card.ImageUrl1, card.ImageUrl2,
+                                card.ImageUrl3, card.ImageUrl4, card.ImageUrl5,
+                                card.ImageUrl6, card.ImageUrl7, card.ImageUrl8 };
+
+            var pathsToUpload = new List<string?>(8);
+            for (int i = 0; i < 8; i++)
+                pathsToUpload.Add(string.IsNullOrEmpty(urls[i]) ? paths[i] : null);
+
+            if (!pathsToUpload.Any(p => !string.IsNullOrEmpty(p))) return;
+
+            try
+            {
+                var newUrls = await _imageUploadService.UploadCardImagesAsync(pathsToUpload);
+                if (newUrls[0] != null) card.ImageUrl1 = newUrls[0];
+                if (newUrls[1] != null) card.ImageUrl2 = newUrls[1];
+                if (newUrls[2] != null) card.ImageUrl3 = newUrls[2];
+                if (newUrls[3] != null) card.ImageUrl4 = newUrls[3];
+                if (newUrls[4] != null) card.ImageUrl5 = newUrls[4];
+                if (newUrls[5] != null) card.ImageUrl6 = newUrls[5];
+                if (newUrls[6] != null) card.ImageUrl7 = newUrls[6];
+                if (newUrls[7] != null) card.ImageUrl8 = newUrls[7];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ImgBB upload during save failed for {Player}.", card.PlayerName);
+            }
         }
 
         private void CleanupTempFiles(params string?[] paths)

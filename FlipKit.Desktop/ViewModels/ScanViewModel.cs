@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using FlipKit.Core.Helpers;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -22,6 +23,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IChecklistLearningService _checklistLearningService;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
+        private readonly IImageUploadService _imageUploadService;
         private readonly ILogger<ScanViewModel> _logger;
 
         private ScanResult? _lastScanResult;
@@ -57,6 +59,7 @@ namespace FlipKit.Desktop.ViewModels
             IChecklistLearningService checklistLearningService,
             IOpenRouterModelCatalog modelCatalog,
             IPaidModelConsentService consentService,
+            IImageUploadService imageUploadService,
             ILogger<ScanViewModel> logger)
         {
             _scannerService = scannerService;
@@ -67,6 +70,7 @@ namespace FlipKit.Desktop.ViewModels
             _checklistLearningService = checklistLearningService;
             _modelCatalog = modelCatalog;
             _consentService = consentService;
+            _imageUploadService = imageUploadService;
             _logger = logger;
 
             // Populate the dropdown asynchronously — first call hits OpenRouter, subsequent
@@ -340,7 +344,16 @@ namespace FlipKit.Desktop.ViewModels
                 card.ImagePathFront = ImagePath;
                 card.ImagePathBack = ImagePathBack;
                 ApplyAdditionalPhotosToCard(card);
-                card.Status = CardStatus.Draft;
+
+                // Auto-upload any local images that don't have a hosted URL yet (no
+                // separate Export-page step required). Failures here are non-fatal —
+                // the card still saves with whatever URLs were obtained, status will
+                // reflect the actual state.
+                await TryUploadMissingUrlsAsync(card);
+
+                // Auto-status: Ready if both images and price are present; Draft otherwise.
+                card.Status = CardStatusEvaluator.Evaluate(card);
+
                 await _cardRepository.InsertCardAsync(card);
 
                 // Learn from saved card (fire-and-forget)
@@ -417,6 +430,46 @@ namespace FlipKit.Desktop.ViewModels
                     case 7: card.ImagePath7 = path; break;
                     case 8: card.ImagePath8 = path; break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Uploads any local image paths that don't yet have a corresponding hosted URL.
+        /// Updates the card's <c>ImageUrl{N}</c> fields in place. Swallows network errors
+        /// — partial uploads are fine; the card saves with whatever it gets.
+        /// </summary>
+        private async Task TryUploadMissingUrlsAsync(Card card)
+        {
+            var paths = new[] { card.ImagePathFront, card.ImagePathBack,
+                                card.ImagePath3, card.ImagePath4, card.ImagePath5,
+                                card.ImagePath6, card.ImagePath7, card.ImagePath8 };
+            var urls  = new[] { card.ImageUrl1, card.ImageUrl2,
+                                card.ImageUrl3, card.ImageUrl4, card.ImageUrl5,
+                                card.ImageUrl6, card.ImageUrl7, card.ImageUrl8 };
+
+            // Only upload slots that have a path but no URL.
+            var pathsToUpload = new List<string?>(8);
+            for (int i = 0; i < 8; i++)
+                pathsToUpload.Add(string.IsNullOrEmpty(urls[i]) ? paths[i] : null);
+
+            if (!pathsToUpload.Any(p => !string.IsNullOrEmpty(p)))
+                return;
+
+            try
+            {
+                var newUrls = await _imageUploadService.UploadCardImagesAsync(pathsToUpload);
+                if (newUrls[0] != null) card.ImageUrl1 = newUrls[0];
+                if (newUrls[1] != null) card.ImageUrl2 = newUrls[1];
+                if (newUrls[2] != null) card.ImageUrl3 = newUrls[2];
+                if (newUrls[3] != null) card.ImageUrl4 = newUrls[3];
+                if (newUrls[4] != null) card.ImageUrl5 = newUrls[4];
+                if (newUrls[5] != null) card.ImageUrl6 = newUrls[5];
+                if (newUrls[6] != null) card.ImageUrl7 = newUrls[6];
+                if (newUrls[7] != null) card.ImageUrl8 = newUrls[7];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Image upload during save failed for {Player} — card saves without hosted URLs.", card.PlayerName);
             }
         }
 

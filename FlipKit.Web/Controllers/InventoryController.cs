@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
@@ -15,15 +16,18 @@ namespace FlipKit.Web.Controllers
     {
         private readonly ICardRepository _cardRepository;
         private readonly IWebHostEnvironment _env;
+        private readonly IImageUploadService _imageUploadService;
         private readonly ILogger<InventoryController> _logger;
 
         public InventoryController(
             ICardRepository cardRepository,
             IWebHostEnvironment env,
+            IImageUploadService imageUploadService,
             ILogger<InventoryController> logger)
         {
             _cardRepository = cardRepository;
             _env = env;
+            _imageUploadService = imageUploadService;
             _logger = logger;
         }
 
@@ -175,6 +179,13 @@ namespace FlipKit.Web.Controllers
                 // Map view model back to card
                 MapViewModelToCard(viewModel, existingCard);
                 existingCard.UpdatedAt = DateTime.UtcNow;
+
+                // Auto-upload any local images that don't yet have a hosted URL,
+                // then auto-evaluate status (Ready when both images and price are
+                // present; Draft otherwise). This removes the separate "Upload Images"
+                // step on the Export page.
+                await TryUploadMissingUrlsAsync(existingCard);
+                existingCard.Status = CardStatusEvaluator.Evaluate(existingCard);
 
                 await _cardRepository.UpdateCardAsync(existingCard);
 
@@ -360,6 +371,44 @@ namespace FlipKit.Web.Controllers
             viewModel.ImagePath6 = paths[3]; viewModel.ImagePath7 = paths[4]; viewModel.ImagePath8 = paths[5];
             viewModel.ImageUrl3 = urls[0]; viewModel.ImageUrl4 = urls[1]; viewModel.ImageUrl5 = urls[2];
             viewModel.ImageUrl6 = urls[3]; viewModel.ImageUrl7 = urls[4]; viewModel.ImageUrl8 = urls[5];
+        }
+
+        /// <summary>
+        /// Uploads any local image paths that don't yet have a corresponding hosted URL
+        /// to ImgBB. Network errors are swallowed — partial uploads are fine; the save
+        /// still proceeds.
+        /// </summary>
+        private async Task TryUploadMissingUrlsAsync(Card card)
+        {
+            var paths = new[] { card.ImagePathFront, card.ImagePathBack,
+                                card.ImagePath3, card.ImagePath4, card.ImagePath5,
+                                card.ImagePath6, card.ImagePath7, card.ImagePath8 };
+            var urls  = new[] { card.ImageUrl1, card.ImageUrl2,
+                                card.ImageUrl3, card.ImageUrl4, card.ImageUrl5,
+                                card.ImageUrl6, card.ImageUrl7, card.ImageUrl8 };
+
+            var pathsToUpload = new System.Collections.Generic.List<string?>(8);
+            for (int i = 0; i < 8; i++)
+                pathsToUpload.Add(string.IsNullOrEmpty(urls[i]) ? paths[i] : null);
+
+            if (!pathsToUpload.Any(p => !string.IsNullOrEmpty(p))) return;
+
+            try
+            {
+                var newUrls = await _imageUploadService.UploadCardImagesAsync(pathsToUpload);
+                if (newUrls[0] != null) card.ImageUrl1 = newUrls[0];
+                if (newUrls[1] != null) card.ImageUrl2 = newUrls[1];
+                if (newUrls[2] != null) card.ImageUrl3 = newUrls[2];
+                if (newUrls[3] != null) card.ImageUrl4 = newUrls[3];
+                if (newUrls[4] != null) card.ImageUrl5 = newUrls[4];
+                if (newUrls[5] != null) card.ImageUrl6 = newUrls[5];
+                if (newUrls[6] != null) card.ImageUrl7 = newUrls[6];
+                if (newUrls[7] != null) card.ImageUrl8 = newUrls[7];
+            }
+            catch (System.Exception ex)
+            {
+                _logger.LogWarning(ex, "ImgBB upload during save failed for card {Id}.", card.Id);
+            }
         }
 
         private async Task<string> SaveUploadedFileAsync(Microsoft.AspNetCore.Http.IFormFile file)
