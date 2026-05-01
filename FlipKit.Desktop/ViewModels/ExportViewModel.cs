@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Core.Services.Export;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -35,6 +37,14 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private ExportPlatform _selectedExportPlatform;
 
         public List<ExportPlatform> ExportPlatformOptions { get; } = Enum.GetValues<ExportPlatform>().ToList();
+
+        /// <summary>
+        /// Per-row pre-flight validation errors from the most recent export attempt.
+        /// Populated when validation blocks an export; cleared when an export succeeds
+        /// or when the user clicks Refresh.
+        /// </summary>
+        public ObservableCollection<ExportRowError> RowErrors { get; } = new();
+        public bool HasRowErrors => RowErrors.Count > 0;
 
         public ExportViewModel(
             ICardRepository cardRepository,
@@ -86,6 +96,7 @@ namespace FlipKit.Desktop.ViewModels
         {
             ErrorMessage = null;
             StatusMessage = null;
+            ReplaceRowErrors(System.Array.Empty<ExportRowError>());
             LoadExportDataAsync();
             await Task.CompletedTask;
         }
@@ -205,22 +216,23 @@ namespace FlipKit.Desktop.ViewModels
                 return;
             }
 
-            // Validate
-            var allErrors = new List<string>();
-            foreach (var card in exportCards)
+            // Pre-flight validation — fail fast before opening the file dialog if any
+            // blocking errors are present, and surface the structured per-row errors so
+            // the user can fix all of them in one pass.
+            var validationErrors = _exportService.ValidateBatch(exportCards, SelectedExportPlatform);
+            ReplaceRowErrors(validationErrors);
+            var blockers = validationErrors.Where(e => e.Severity == ExportErrorSeverity.Error).ToList();
+            if (blockers.Count > 0)
             {
-                var errors = _exportService.ValidateCardForExport(card);
-                if (errors.Count > 0)
-                    allErrors.Add($"{card.PlayerName}: {string.Join(", ", errors)}");
-            }
-
-            if (allErrors.Count > 0)
-            {
-                ErrorMessage = $"Validation issues: {string.Join("; ", allErrors.Take(3))}";
+                ErrorMessage = $"Export blocked by {blockers.Count} validation error(s) — see list below.";
+                StatusMessage = null;
                 return;
             }
 
-            var path = await _fileDialogService.SaveCsvFileAsync($"whatnot-export-{DateTime.Now:yyyy-MM-dd}.csv");
+            var defaultName = SelectedExportPlatform == ExportPlatform.eBay
+                ? $"ebay-export-{DateTime.Now:yyyy-MM-dd}.csv"
+                : $"whatnot-export-{DateTime.Now:yyyy-MM-dd}.csv";
+            var path = await _fileDialogService.SaveCsvFileAsync(defaultName);
             if (path == null) return;
 
             try
@@ -239,12 +251,27 @@ namespace FlipKit.Desktop.ViewModels
 
                 StatusMessage = $"Exported {exportCards.Count} cards to CSV for {SelectedExportPlatform}!";
                 ErrorMessage = null;
+                ReplaceRowErrors(System.Array.Empty<ExportRowError>());
+            }
+            catch (ExportValidationException vex)
+            {
+                _logger.LogWarning(vex, "Export blocked by validator (post-dialog)");
+                ReplaceRowErrors(vex.Errors);
+                ErrorMessage = $"Export blocked by {vex.Errors.Count} validation error(s) — see list below.";
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "CSV export failed");
                 ErrorMessage = $"Export failed: {ex.Message}";
             }
+        }
+
+        private void ReplaceRowErrors(IReadOnlyList<ExportRowError> errors)
+        {
+            RowErrors.Clear();
+            foreach (var e in errors)
+                RowErrors.Add(e);
+            OnPropertyChanged(nameof(HasRowErrors));
         }
 
         [RelayCommand]

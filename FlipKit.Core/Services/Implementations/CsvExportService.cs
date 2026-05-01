@@ -122,14 +122,18 @@ namespace FlipKit.Core.Services
         public List<string> ValidateCardForExport(Card card)
         {
             var settings = _settingsService.Load();
-            var asList = new List<Card> { card };
-            var errors = settings.ActiveExportPlatform == ExportPlatform.eBay
-                ? _validator.ValidateForEbay(asList)
-                : _validator.ValidateForWhatnot(asList);
+            var errors = ValidateBatch(new List<Card> { card }, settings.ActiveExportPlatform);
             return errors
                 .Where(e => e.Severity == ExportErrorSeverity.Error)
                 .Select(e => e.Message)
                 .ToList();
+        }
+
+        public IReadOnlyList<ExportRowError> ValidateBatch(IList<Card> cards, ExportPlatform platform)
+        {
+            return platform == ExportPlatform.eBay
+                ? _validator.ValidateForEbay(cards)
+                : _validator.ValidateForWhatnot(cards);
         }
 
         public async Task ExportCsvAsync(List<Card> cards, string outputPath)

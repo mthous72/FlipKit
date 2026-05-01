@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:FlipKit.Desktop.ViewModels"
+             xmlns:export="using:FlipKit.Core.Services.Export"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
@@ -167,6 +168,36 @@
                        IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
             <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" FontSize="14" TextWrapping="Wrap"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Per-row validation errors (populated when an export is blocked) -->
+            <Border IsVisible="{Binding HasRowErrors}"
+                    BorderBrush="#E53935" BorderThickness="1"
+                    Background="#1FE53935" CornerRadius="6" Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Validation issues" FontWeight="SemiBold" FontSize="13"/>
+                    <ItemsControl ItemsSource="{Binding RowErrors}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="export:ExportRowError">
+                                <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,2">
+                                    <TextBlock Grid.Column="0" Text="{Binding Severity}"
+                                               FontSize="10" FontWeight="Bold"
+                                               Width="60" VerticalAlignment="Top" Opacity="0.8"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding PlayerName}"
+                                               FontWeight="SemiBold" FontSize="12"
+                                               Margin="0,0,8,0" Width="160"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" FontSize="12" Opacity="0.85"
+                                               TextWrapping="Wrap">
+                                        <Run Text="{Binding Field}" FontWeight="SemiBold"/>
+                                        <Run Text=":"/>
+                                        <Run Text="{Binding Message}"/>
+                                    </TextBlock>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
 
         </StackPanel>
     </ScrollViewer>

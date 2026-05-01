@@ -82,6 +82,12 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _terapeakSearchTemplate = string.Empty;
         [ObservableProperty] private string _ebaySearchTemplate = string.Empty;
         [ObservableProperty] private string _searchTemplateValidationMessage = string.Empty;
+
+        // eBay export defaults — populate before exporting eBay listings.
+        [ObservableProperty] private string _ebaySellerLocation = string.Empty;
+        [ObservableProperty] private int _ebayDispatchTimeMax = 2;
+        [ObservableProperty] private bool _ebayReturnsAccepted = true;
+        [ObservableProperty] private bool _ebayUseVerifyAdd;
         [ObservableProperty] private string _searchTemplatePreview = string.Empty;
 
         // Save feedback
@@ -177,6 +183,12 @@ namespace FlipKit.Desktop.ViewModels
             TerapeakSearchTemplate = s.TerapeakSearchTemplate;
             EbaySearchTemplate = s.EbaySearchTemplate;
 
+            // eBay export defaults
+            EbaySellerLocation = s.EbaySellerLocation;
+            EbayDispatchTimeMax = s.EbayDispatchTimeMax;
+            EbayReturnsAccepted = s.EbayReturnsAccepted;
+            EbayUseVerifyAdd = s.EbayUseVerifyAdd;
+
             // API Server URL
             SyncServerUrl = s.SyncServerUrl;
 
@@ -261,6 +273,10 @@ namespace FlipKit.Desktop.ViewModels
                 ActiveExportPlatform = ActiveExportPlatform,
                 TerapeakSearchTemplate = TerapeakSearchTemplate,
                 EbaySearchTemplate = EbaySearchTemplate,
+                EbaySellerLocation = EbaySellerLocation,
+                EbayDispatchTimeMax = EbayDispatchTimeMax,
+                EbayReturnsAccepted = EbayReturnsAccepted,
+                EbayUseVerifyAdd = EbayUseVerifyAdd,
                 SyncServerUrl = SyncServerUrl,
                 AutoStartWebServer = AutoStartWebServer,
                 AutoStartApiServer = AutoStartApiServer,

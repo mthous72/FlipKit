@@ -453,6 +453,42 @@
                 </Border>
             </Expander>
 
+            <!-- eBay Export Settings (Collapsible) -->
+            <Expander Header="🛒 eBay Export Settings">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
+                            Defaults applied to every row when exporting an eBay CSV.
+                            Seller location is required; the rest have sensible defaults.
+                        </TextBlock>
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="16">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Seller Location"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Handling Time (days)"/>
+                            <TextBox Grid.Row="1" Grid.Column="0"
+                                     Text="{Binding EbaySellerLocation}"
+                                     Watermark="ZIP code or 'City, ST'"/>
+                            <TextBox Grid.Row="1" Grid.Column="1"
+                                     Text="{Binding EbayDispatchTimeMax}"/>
+                        </Grid>
+
+                        <CheckBox IsChecked="{Binding EbayReturnsAccepted}"
+                                  Content="Accept returns (30 days, money-back, buyer pays return shipping)"/>
+
+                        <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                                CornerRadius="4" Padding="10" Background="{DynamicResource SystemChromeLowColor}">
+                            <StackPanel Spacing="4">
+                                <CheckBox IsChecked="{Binding EbayUseVerifyAdd}"
+                                          Content="Dry-run mode (VerifyAdd instead of Add)" FontWeight="SemiBold"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7"
+                                           Text="When enabled, eBay validates each listing without creating it. Use this for the first batch of any new export pipeline; switch off once your CSVs upload cleanly."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
             <!-- Financial Settings (Collapsible) -->
             <Expander Header="💰 Financial Settings">
                 <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
