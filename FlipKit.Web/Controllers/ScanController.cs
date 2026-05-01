@@ -13,6 +13,7 @@ namespace FlipKit.Web.Controllers
         private readonly ICardRepository _cardRepository;
         private readonly IVariationVerifier _variationVerifier;
         private readonly ISettingsService _settingsService;
+        private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly ILogger<ScanController> _logger;
         private readonly IWebHostEnvironment _environment;
         private readonly IPricerService _pricerService;
@@ -22,6 +23,7 @@ namespace FlipKit.Web.Controllers
             ICardRepository cardRepository,
             IVariationVerifier variationVerifier,
             ISettingsService settingsService,
+            IOpenRouterModelCatalog modelCatalog,
             ILogger<ScanController> logger,
             IWebHostEnvironment environment,
             IPricerService pricerService)
@@ -30,13 +32,14 @@ namespace FlipKit.Web.Controllers
             _cardRepository = cardRepository;
             _variationVerifier = variationVerifier;
             _settingsService = settingsService;
+            _modelCatalog = modelCatalog;
             _logger = logger;
             _environment = environment;
             _pricerService = pricerService;
         }
 
         // GET: Scan
-        public IActionResult Index(string? mode)
+        public async Task<IActionResult> Index(string? mode)
         {
             // Store mode in session
             if (!string.IsNullOrEmpty(mode))
@@ -55,8 +58,23 @@ namespace FlipKit.Web.Controllers
             var viewModel = new ScanUploadViewModel
             {
                 ScanMode = scanMode,
-                XimilarMode = ximilarMode
+                XimilarMode = ximilarMode,
+                SelectedModel = WebModelOption.AutoValue
             };
+
+            try
+            {
+                var catalog = await _modelCatalog.GetAsync();
+                viewModel.FreeModels = catalog.FreeVisionModels;
+                viewModel.PaidModels = catalog.PaidVisionModels;
+                if (catalog.IsEmpty)
+                    viewModel.CatalogError = "Couldn't reach OpenRouter for the live model list. Auto mode will fail until the catalog loads.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Catalog fetch failed on Scan/Index GET");
+                viewModel.CatalogError = $"Model catalog failed to load: {ex.Message}";
+            }
 
             return View(viewModel);
         }
@@ -102,13 +120,59 @@ namespace FlipKit.Web.Controllers
                     }
                 }
 
-                // Get settings for model selection
+                // Resolve scan strategy from the form value:
+                //   • "auto" or null → server-side free-model rotation (no paid fallback on Web).
+                //   • Specific model id → single-attempt explicit pick.
                 var settings = _settingsService.Load();
-                var model = selectedModel ?? settings.DefaultModel ?? "nvidia/nemotron-nano-12b-v2-vl:free";
+                var modelChoice = selectedModel ?? settings.DefaultModel ?? WebModelOption.AutoValue;
 
-                // Scan the card using AI with the selected Ximilar mode
-                _logger.LogInformation("Scanning card with model {Model}, Ximilar mode: {XimilarMode}", model, parsedXimilarMode);
-                var scanResult = await _scannerService.ScanCardAsync(frontImagePath, backImagePath, model, parsedXimilarMode);
+                ScanResult? scanResult = null;
+                Exception? lastScanError = null;
+                if (modelChoice == WebModelOption.AutoValue)
+                {
+                    var catalog = await _modelCatalog.GetAsync();
+                    if (catalog.IsEmpty)
+                    {
+                        TempData["ErrorMessage"] = "Couldn't load the OpenRouter model list. Pick a specific model or try again.";
+                        CleanupTempFiles(frontImagePath, backImagePath);
+                        return RedirectToAction(nameof(Index));
+                    }
+
+                    foreach (var freeModel in catalog.FreeVisionModels)
+                    {
+                        try
+                        {
+                            _logger.LogInformation("Auto-rotation: trying free model {Model} (Ximilar: {XimilarMode})",
+                                freeModel.Id, parsedXimilarMode);
+                            scanResult = await _scannerService.ScanCardAsync(
+                                frontImagePath, backImagePath, freeModel.Id, parsedXimilarMode);
+                            if (scanResult != null) break;
+                        }
+                        catch (Exception ex)
+                        {
+                            lastScanError = ex;
+                            _logger.LogWarning(ex, "Free model {Model} failed; trying next.", freeModel.Id);
+                        }
+                    }
+
+                    if (scanResult == null)
+                    {
+                        // Web side does not show the paid-consent dialog (server-side flow).
+                        // Surface a clear deflection so the user knows their options.
+                        TempData["ErrorMessage"] =
+                            $"All {catalog.FreeVisionModels.Count} free OpenRouter vision models failed. " +
+                            "To allow paid-model fallback, pick a specific paid model from the list, or run the scan from the Desktop app.";
+                        CleanupTempFiles(frontImagePath, backImagePath);
+                        return RedirectToAction(nameof(Index));
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("Scanning with explicit model {Model}, Ximilar: {XimilarMode}",
+                        modelChoice, parsedXimilarMode);
+                    scanResult = await _scannerService.ScanCardAsync(
+                        frontImagePath, backImagePath, modelChoice, parsedXimilarMode);
+                }
 
                 if (scanResult == null)
                 {
