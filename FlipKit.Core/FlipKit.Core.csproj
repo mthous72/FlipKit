@@ -17,4 +17,11 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Whatnot reference data + eBay template header, embedded so all consumers
+         (Desktop, Web, Api) get the same source of truth without ship-time path lookups. -->
+    <EmbeddedResource Include="Resources\Export\whatnot_values.json" />
+    <EmbeddedResource Include="Resources\Export\ebay_template_header.csv" />
+  </ItemGroup>
+
 </Project>
