@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
@@ -22,24 +23,49 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly ILogger<ExportViewModel> _logger;
 
-        private List<Card> _exportableCards = new();
+        // Master list of every card we've loaded — kept independent of the filtered
+        // view so toggling filters doesn't refetch from the DB.
+        private List<ExportableCard> _allItems = new();
 
-        [ObservableProperty] private int _readyCardCount;
-        [ObservableProperty] private int _needsPricingCount;
-        [ObservableProperty] private decimal _totalValue;
         [ObservableProperty] private string? _statusMessage;
         [ObservableProperty] private string? _errorMessage;
         [ObservableProperty] private ExportPlatform _selectedExportPlatform;
 
+        // Filter state — defaults: Ready + Listed visible, Drafts/Sold hidden, no
+        // sport filter, no date range, no search. Filters reset to these defaults
+        // on every app launch (no persistence).
+        [ObservableProperty] private bool _showReady = true;
+        [ObservableProperty] private bool _showListed = true;
+        [ObservableProperty] private bool _showDraft = false;
+        [ObservableProperty] private bool _showSold = false;
+        [ObservableProperty] private string _sportFilter = AllSportsLabel;
+        [ObservableProperty] private DateTimeOffset? _addedFrom;
+        [ObservableProperty] private DateTimeOffset? _addedTo;
+        [ObservableProperty] private string _searchText = string.Empty;
+
         public List<ExportPlatform> ExportPlatformOptions { get; } = Enum.GetValues<ExportPlatform>().ToList();
+
+        public const string AllSportsLabel = "All sports";
+        public List<string> SportFilterOptions { get; } = new List<string> { AllSportsLabel }
+            .Concat(Enum.GetValues<Sport>().Select(s => s.ToString()))
+            .ToList();
+
+        /// <summary>
+        /// The cards currently visible in the grid, after applying every filter.
+        /// </summary>
+        public ObservableCollection<ExportableCard> Items { get; } = new();
 
         /// <summary>
         /// Per-row pre-flight validation errors from the most recent export attempt.
-        /// Populated when validation blocks an export; cleared when an export succeeds
-        /// or when the user clicks Refresh.
         /// </summary>
         public ObservableCollection<ExportRowError> RowErrors { get; } = new();
         public bool HasRowErrors => RowErrors.Count > 0;
+
+        // Computed counters bound to the View.
+        public int VisibleCount => Items.Count;
+        public int SelectedCount => Items.Count(i => i.IsSelected);
+        public decimal SelectedValue => Items.Where(i => i.IsSelected && i.ListingPrice.HasValue)
+                                              .Sum(i => i.ListingPrice!.Value);
 
         public ExportViewModel(
             ICardRepository cardRepository,
@@ -56,25 +82,44 @@ namespace FlipKit.Desktop.ViewModels
             _settingsService = settingsService;
             _logger = logger;
 
-            // Initialize selected platform from settings
             var settings = _settingsService.Load();
             _selectedExportPlatform = settings.ActiveExportPlatform;
 
-            LoadExportDataAsync();
+            _ = LoadAsync();
         }
 
-        private async void LoadExportDataAsync()
+        // === filter property reactions ===
+
+        partial void OnShowReadyChanged(bool value) => ApplyFilters();
+        partial void OnShowListedChanged(bool value) => ApplyFilters();
+        partial void OnShowDraftChanged(bool value) => ApplyFilters();
+        partial void OnShowSoldChanged(bool value) => ApplyFilters();
+        partial void OnSportFilterChanged(string value) => ApplyFilters();
+        partial void OnAddedFromChanged(DateTimeOffset? value) => ApplyFilters();
+        partial void OnAddedToChanged(DateTimeOffset? value) => ApplyFilters();
+        partial void OnSearchTextChanged(string value) => ApplyFilters();
+
+        // === load + filter ===
+
+        private async Task LoadAsync()
         {
             try
             {
+                ErrorMessage = null;
                 var allCards = await _cardRepository.GetAllCardsAsync();
 
-                _exportableCards = allCards.Where(c =>
-                    c.Status == CardStatus.Priced || c.Status == CardStatus.Ready).ToList();
+                // Newest-first by default — matches the user's "I want to export the
+                // batch I just scanned" expectation.
+                var ordered = allCards.OrderByDescending(c => c.CreatedAt).ToList();
 
-                ReadyCardCount = _exportableCards.Count;
-                NeedsPricingCount = allCards.Count(c => c.Status == CardStatus.Draft);
-                TotalValue = _exportableCards.Where(c => c.ListingPrice.HasValue).Sum(c => c.ListingPrice!.Value);
+                _allItems = ordered.Select(c =>
+                {
+                    var item = new ExportableCard(c, isSelected: c.Status == CardStatus.Ready);
+                    item.PropertyChanged += OnItemPropertyChanged;
+                    return item;
+                }).ToList();
+
+                ApplyFilters();
             }
             catch (Exception ex)
             {
@@ -83,38 +128,108 @@ namespace FlipKit.Desktop.ViewModels
             }
         }
 
+        private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ExportableCard.IsSelected))
+            {
+                OnPropertyChanged(nameof(SelectedCount));
+                OnPropertyChanged(nameof(SelectedValue));
+            }
+        }
+
+        private void ApplyFilters()
+        {
+            var visible = _allItems.Where(MatchesFilters).ToList();
+
+            Items.Clear();
+            foreach (var i in visible) Items.Add(i);
+
+            OnPropertyChanged(nameof(VisibleCount));
+            OnPropertyChanged(nameof(SelectedCount));
+            OnPropertyChanged(nameof(SelectedValue));
+        }
+
+        private bool MatchesFilters(ExportableCard item)
+        {
+            var status = item.Card.Status;
+            var statusOk = (status == CardStatus.Ready  && ShowReady)
+                        || (status == CardStatus.Listed && ShowListed)
+                        || (status == CardStatus.Draft  && ShowDraft)
+                        || (status == CardStatus.Priced && ShowReady)   // legacy "Priced" rolls into Ready
+                        || (status == CardStatus.Sold   && ShowSold);
+            if (!statusOk) return false;
+
+            if (!string.Equals(SportFilter, AllSportsLabel, StringComparison.Ordinal))
+            {
+                if (item.Card.Sport?.ToString() != SportFilter) return false;
+            }
+
+            if (AddedFrom.HasValue && item.Card.CreatedAt < AddedFrom.Value.UtcDateTime) return false;
+            if (AddedTo.HasValue && item.Card.CreatedAt > AddedTo.Value.UtcDateTime.AddDays(1)) return false;
+
+            if (!string.IsNullOrWhiteSpace(SearchText))
+            {
+                var q = SearchText.Trim();
+                bool hit =
+                    (item.Card.PlayerName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (item.Card.SetName?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (item.Card.Brand?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (item.Card.CardNumber?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (item.Card.Sku?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
+                if (!hit) return false;
+            }
+
+            return true;
+        }
+
+        // === commands ===
+
         [RelayCommand]
         private async Task RefreshAsync()
         {
             ErrorMessage = null;
             StatusMessage = null;
-            ReplaceRowErrors(System.Array.Empty<ExportRowError>());
-            LoadExportDataAsync();
-            await Task.CompletedTask;
+            ReplaceRowErrors(Array.Empty<ExportRowError>());
+            await LoadAsync();
         }
 
-        // Manual image upload was removed — uploads now happen automatically when a
-        // card is saved with both images and a price. Cards without hosted URLs at
-        // export time are caught by the validator's "ImageUrl1 required" rule, with
-        // a clear message pointing the user back to the Edit page to re-save.
+        [RelayCommand]
+        private void SelectAllVisible()
+        {
+            foreach (var i in Items) i.IsSelected = true;
+        }
+
+        [RelayCommand]
+        private void SelectNone()
+        {
+            foreach (var i in Items) i.IsSelected = false;
+        }
+
+        [RelayCommand]
+        private void ClearFilters()
+        {
+            ShowReady = true;
+            ShowListed = true;
+            ShowDraft = false;
+            ShowSold = false;
+            SportFilter = AllSportsLabel;
+            AddedFrom = null;
+            AddedTo = null;
+            SearchText = string.Empty;
+        }
 
         [RelayCommand]
         private async Task ExportCsvAsync()
         {
-            var exportCards = _exportableCards
-                .Where(c => c.ListingPrice.HasValue && c.ListingPrice > 0)
-                .ToList();
-
-            if (exportCards.Count == 0)
+            var selected = Items.Where(i => i.IsSelected).Select(i => i.Card).ToList();
+            if (selected.Count == 0)
             {
-                ErrorMessage = "No cards ready for export.";
+                ErrorMessage = "Pick at least one card to export.";
                 return;
             }
 
-            // Pre-flight validation — fail fast before opening the file dialog if any
-            // blocking errors are present, and surface the structured per-row errors so
-            // the user can fix all of them in one pass.
-            var validationErrors = _exportService.ValidateBatch(exportCards, SelectedExportPlatform);
+            // Pre-flight validation against the chosen platform.
+            var validationErrors = _exportService.ValidateBatch(selected, SelectedExportPlatform);
             ReplaceRowErrors(validationErrors);
             var blockers = validationErrors.Where(e => e.Severity == ExportErrorSeverity.Error).ToList();
             if (blockers.Count > 0)
@@ -132,10 +247,11 @@ namespace FlipKit.Desktop.ViewModels
 
             try
             {
-                await _exportService.ExportCsvAsync(exportCards, path, SelectedExportPlatform);
+                await _exportService.ExportCsvAsync(selected, path, SelectedExportPlatform);
 
-                // Mark as listed
-                foreach (var card in exportCards)
+                // Promote Ready → Listed (informational tracking). Listed cards stay
+                // Listed on re-export. Draft/Sold also pass through unchanged.
+                foreach (var card in selected)
                 {
                     if (card.Status == CardStatus.Ready || card.Status == CardStatus.Priced)
                     {
@@ -144,9 +260,13 @@ namespace FlipKit.Desktop.ViewModels
                     }
                 }
 
-                StatusMessage = $"Exported {exportCards.Count} cards to CSV for {SelectedExportPlatform}!";
+                StatusMessage = $"Exported {selected.Count} cards to CSV for {SelectedExportPlatform}.";
                 ErrorMessage = null;
-                ReplaceRowErrors(System.Array.Empty<ExportRowError>());
+                ReplaceRowErrors(Array.Empty<ExportRowError>());
+
+                // Reflect the status changes in the grid without a full DB reload.
+                OnPropertyChanged(nameof(SelectedCount));
+                ApplyFilters();
             }
             catch (ExportValidationException vex)
             {
@@ -161,18 +281,19 @@ namespace FlipKit.Desktop.ViewModels
             }
         }
 
-        private void ReplaceRowErrors(IReadOnlyList<ExportRowError> errors)
-        {
-            RowErrors.Clear();
-            foreach (var e in errors)
-                RowErrors.Add(e);
-            OnPropertyChanged(nameof(HasRowErrors));
-        }
-
         [RelayCommand]
         private void OpenWhatnotSellerHub()
         {
             _browserService.OpenUrl("https://www.whatnot.com/dashboard/inventory");
+        }
+
+        // === helpers ===
+
+        private void ReplaceRowErrors(IReadOnlyList<ExportRowError> errors)
+        {
+            RowErrors.Clear();
+            foreach (var e in errors) RowErrors.Add(e);
+            OnPropertyChanged(nameof(HasRowErrors));
         }
     }
 }

@@ -4,147 +4,136 @@
              xmlns:export="using:FlipKit.Core.Services.Export"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
              x:Class="FlipKit.Desktop.Views.ExportView"
              x:DataType="vm:ExportViewModel">
 
-    <ScrollViewer Padding="24,24,24,60">
-        <StackPanel Spacing="20" MaxWidth="700">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24,24,24,60">
 
-            <Grid ColumnDefinitions="*,Auto">
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Export to Whatnot" FontSize="24" FontWeight="Bold"/>
-                    <TextBlock Text="Generate CSV for Whatnot or eBay bulk import" Opacity="0.6"/>
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Export to Whatnot or eBay" FontSize="24" FontWeight="Bold"/>
+            <TextBlock Opacity="0.6" Margin="0,4,0,0" TextWrapping="Wrap">
+                Pick the cards you want to export, choose the platform, then download the CSV.
+                Cards auto-promote to "Listed" after export but stay re-exportable any time.
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Filter bar -->
+        <Border Grid.Row="1" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+            <StackPanel Spacing="10">
+
+                <!-- Status pills -->
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <TextBlock Text="Status:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <CheckBox IsChecked="{Binding ShowReady}" Content="Ready"/>
+                    <CheckBox IsChecked="{Binding ShowListed}" Content="Listed"/>
+                    <CheckBox IsChecked="{Binding ShowDraft}" Content="Draft"/>
+                    <CheckBox IsChecked="{Binding ShowSold}" Content="Sold"/>
                 </StackPanel>
 
-                <!-- Help Button -->
-                <Button Grid.Column="1" Width="32" Height="32" Padding="0" VerticalAlignment="Top"
-                        ToolTip.Tip="Quick Help">
-                    <Button.Flyout>
-                        <Flyout Placement="BottomEdgeAlignedRight">
-                            <Border MaxWidth="350" Padding="16">
-                                <StackPanel Spacing="12">
-                                    <TextBlock Text="📤 Export - Quick Guide" FontSize="16" FontWeight="Bold"/>
+                <!-- Sport + Date range + Search -->
+                <Grid ColumnDefinitions="Auto,160,Auto,*,Auto,*,Auto,*,Auto" RowDefinitions="Auto"
+                      ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Sport:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SportFilterOptions}"
+                              SelectedItem="{Binding SportFilter}" HorizontalAlignment="Stretch"/>
 
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="1️⃣ Save cards with images and prices" FontWeight="SemiBold"/>
-                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
-                                            • A card with both becomes "Ready" automatically
-                                            <LineBreak/>
-                                            • Images upload to ImgBB at save time — no separate step
-                                            <LineBreak/>
-                                            • Drafts (missing price or images) can be completed later
-                                        </TextBlock>
-                                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="Added between:" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    <DatePicker Grid.Column="3" SelectedDate="{Binding AddedFrom}"
+                                HorizontalAlignment="Stretch"/>
+                    <TextBlock Grid.Column="4" Text="and" VerticalAlignment="Center"
+                               Margin="4,0,4,0" Opacity="0.6"/>
+                    <DatePicker Grid.Column="5" SelectedDate="{Binding AddedTo}"
+                                HorizontalAlignment="Stretch"/>
 
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="2️⃣ Generate CSV" FontWeight="SemiBold"/>
-                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
-                                            • Pick the platform (Whatnot or eBay)
-                                            <LineBreak/>
-                                            • Includes all Ready and Listed cards
-                                            <LineBreak/>
-                                            • Validation errors surface inline if any
-                                        </TextBlock>
-                                    </StackPanel>
+                    <TextBlock Grid.Column="6" Text="Search:" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    <TextBox Grid.Column="7" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Watermark="Player, set, brand, card #, SKU"/>
 
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="3️⃣ Import to the marketplace" FontWeight="SemiBold"/>
-                                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
-                                            • Whatnot: Seller Hub → Inventory → Import Products
-                                            <LineBreak/>
-                                            • eBay: Seller Hub → Reports → Upload File
-                                            <LineBreak/>
-                                            • Use VerifyAdd dry-run for eBay first
-                                        </TextBlock>
-                                    </StackPanel>
+                    <Button Grid.Column="8" Content="Reset" Command="{Binding ClearFiltersCommand}"
+                            Padding="10,4" Margin="8,0,0,0" FontSize="11"/>
+                </Grid>
 
-                                    <Border Background="{DynamicResource SystemChromeLowColor}"
-                                            CornerRadius="4" Padding="8" Margin="0,8,0,0">
-                                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
-                                            💡 <Run FontWeight="Bold">Tip:</Run> Cards auto-promote to Ready when you save them with both images and a price. No separate upload step needed.
-                                        </TextBlock>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
-                        </Flyout>
-                    </Button.Flyout>
-                    <TextBlock Text="?" FontSize="18" FontWeight="Bold"/>
-                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- Card list -->
+        <Border Grid.Row="2" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                BorderThickness="1" CornerRadius="8">
+            <Grid RowDefinitions="*,Auto">
+
+                <DataGrid Grid.Row="0" ItemsSource="{Binding Items}"
+                          AutoGenerateColumns="False"
+                          GridLinesVisibility="Horizontal"
+                          IsReadOnly="False"
+                          HeadersVisibility="Column"
+                          CanUserSortColumns="True"
+                          CanUserResizeColumns="True">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="" Width="40"
+                                                Binding="{Binding IsSelected}"/>
+                        <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="*" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Year"   Binding="{Binding Year}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Sport"  Binding="{Binding Sport}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Set"    Binding="{Binding Set}" Width="160" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Price"  Binding="{Binding ListingPrice, StringFormat='\{0:C2\}'}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Added"  Binding="{Binding CreatedAt, StringFormat='\{0:yyyy-MM-dd\}'}" Width="100" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Selection bar (sits inside the card border for visual cohesion) -->
+                <Border Grid.Row="1" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                        BorderThickness="0,1,0,0" Padding="12,8"
+                        Background="{DynamicResource SystemChromeLowColor}">
+                    <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto">
+                        <Button Grid.Column="0" Content="Select all visible"
+                                Command="{Binding SelectAllVisibleCommand}"
+                                Padding="10,4" FontSize="11"/>
+                        <Button Grid.Column="1" Content="Select none"
+                                Command="{Binding SelectNoneCommand}"
+                                Padding="10,4" FontSize="11" Margin="6,0,0,0"/>
+                        <Button Grid.Column="2" Content="Refresh"
+                                Command="{Binding RefreshCommand}"
+                                Padding="10,4" FontSize="11" Margin="6,0,0,0"/>
+                        <TextBlock Grid.Column="4" VerticalAlignment="Center" FontSize="12">
+                            <Run Text="{Binding SelectedCount}"/>
+                            <Run Text="of"/>
+                            <Run Text="{Binding VisibleCount}"/>
+                            <Run Text="selected ·"/>
+                            <Run Text="{Binding SelectedValue, StringFormat='\{0:C2\}'}" FontWeight="SemiBold"/>
+                            <Run Text="value"/>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+            </Grid>
+        </Border>
+
+        <!-- Bottom: platform + export + messages + errors -->
+        <StackPanel Grid.Row="3" Spacing="10" Margin="0,12,0,0">
+
+            <Grid ColumnDefinitions="Auto,200,Auto,Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="Platform:" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding ExportPlatformOptions}"
+                          SelectedItem="{Binding SelectedExportPlatform}"
+                          HorizontalAlignment="Stretch" Margin="6,0,0,0"/>
+                <Button Grid.Column="2" Content="Download CSV for Selected"
+                        Command="{Binding ExportCsvCommand}"
+                        Classes="accent" Padding="16,8" Margin="12,0,0,0"/>
+                <Button Grid.Column="3" Content="Open Whatnot Seller Hub"
+                        Command="{Binding OpenWhatnotSellerHubCommand}"
+                        Padding="12,6" Margin="8,0,0,0" FontSize="11"/>
             </Grid>
 
-            <!-- Summary Cards -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Export Summary" FontSize="18" FontWeight="SemiBold"/>
-                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Cards ready for export:"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ReadyCardCount}" FontWeight="Bold"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Drafts (need price or images):"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding NeedsPricingCount}"/>
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Total value:"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TotalValue, StringFormat='\{0:C2\}'}" FontWeight="Bold"/>
-                    </Grid>
-                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6">
-                        Cards are marked Ready automatically when they're saved with both images and a listing price.
-                        Drafts can be completed by editing the card.
-                    </TextBlock>
-                    <Button Content="Refresh" Command="{Binding RefreshCommand}" Padding="12,6" HorizontalAlignment="Left"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Download CSV -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Download CSV" FontSize="16" FontWeight="SemiBold"/>
-                    <TextBlock Text="Generate CSV file with optimized listing titles" Opacity="0.6"/>
-
-                    <!-- Export Platform Selector -->
-                    <StackPanel Spacing="8">
-                        <TextBlock Text="Export Platform" FontWeight="SemiBold"/>
-                        <ComboBox ItemsSource="{Binding ExportPlatformOptions}"
-                                  SelectedItem="{Binding SelectedExportPlatform}"
-                                  HorizontalAlignment="Stretch"/>
-                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.6">
-                            <Run Text="Titles will be formatted using the"/>
-                            <Run Text="{Binding SelectedExportPlatform}" FontWeight="SemiBold"/>
-                            <Run Text="template. Different platforms use different SEO strategies:"/>
-                        </TextBlock>
-                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.5" Margin="0,-4,0,0">
-                            • Whatnot: Brand + Player focus (e.g., "Prizm CJ Stroud")
-                            • eBay: Comprehensive with manufacturer emphasis
-                            • COMC: Consignment format without manufacturer
-                            • Generic: Balanced approach
-                        </TextBlock>
-                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.5" Margin="0,4,0,0">
-                            Tip: Customize templates in Settings for each platform.
-                        </TextBlock>
-                    </StackPanel>
-
-                    <Button Content="Download CSV for Export" Command="{Binding ExportCsvCommand}"
-                            Classes="accent" Padding="20,10"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Import to Whatnot -->
-            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Import to Whatnot" FontSize="16" FontWeight="SemiBold"/>
-                    <TextBlock TextWrapping="Wrap" Opacity="0.6"
-                               Text="Go to Whatnot Seller Hub > Inventory > Import Products. Upload the CSV file, review drafts, then publish."/>
-                    <Button Content="Open Whatnot Seller Hub" Command="{Binding OpenWhatnotSellerHubCommand}" Padding="16,8"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Messages -->
-            <TextBlock Text="{Binding StatusMessage}" Foreground="Green" FontSize="14"
+            <TextBlock Text="{Binding StatusMessage}" Foreground="Green" FontSize="13"
                        IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" FontSize="14" TextWrapping="Wrap"
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" FontSize="13" TextWrapping="Wrap"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
             <!-- Per-row validation errors (populated when an export is blocked) -->
@@ -153,16 +142,15 @@
                     Background="#1FE53935" CornerRadius="6" Padding="12">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Validation issues" FontWeight="SemiBold" FontSize="13"/>
-                    <ItemsControl ItemsSource="{Binding RowErrors}">
+                    <ItemsControl ItemsSource="{Binding RowErrors}" MaxHeight="180">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="export:ExportRowError">
-                                <Grid ColumnDefinitions="Auto,Auto,*" Margin="0,2">
+                                <Grid ColumnDefinitions="60,160,*" Margin="0,2">
                                     <TextBlock Grid.Column="0" Text="{Binding Severity}"
-                                               FontSize="10" FontWeight="Bold"
-                                               Width="60" VerticalAlignment="Top" Opacity="0.8"/>
+                                               FontSize="10" FontWeight="Bold" Opacity="0.8"
+                                               VerticalAlignment="Top"/>
                                     <TextBlock Grid.Column="1" Text="{Binding PlayerName}"
                                                FontWeight="SemiBold" FontSize="12"
-                                               Margin="0,0,8,0" Width="160"
                                                TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Grid.Column="2" FontSize="12" Opacity="0.85"
                                                TextWrapping="Wrap">
@@ -178,5 +166,5 @@
             </Border>
 
         </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>
