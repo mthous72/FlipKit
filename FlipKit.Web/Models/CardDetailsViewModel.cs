@@ -136,6 +136,38 @@ namespace FlipKit.Web.Models
         [Display(Name = "Image URL 2")]
         public string? ImageUrl2 { get; set; }
 
+        // Additional photo slots 3-8 — local paths (pre-upload) and hosted URLs (post-upload).
+        // Uploaded to ImgBB at export time; never sent to the AI scanner.
+        public string? ImagePath3 { get; set; }
+        public string? ImagePath4 { get; set; }
+        public string? ImagePath5 { get; set; }
+        public string? ImagePath6 { get; set; }
+        public string? ImagePath7 { get; set; }
+        public string? ImagePath8 { get; set; }
+        public string? ImageUrl3 { get; set; }
+        public string? ImageUrl4 { get; set; }
+        public string? ImageUrl5 { get; set; }
+        public string? ImageUrl6 { get; set; }
+        public string? ImageUrl7 { get; set; }
+        public string? ImageUrl8 { get; set; }
+
+        // File-upload binders for the multipart Edit form. One per slot 3-8; if set,
+        // the controller saves the file and updates the corresponding ImagePath.
+        public Microsoft.AspNetCore.Http.IFormFile? ImageFile3 { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? ImageFile4 { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? ImageFile5 { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? ImageFile6 { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? ImageFile7 { get; set; }
+        public Microsoft.AspNetCore.Http.IFormFile? ImageFile8 { get; set; }
+
+        // Remove-checkbox binders. If true on submit, the slot is cleared.
+        public bool RemoveImage3 { get; set; }
+        public bool RemoveImage4 { get; set; }
+        public bool RemoveImage5 { get; set; }
+        public bool RemoveImage6 { get; set; }
+        public bool RemoveImage7 { get; set; }
+        public bool RemoveImage8 { get; set; }
+
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

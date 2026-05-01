@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <h1 class="display-5 mb-4">Edit Card</h1>
 
-    <form asp-action="Edit" method="post">
+    <form asp-action="Edit" method="post" enctype="multipart/form-data">
         @Html.AntiForgeryToken()
         @Html.HiddenFor(m => m.Id)
         @Html.HiddenFor(m => m.CreatedAt)
@@ -322,6 +322,105 @@
                     <label asp-for="Notes" class="form-label"></label>
                     <textarea asp-for="Notes" class="form-control" rows="4"></textarea>
                 </div>
+            </div>
+        </div>
+
+        <!-- Additional Photos (slots 3-8) -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Additional Photos</h5>
+                <small class="text-muted">Uploaded to ImgBB at export time, not sent to AI</small>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Up to 6 extra photos (slots 3-8) per card — useful for condition shots,
+                    edge close-ups, or slab photos. On phones, the file picker can open the
+                    camera directly.
+                </p>
+
+                @{
+                    var paths = new[] { Model.ImagePath3, Model.ImagePath4, Model.ImagePath5,
+                                        Model.ImagePath6, Model.ImagePath7, Model.ImagePath8 };
+                    var urls  = new[] { Model.ImageUrl3, Model.ImageUrl4, Model.ImageUrl5,
+                                        Model.ImageUrl6, Model.ImageUrl7, Model.ImageUrl8 };
+                }
+
+                @for (int i = 0; i < 6; i++)
+                {
+                    var slot = i + 3;
+                    var path = paths[i];
+                    var url = urls[i];
+                    var hasContent = !string.IsNullOrEmpty(path) || !string.IsNullOrEmpty(url);
+                    var pathField = $"ImagePath{slot}";
+                    var urlField = $"ImageUrl{slot}";
+                    var fileField = $"ImageFile{slot}";
+                    var removeField = $"RemoveImage{slot}";
+
+                    <div class="mb-3 pb-3 border-bottom">
+                        <div class="d-flex align-items-center mb-2">
+                            <strong class="me-2">Slot @slot</strong>
+                            @if (hasContent)
+                            {
+                                <span class="badge bg-success">Attached</span>
+                                if (!string.IsNullOrEmpty(url))
+                                {
+                                    <span class="badge bg-info ms-1">Hosted</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Empty</span>
+                            }
+                        </div>
+
+                        @if (hasContent)
+                        {
+                            <div class="row align-items-center mb-2">
+                                <div class="col-auto">
+                                    @if (!string.IsNullOrEmpty(url))
+                                    {
+                                        <img src="@url" alt="Slot @slot preview" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-light text-muted text-center" style="width: 80px; height: 80px; line-height: 80px; border-radius: 4px;">
+                                            <i class="bi bi-image"></i>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col">
+                                    <small class="text-muted text-break d-block">@(url ?? path)</small>
+                                </div>
+                            </div>
+                        }
+
+                        <input type="hidden" name="@pathField" value="@path" />
+                        <input type="hidden" name="@urlField" value="@url" />
+
+                        <div class="row g-2">
+                            <div class="col-md-8">
+                                <label class="form-label small">@(hasContent ? "Replace photo" : "Upload photo")</label>
+                                <input type="file" name="@fileField" class="form-control"
+                                       accept="image/*" capture="environment" />
+                            </div>
+                            @if (hasContent)
+                            {
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="@removeField" value="true" class="form-check-input" id="@removeField" />
+                                        <label class="form-check-label" for="@removeField">Remove this photo</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <p class="text-muted small mb-0 mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    Newly uploaded photos save with the card. The next "Upload Images" step
+                    on the Export page pushes them to ImgBB.
+                </p>
             </div>
         </div>
 

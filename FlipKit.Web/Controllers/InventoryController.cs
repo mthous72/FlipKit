@@ -3,6 +3,7 @@ using FlipKit.Core.Services;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Web.Models;
+using System.IO;
 using System.Linq;
 
 namespace FlipKit.Web.Controllers
@@ -13,11 +14,16 @@ namespace FlipKit.Web.Controllers
     public class InventoryController : Controller
     {
         private readonly ICardRepository _cardRepository;
+        private readonly IWebHostEnvironment _env;
         private readonly ILogger<InventoryController> _logger;
 
-        public InventoryController(ICardRepository cardRepository, ILogger<InventoryController> logger)
+        public InventoryController(
+            ICardRepository cardRepository,
+            IWebHostEnvironment env,
+            ILogger<InventoryController> logger)
         {
             _cardRepository = cardRepository;
+            _env = env;
             _logger = logger;
         }
 
@@ -161,6 +167,11 @@ namespace FlipKit.Web.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                // Process additional-photo uploads and removals BEFORE the main mapping
+                // so the resulting paths are merged into the view model and the standard
+                // mapping pass picks them up.
+                await ProcessAdditionalPhotosAsync(viewModel, existingCard);
+
                 // Map view model back to card
                 MapViewModelToCard(viewModel, existingCard);
                 existingCard.UpdatedAt = DateTime.UtcNow;
@@ -224,6 +235,18 @@ namespace FlipKit.Web.Controllers
                 ImagePathBack = card.ImagePathBack,
                 ImageUrl1 = card.ImageUrl1,
                 ImageUrl2 = card.ImageUrl2,
+                ImagePath3 = card.ImagePath3,
+                ImagePath4 = card.ImagePath4,
+                ImagePath5 = card.ImagePath5,
+                ImagePath6 = card.ImagePath6,
+                ImagePath7 = card.ImagePath7,
+                ImagePath8 = card.ImagePath8,
+                ImageUrl3 = card.ImageUrl3,
+                ImageUrl4 = card.ImageUrl4,
+                ImageUrl5 = card.ImageUrl5,
+                ImageUrl6 = card.ImageUrl6,
+                ImageUrl7 = card.ImageUrl7,
+                ImageUrl8 = card.ImageUrl8,
                 CreatedAt = card.CreatedAt,
                 UpdatedAt = card.UpdatedAt
             };
@@ -276,6 +299,82 @@ namespace FlipKit.Web.Controllers
                 card.ImageUrl1 = viewModel.ImageUrl1;
             if (!string.IsNullOrEmpty(viewModel.ImageUrl2))
                 card.ImageUrl2 = viewModel.ImageUrl2;
+
+            // Slots 3-8 — overwrite with whatever the view model carries (set by
+            // ProcessAdditionalPhotosAsync to the post-upload / post-remove state).
+            card.ImagePath3 = viewModel.ImagePath3;
+            card.ImagePath4 = viewModel.ImagePath4;
+            card.ImagePath5 = viewModel.ImagePath5;
+            card.ImagePath6 = viewModel.ImagePath6;
+            card.ImagePath7 = viewModel.ImagePath7;
+            card.ImagePath8 = viewModel.ImagePath8;
+            card.ImageUrl3 = viewModel.ImageUrl3;
+            card.ImageUrl4 = viewModel.ImageUrl4;
+            card.ImageUrl5 = viewModel.ImageUrl5;
+            card.ImageUrl6 = viewModel.ImageUrl6;
+            card.ImageUrl7 = viewModel.ImageUrl7;
+            card.ImageUrl8 = viewModel.ImageUrl8;
+        }
+
+        /// <summary>
+        /// Handles the multipart-form file uploads and remove-checkboxes for slots 3-8.
+        /// Saves new uploads to wwwroot/uploads/, clears slots flagged for removal, and
+        /// updates the view model so the standard MapViewModelToCard pass picks up the
+        /// resulting state.
+        /// </summary>
+        private async Task ProcessAdditionalPhotosAsync(CardDetailsViewModel viewModel, Card existingCard)
+        {
+            // Pull current state from the existing card — view model fields may be null
+            // for hidden fields the form omitted.
+            var paths = new string?[6] { existingCard.ImagePath3, existingCard.ImagePath4, existingCard.ImagePath5,
+                                          existingCard.ImagePath6, existingCard.ImagePath7, existingCard.ImagePath8 };
+            var urls  = new string?[6] { existingCard.ImageUrl3, existingCard.ImageUrl4, existingCard.ImageUrl5,
+                                          existingCard.ImageUrl6, existingCard.ImageUrl7, existingCard.ImageUrl8 };
+            var files = new[] { viewModel.ImageFile3, viewModel.ImageFile4, viewModel.ImageFile5,
+                                viewModel.ImageFile6, viewModel.ImageFile7, viewModel.ImageFile8 };
+            var removals = new[] { viewModel.RemoveImage3, viewModel.RemoveImage4, viewModel.RemoveImage5,
+                                   viewModel.RemoveImage6, viewModel.RemoveImage7, viewModel.RemoveImage8 };
+
+            for (int i = 0; i < 6; i++)
+            {
+                // Removal wins over upload — if both are set on the same slot, the user
+                // wanted to clear it.
+                if (removals[i])
+                {
+                    paths[i] = null;
+                    urls[i] = null;
+                    continue;
+                }
+
+                if (files[i] != null && files[i]!.Length > 0)
+                {
+                    var savedPath = await SaveUploadedFileAsync(files[i]!);
+                    paths[i] = savedPath;
+                    // New file → previous hosted URL is now stale, so it gets cleared.
+                    // The Export "Upload Images" step will re-upload the new file.
+                    urls[i] = null;
+                }
+            }
+
+            viewModel.ImagePath3 = paths[0]; viewModel.ImagePath4 = paths[1]; viewModel.ImagePath5 = paths[2];
+            viewModel.ImagePath6 = paths[3]; viewModel.ImagePath7 = paths[4]; viewModel.ImagePath8 = paths[5];
+            viewModel.ImageUrl3 = urls[0]; viewModel.ImageUrl4 = urls[1]; viewModel.ImageUrl5 = urls[2];
+            viewModel.ImageUrl6 = urls[3]; viewModel.ImageUrl7 = urls[4]; viewModel.ImageUrl8 = urls[5];
+        }
+
+        private async Task<string> SaveUploadedFileAsync(Microsoft.AspNetCore.Http.IFormFile file)
+        {
+            var uploadsDir = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads");
+            Directory.CreateDirectory(uploadsDir);
+
+            var safeName = Path.GetFileName(file.FileName);
+            var fileName = $"{Guid.NewGuid()}_{safeName}";
+            var fullPath = Path.Combine(uploadsDir, fileName);
+            await using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            return fullPath;
         }
 
         // POST: Inventory/Delete/5

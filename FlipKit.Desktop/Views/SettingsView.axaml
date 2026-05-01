@@ -57,7 +57,7 @@
                     </StackPanel>
 
                     <Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,8,0,0">
-                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#212121">
                             💡 <Run FontWeight="Bold">Both services are FREE!</Run> OpenRouter provides free AI models (11 available), and ImgBB offers free image hosting. No credit card required.
                         </TextBlock>
                     </Border>
