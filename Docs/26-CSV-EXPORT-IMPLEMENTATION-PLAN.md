@@ -254,4 +254,113 @@ Whatnot ships first (lower risk, all-or-nothing rejection model), eBay second (h
 
 ---
 
-*Plan locked-in pending approval. Once approved, current branch (`feature/native-distribution`) merges into `master`, then a new `feature/csv-export-overhaul` branch starts the work above.*
+## 12. Implementation summary — what shipped (`feature/csv-export-overhaul`)
+
+> **Status as of last commit on the branch:** code complete, manual smoke runs against real Whatnot / eBay accounts pending. 11 commits, foundation pieces individually smoke-tested via reflection against the compiled assembly.
+
+### Files that landed
+
+```
+FlipKit.Core/
+├── Data/
+│   ├── CardListerDbContext.cs          [edited]  HasIndex(Sku).IsUnique() added
+│   └── SchemaUpdater.cs                [edited]  EnsureExportColumnsAsync — Sku, ImageUrl3..8, ImagePath3..8, partial unique idx
+├── Models/
+│   ├── AppSettings.cs                  [edited]  SkuPrefix/SkuPadWidth + EbaySellerLocation/EbayDispatchTimeMax/EbayReturnsAccepted/EbayUseVerifyAdd
+│   └── Card.cs                         [edited]  Sku, ImagePath3..8, ImageUrl3..8
+├── Resources/Export/
+│   ├── whatnot_values.json             [new]     embedded resource (from Docs/References/, verbatim)
+│   └── ebay_template_header.csv        [new]     embedded resource (from Docs/References/, verbatim incl. BOM + CR endings)
+├── Services/Implementations/
+│   ├── CsvExportService.cs             [refactored] now a per-platform dispatcher
+│   ├── ImgBBUploadService.cs           [edited]  batch UploadCardImagesAsync(IList<string?>) overload
+│   └── Export/
+│       ├── ConditionMapper.cs          [new]
+│       ├── EbayExporter.cs             [new]
+│       ├── EbayTemplateProvider.cs     [new]
+│       ├── ExportRowError.cs           [new]
+│       ├── ExportValidationException.cs[new]
+│       ├── ExportValidator.cs          [new]
+│       ├── ShippingProfileNormalizer.cs[new]
+│       ├── SkuGenerator.cs             [new]
+│       ├── WhatnotExporter.cs          [new]
+│       └── WhatnotValuesProvider.cs    [new]
+└── Services/Interfaces/
+    ├── IExportService.cs               [edited]  ValidateBatch(cards, platform) added
+    ├── IImageUploadService.cs          [edited]  batch overload
+    └── ISkuGenerator.cs                [new]
+
+FlipKit.Desktop/
+├── App.axaml.cs                        [edited]  DI registrations for all new export services
+├── ViewModels/
+│   ├── EditCardViewModel.cs            [edited]  AdditionalPhotos collection + add/remove + load/save
+│   ├── ExportViewModel.cs              [edited]  RowErrors panel, ValidateBatch usage, ExportValidationException catch
+│   ├── PhotoSlot.cs                    [new]     wrapper for ObservableCollection<PhotoSlot> in scan/edit
+│   ├── ScanViewModel.cs                [edited]  AdditionalPhotos + add/remove commands + persistence
+│   └── SettingsViewModel.cs            [edited]  EbaySellerLocation/DispatchTimeMax/ReturnsAccepted/UseVerifyAdd
+└── Views/
+    ├── EditCardView.axaml              [edited]  Additional Photos panel
+    ├── ExportView.axaml                [edited]  Validation issues panel
+    ├── ScanView.axaml                  [edited]  Additional Photos panel
+    └── SettingsView.axaml              [edited]  🛒 eBay Export Settings expander
+
+FlipKit.Web/
+└── Program.cs                          [edited]  DI registrations for new export services
+```
+
+### Spec gotchas, all handled
+
+| Gotcha | Where it's enforced |
+|---|---|
+| Whatnot Type: `Buy it Now` (lowercase 'it') | `WhatnotExporter.NormalizeListingType` — defends against the legacy `Card.ListingType` default `"Buy It Now"` |
+| Whatnot Price: positive integer, no decimals | `WhatnotExporter` — `Math.Max(1, (int)Math.Round(price))` |
+| Whatnot Category / Sub Category: case-sensitive enum | `WhatnotValuesProvider.IsValidCategory` (Ordinal compare) + validator |
+| Whatnot Conditions: keyed by sub-category with category fallback | `WhatnotValuesProvider.ConditionsFor` walks the chain |
+| Whatnot Shipping Profile: 23 exact bucket names | `ShippingProfileNormalizer` — passes through valid; converts oz/lbs/grams strings |
+| Whatnot Sub-Category for sports: `Football Singles` (not `Football Cards`) | Handled by `Card.WhatnotSubcategory` being user-set; `ConditionMapper` knows the `Raw - X` aliases |
+| Whatnot title hard cap 80 chars | `WhatnotExporter.Truncate` |
+| eBay file structure: BOM + CR-only header preserved | `EbayTemplateProvider.HeaderBytes` written verbatim before any data row |
+| eBay Action column with parameterized name | `EbayTemplateProvider.FindColumnStartingWith("*Action")` |
+| eBay ConditionID 4000 (graded) / 5000 (raw, NOT 1000 for "Mint") | `ConditionMapper.MapToEbayConditionId` |
+| eBay CD: column names with literal `" - (ID: NNNNN)"` | `EbayTemplateProvider.FindColumnStartingWith("CD:...")` |
+| eBay Format: `FixedPrice` (one word, exact case) | `EbayExporter` hard-coded |
+| eBay Duration: `Days_N` / `GTC` | `EbayExportOptions` enum |
+| eBay PicURL: pipe-delimited, ≤24 URLs, spaces as `%20` | `EbayExporter.SerializeRow` |
+
+### Decisions and tradeoffs locked in
+
+- **SKU auto-assignment is opt-in (deferred to user action).** The dispatcher does NOT generate SKUs at export time. The infrastructure is there (`SkuGenerator` + `Card.Sku` column + partial unique index), but SKU is a per-card edit decision rather than an automatic export-time mutation. Cards without SKUs export with a blank SKU column, which Whatnot accepts.
+- **Multi-image storage is denormalized** (`ImagePath3..ImagePath8`, `ImageUrl3..ImageUrl8`). Matches the existing `ImageUrl1`/`ImageUrl2` pattern. A child-table refactor would be cleaner long-term but out of scope.
+- **Scan flow keeps front+back-only AI identification.** Additional photos attach to the card for export but are never sent to Ximilar/OpenRouter — the scan UX explicitly labels the section "uploaded to ImgBB, not sent to AI".
+- **Remote-mode (Tailscale) export is unsupported in v1.** `SkuGenerator` + the export pipeline depend on `FlipKitDbContext`. In Remote mode the DI graph for export still builds (the providers/exporters/validator have no DB deps), but `SkuGenerator` is registered only in Local mode. Export feature itself runs in either mode for now since the dispatcher doesn't auto-assign SKUs.
+- **eBay shipping cost defaults are conservative estimates, not authoritative.** `ShippingProfileNormalizer.ResolveEbayShipping` produces `USPSFirstClass` / `USPSGroundAdvantage` with cost ladders (e.g. $1 for ≤3oz, $4.50 for 4-7oz). Sellers can override per-listing later.
+- **eBay template is a checked-in resource, manually bumped.** When eBay rev's the template version, copy the new file into `Docs/References/` and `FlipKit.Core/Resources/Export/ebay_template_header.csv` and bump.
+- **Per-row errors never block silently.** Validator returns structured `ExportRowError` records; `Severity.Error` blocks the export, `Severity.Warning` (currently used for "unknown shipping profile, assuming custom") flows through.
+
+### Known limitations
+
+1. **eBay HTTPS / Tailscale-mode webcam** — orthogonal, tracked in `Docs/27-WEBCAM-CAPTURE-PLAN.md`.
+2. **Auction format on eBay deferred.** `EbayExportOptions.Duration` defaults to `GTC` (FixedPrice only). Adding `Days_3..Days_30` for auctions is a future toggle.
+3. **No COMC export path.** `ExportPlatform.COMC` falls through to the WhatnotExporter (matches pre-refactor behavior). Real COMC support is a separate spec.
+4. **`*Description` is plain text, not HTML.** `CsvExportService.GenerateDescription` produces line-break-separated plain text. eBay accepts this; it just doesn't render rich. Wrapping in `<p>...</p>` and using `<br>` would be a small enhancement.
+5. **Validator doesn't check `EbaySellerLocation` from settings.** If the user runs an eBay export with a blank location, the `*Location` column is empty and eBay rejects the listing. Should add a settings-level check before dispatch — currently caught only by eBay's response.
+
+### Manual smoke runs (the still-open box on the validation checklist)
+
+To complete the branch:
+
+1. Have at least 2-3 real cards in inventory, with images uploaded to ImgBB.
+2. Set `EbaySellerLocation` in Settings.
+3. Export Whatnot → upload as draft on whatnot.com → confirm drafts created cleanly.
+4. Export eBay with `EbayUseVerifyAdd = true` → upload via Seller Hub Reports → eBay returns "Validated successfully" or itemized errors.
+5. Iterate any errors back into the validator/mapper as appropriate.
+6. Switch `EbayUseVerifyAdd` off and produce a real `Action=Add` CSV for live listing.
+
+### Follow-ups still in scope but not started
+
+- 8-image-URL **upload UX in the Inventory grid** (per-row "+ Add Photo" without entering Edit).
+- Per-card SKU override editor in the Inventory grid (the column exists, the SkuGenerator works, but there's no UI to edit it).
+- One-time `NormalizeLegacyDefaults` migration pass for existing `Card` rows with `"Buy It Now"` / `"4 oz"` (currently normalized at export time only).
+- Auction format support for eBay.
+- Settings-level pre-flight check for `EbaySellerLocation` in the dispatcher.
+- Webcam-capture feature (separate branch — see `Docs/27-WEBCAM-CAPTURE-PLAN.md`).
