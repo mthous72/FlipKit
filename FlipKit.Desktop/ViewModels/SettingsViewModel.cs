@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -44,9 +45,13 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isEbaySeller;
         [ObservableProperty] private string _defaultShippingProfile = "4 oz";
         [ObservableProperty] private string _defaultCondition = "Near Mint";
-        [ObservableProperty] private string _defaultModel = "google/gemma-3-27b-it:free";
+        [ObservableProperty] private string _defaultModel = ModelOption.AutoValue;
+        [ObservableProperty] private ModelOption? _selectedDefaultModel;
+        [ObservableProperty] private bool _isLoadingModels;
+        [ObservableProperty] private string? _modelLoadError;
+        [ObservableProperty] private string? _modelLoadStatus;
 
-        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
+        public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
         // Card Scanning
         [ObservableProperty] private bool _enableVariationVerification = true;
@@ -129,6 +134,8 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _localNetworkStatus = "Checking...";
         [ObservableProperty] private string _tailscaleStatus = "Not configured";
 
+        private readonly IOpenRouterModelCatalog? _modelCatalog;
+
         public SettingsViewModel(ISettingsService settingsService, IBrowserService browserService,
             IServiceProvider services, IServerManagementService serverManagement)
         {
@@ -137,17 +144,73 @@ namespace FlipKit.Desktop.ViewModels
             _services = services;
             _serverManagement = serverManagement;
 
+            // Optional resolution — Settings page should still load even if catalog fails to register.
+            _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
+
             LoadSettings();
             LoadCardCountAsync();
             UpdateDataAccessMode();
             UpdateServerStatus();
             UpdateLocalIpAddresses();
 
+            _ = LoadModelsAsync();
+
             // Refresh server status every 2 seconds
             _statusRefreshTimer = new Timer(_ =>
             {
                 UpdateServerStatus();
             }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+        }
+
+        private async Task LoadModelsAsync(bool forceRefresh = false)
+        {
+            if (_modelCatalog == null) return;
+            IsLoadingModels = true;
+            ModelLoadError = null;
+            ModelLoadStatus = forceRefresh ? "Refreshing model list from OpenRouter..." : "Loading model catalog...";
+            try
+            {
+                if (forceRefresh) _modelCatalog.InvalidateCache();
+                var catalog = await _modelCatalog.GetAsync();
+
+                ModelOptions.Clear();
+                ModelOptions.Add(ModelOption.Auto());
+                foreach (var m in catalog.FreeVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
+                foreach (var m in catalog.PaidVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
+
+                var savedId = string.IsNullOrWhiteSpace(DefaultModel) ? ModelOption.AutoValue : DefaultModel;
+                ModelOption? choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
+                if (choice == null && savedId != ModelOption.AutoValue)
+                {
+                    choice = ModelOption.Stale(savedId);
+                    ModelOptions.Add(choice);
+                }
+                SelectedDefaultModel = choice ?? ModelOptions.First();
+
+                ModelLoadStatus = catalog.IsEmpty
+                    ? "Couldn't reach OpenRouter — using saved default only."
+                    : $"Loaded {catalog.FreeVisionModels.Count} free + {catalog.PaidVisionModels.Count} paid vision models.";
+            }
+            catch (Exception ex)
+            {
+                ModelLoadError = ex.Message;
+                ModelLoadStatus = null;
+            }
+            finally
+            {
+                IsLoadingModels = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task RefreshModelsAsync()
+        {
+            await LoadModelsAsync(forceRefresh: true);
+        }
+
+        partial void OnSelectedDefaultModelChanged(ModelOption? value)
+        {
+            if (value != null) DefaultModel = value.Value;
         }
 
         private void LoadSettings()

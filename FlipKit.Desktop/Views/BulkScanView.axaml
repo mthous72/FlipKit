@@ -33,7 +33,14 @@
                     <TextBlock Text="AI Model" FontSize="12" FontWeight="SemiBold"/>
                     <ComboBox ItemsSource="{Binding ModelOptions}"
                               SelectedItem="{Binding SelectedModel}"
+                              DisplayMemberBinding="{Binding Label}"
+                              IsEnabled="{Binding !IsLoadingModels}"
                               HorizontalAlignment="Stretch"/>
+                    <TextBlock Text="Loading model catalog..." FontSize="10" Opacity="0.6"
+                               IsVisible="{Binding IsLoadingModels}"/>
+                    <TextBlock Text="{Binding ModelLoadError}" FontSize="10" Foreground="#E53935"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding ModelLoadError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
                     <!-- Concurrent Scans -->
                     <TextBlock Text="Concurrent Scans" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
