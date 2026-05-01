@@ -116,6 +116,9 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IXimilarService, XimilarService>();
                 services.AddSingleton<OpenRouterScannerService>();
                 services.AddSingleton<IScannerService, CompositeScannerService>();
+                // Live model catalog from OpenRouter — single instance, app-lifetime cache
+                services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
+                services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();

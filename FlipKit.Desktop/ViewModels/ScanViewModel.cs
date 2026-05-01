@@ -20,6 +20,8 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IVariationVerifier _variationVerifier;
         private readonly IChecklistLearningService _checklistLearningService;
+        private readonly IOpenRouterModelCatalog _modelCatalog;
+        private readonly IPaidModelConsentService _consentService;
         private readonly ILogger<ScanViewModel> _logger;
 
         private ScanResult? _lastScanResult;
@@ -35,9 +37,11 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _verificationStatus = "";
 
         // Model selection
-        [ObservableProperty] private string _selectedModel = string.Empty;
+        [ObservableProperty] private ModelOption? _selectedModel;
+        [ObservableProperty] private bool _isLoadingModels;
+        [ObservableProperty] private string? _modelLoadError;
 
-        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
+        public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
         // Additional photos (slots 3-8) — uploaded to ImgBB at export time but never sent to the LLM.
         // Cap matches the 6 remaining image columns on Card (front + back occupy slots 1 and 2).
@@ -51,6 +55,8 @@ namespace FlipKit.Desktop.ViewModels
             ISettingsService settingsService,
             IVariationVerifier variationVerifier,
             IChecklistLearningService checklistLearningService,
+            IOpenRouterModelCatalog modelCatalog,
+            IPaidModelConsentService consentService,
             ILogger<ScanViewModel> logger)
         {
             _scannerService = scannerService;
@@ -59,11 +65,57 @@ namespace FlipKit.Desktop.ViewModels
             _settingsService = settingsService;
             _variationVerifier = variationVerifier;
             _checklistLearningService = checklistLearningService;
+            _modelCatalog = modelCatalog;
+            _consentService = consentService;
             _logger = logger;
 
-            // Initialize from settings
-            var settings = _settingsService.Load();
-            _selectedModel = settings.DefaultModel;
+            // Populate the dropdown asynchronously — first call hits OpenRouter, subsequent
+            // ones use the cached catalog. Until it lands the dropdown shows a loading entry.
+            _ = LoadModelsAsync();
+        }
+
+        private async Task LoadModelsAsync()
+        {
+            IsLoadingModels = true;
+            ModelLoadError = null;
+            try
+            {
+                var catalog = await _modelCatalog.GetAsync();
+                ModelOptions.Clear();
+                ModelOptions.Add(ModelOption.Auto());
+                foreach (var m in catalog.FreeVisionModels)
+                    ModelOptions.Add(ModelOption.FromCatalog(m));
+                foreach (var m in catalog.PaidVisionModels)
+                    ModelOptions.Add(ModelOption.FromCatalog(m));
+
+                // Pick a sensible default: saved settings if it matches; otherwise Auto.
+                var savedId = _settingsService.Load().DefaultModel;
+                ModelOption? choice = null;
+                if (!string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
+                    choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
+                if (choice == null && !string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
+                {
+                    // Saved id no longer offered by OpenRouter — show as a stale stub.
+                    choice = ModelOption.Stale(savedId);
+                    ModelOptions.Add(choice);
+                }
+                SelectedModel = choice ?? ModelOptions.First();   // First() = Auto
+
+                if (catalog.IsEmpty)
+                    ModelLoadError = "Couldn't reach OpenRouter for the live model list. Auto-rotation is disabled until the catalog loads.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load model catalog");
+                ModelLoadError = $"Model catalog failed to load: {ex.Message}";
+                ModelOptions.Clear();
+                ModelOptions.Add(ModelOption.Auto());
+                SelectedModel = ModelOptions[0];
+            }
+            finally
+            {
+                IsLoadingModels = false;
+            }
         }
 
         [RelayCommand]
@@ -127,7 +179,26 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 var settings = _settingsService.Load();
-                var scanResult = await _scannerService.ScanCardAsync(ImagePath, ImagePathBack, SelectedModel);
+
+                // Resolve the model to use:
+                // - "Auto" (or no selection): rotate through free models, then ask consent for cheapest paid.
+                // - Explicit free or paid pick: single attempt with that model, no rotation.
+                ScanResult? scanResult;
+                if (SelectedModel == null || SelectedModel.IsAuto)
+                {
+                    scanResult = await ScanWithAutoRotationAsync();
+                    if (scanResult == null)
+                    {
+                        // Either user declined paid consent, or every model failed.
+                        // Either way: clean exit, no error noise.
+                        return;
+                    }
+                }
+                else
+                {
+                    scanResult = await _scannerService.ScanCardAsync(ImagePath, ImagePathBack, SelectedModel.Value);
+                }
+
                 scanResult.Card.ImagePathFront = ImagePath;
                 if (!string.IsNullOrEmpty(ImagePathBack))
                     scanResult.Card.ImagePathBack = ImagePathBack;
@@ -346,6 +417,70 @@ namespace FlipKit.Desktop.ViewModels
                     case 7: card.ImagePath7 = path; break;
                     case 8: card.ImagePath8 = path; break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Auto-rotation: try every free model in catalog order; if all throw, surface
+        /// the consent dialog for the cheapest paid model. Returns the successful
+        /// ScanResult, or null when the user declines the paid prompt OR every model
+        /// (free + the one approved paid) failed.
+        /// </summary>
+        private async Task<ScanResult?> ScanWithAutoRotationAsync()
+        {
+            var catalog = await _modelCatalog.GetAsync();
+            if (catalog.IsEmpty)
+            {
+                ErrorMessage = "No OpenRouter models available — check your network connection or pick a model manually.";
+                return null;
+            }
+
+            Exception? lastError = null;
+            foreach (var freeModel in catalog.FreeVisionModels)
+            {
+                try
+                {
+                    VerificationStatus = $"Trying {freeModel.DisplayName}...";
+                    return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, freeModel.Id);
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    _logger.LogWarning(ex, "Free model {Model} failed; trying next.", freeModel.Id);
+                }
+            }
+
+            VerificationStatus = string.Empty;
+
+            if (catalog.PaidVisionModels.Count == 0)
+            {
+                ErrorMessage = "All free models failed and no paid models are available." +
+                               (lastError != null ? $" Last error: {lastError.Message}" : "");
+                return null;
+            }
+
+            var cheapest = catalog.PaidVisionModels[0];
+            var consented = await _consentService.AskAsync(
+                cheapest,
+                $"All {catalog.FreeVisionModels.Count} free OpenRouter vision models failed for this card. " +
+                "Continue with the cheapest paid model?");
+
+            if (!consented)
+            {
+                SuccessMessage = "Scan canceled — no paid model was used.";
+                return null;
+            }
+
+            try
+            {
+                VerificationStatus = $"Trying {cheapest.DisplayName}...";
+                return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, cheapest.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cheapest paid model {Model} also failed.", cheapest.Id);
+                ErrorMessage = $"Even the paid model {cheapest.DisplayName} failed: {ex.Message}";
+                return null;
             }
         }
     }
