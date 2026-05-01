@@ -106,7 +106,7 @@
             </Grid>
 
             <!-- Right Column: Card Detail Form (when a scanned card is selected) -->
-            <ScrollViewer Grid.Column="1">
+            <ScrollViewer Grid.Column="1" Padding="0,0,0,40">
                 <StackPanel Spacing="8">
 
                     <!-- Card detail form (shown when a scanned item is selected) -->

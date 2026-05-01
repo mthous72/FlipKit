@@ -8,7 +8,7 @@
              x:Class="FlipKit.Desktop.Views.ExportView"
              x:DataType="vm:ExportViewModel">
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer Padding="24,24,24,60">
         <StackPanel Spacing="20" MaxWidth="700">
 
             <Grid ColumnDefinitions="*,Auto">

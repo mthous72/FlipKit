@@ -12,7 +12,7 @@
         <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
     </UserControl.Resources>
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer Padding="24,24,24,60">
         <StackPanel Spacing="24" MaxWidth="700">
 
             <TextBlock Text="Settings" FontSize="24" FontWeight="Bold"/>
