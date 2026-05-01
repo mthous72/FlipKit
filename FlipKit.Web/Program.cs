@@ -48,6 +48,7 @@ if (dataMode == DataAccessMode.Local)
     builder.Services.AddDbContext<FlipKitDbContext>(options =>
         options.UseSqlite($"Data Source={dbPath}"));
     builder.Services.AddScoped<ICardRepository, CardRepository>();
+    builder.Services.AddScoped<ISkuGenerator, FlipKit.Core.Services.Export.SkuGenerator>();
 }
 else
 {

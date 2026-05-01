@@ -98,6 +98,7 @@ namespace FlipKit.Desktop
                     services.AddDbContext<FlipKitDbContext>(options =>
                         options.UseSqlite($"Data Source={FlipKitDbContext.GetDbPath()}"));
                     services.AddTransient<ICardRepository, CardRepository>();
+                    services.AddTransient<ISkuGenerator, FlipKit.Core.Services.Export.SkuGenerator>();
                 }
                 else
                 {

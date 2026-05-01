@@ -36,6 +36,11 @@ namespace FlipKit.Core.Models
         // Active export platform (used for exports)
         public ExportPlatform ActiveExportPlatform { get; set; } = ExportPlatform.Whatnot;
 
+        // SKU auto-generation — assigned to cards on first export if blank.
+        // Format: {SkuPrefix}{N:DSkuPadWidth} (e.g. "FK-000123" with prefix "FK-", pad 6).
+        public string SkuPrefix { get; set; } = "FK-";
+        public int SkuPadWidth { get; set; } = 6;
+
         // Search Query Templates - Optimized for pricing research
         // Exclude overly specific fields (CardNumber, Serial) to get broader results
         // Terapeak: Focus on key identifiers without team (already covered by player)
