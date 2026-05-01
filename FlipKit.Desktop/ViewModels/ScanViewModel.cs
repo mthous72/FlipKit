@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
@@ -37,6 +38,11 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _selectedModel = string.Empty;
 
         public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
+
+        // Additional photos (slots 3-8) — uploaded to ImgBB at export time but never sent to the LLM.
+        // Cap matches the 6 remaining image columns on Card (front + back occupy slots 1 and 2).
+        public ObservableCollection<PhotoSlot> AdditionalPhotos { get; } = new();
+        public const int MaxAdditionalPhotos = 6;
 
         public ScanViewModel(
             IScannerService scannerService,
@@ -86,6 +92,24 @@ namespace FlipKit.Desktop.ViewModels
         private void RemoveBackImage()
         {
             ImagePathBack = null;
+        }
+
+        [RelayCommand]
+        private async Task AddAdditionalPhotoAsync()
+        {
+            if (AdditionalPhotos.Count >= MaxAdditionalPhotos)
+                return;
+
+            var path = await _fileDialogService.OpenImageFileAsync();
+            if (!string.IsNullOrEmpty(path))
+                AdditionalPhotos.Add(new PhotoSlot(path));
+        }
+
+        [RelayCommand]
+        private void RemoveAdditionalPhoto(PhotoSlot? slot)
+        {
+            if (slot != null)
+                AdditionalPhotos.Remove(slot);
         }
 
         [RelayCommand]
@@ -244,6 +268,7 @@ namespace FlipKit.Desktop.ViewModels
                 var card = ScannedCard.ToCard();
                 card.ImagePathFront = ImagePath;
                 card.ImagePathBack = ImagePathBack;
+                ApplyAdditionalPhotosToCard(card);
                 card.Status = CardStatus.Draft;
                 await _cardRepository.InsertCardAsync(card);
 
@@ -299,11 +324,29 @@ namespace FlipKit.Desktop.ViewModels
         {
             ImagePath = null;
             ImagePathBack = null;
+            AdditionalPhotos.Clear();
             ScannedCard = null;
             ErrorMessage = null;
             VerificationResult = null;
             VerificationStatus = "";
             _lastScanResult = null;
+        }
+
+        private void ApplyAdditionalPhotosToCard(Card card)
+        {
+            for (int i = 0; i < AdditionalPhotos.Count && i < MaxAdditionalPhotos; i++)
+            {
+                var path = AdditionalPhotos[i].Path;
+                switch (i + 3)
+                {
+                    case 3: card.ImagePath3 = path; break;
+                    case 4: card.ImagePath4 = path; break;
+                    case 5: card.ImagePath5 = path; break;
+                    case 6: card.ImagePath6 = path; break;
+                    case 7: card.ImagePath7 = path; break;
+                    case 8: card.ImagePath8 = path; break;
+                }
+            }
         }
     }
 }

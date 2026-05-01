@@ -66,9 +66,13 @@ namespace FlipKit.Core.Data
 
                 for (int i = 3; i <= 8; i++)
                 {
-                    var col = "ImageUrl" + i;
-                    if (!columns.Contains(col))
-                        await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN " + col + " TEXT");
+                    var urlCol = "ImageUrl" + i;
+                    if (!columns.Contains(urlCol))
+                        await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN " + urlCol + " TEXT");
+
+                    var pathCol = "ImagePath" + i;
+                    if (!columns.Contains(pathCol))
+                        await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN " + pathCol + " TEXT");
                 }
             }
             finally

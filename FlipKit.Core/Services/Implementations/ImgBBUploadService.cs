@@ -69,5 +69,21 @@ namespace FlipKit.Core.Services
 
             return (url1, url2);
         }
+
+        public async Task<List<string?>> UploadCardImagesAsync(IList<string?> localPaths)
+        {
+            var results = new List<string?>(localPaths.Count);
+            foreach (var path in localPaths)
+            {
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                {
+                    results.Add(null);
+                    continue;
+                }
+
+                results.Add(await UploadImageAsync(path));
+            }
+            return results;
+        }
     }
 }

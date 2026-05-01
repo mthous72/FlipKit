@@ -71,7 +71,7 @@ namespace FlipKit.Desktop.ViewModels
 
                 ReadyCardCount = _exportableCards.Count;
                 NeedsPricingCount = allCards.Count(c => c.Status == CardStatus.Draft);
-                NeedsImageUploadCount = _exportableCards.Count(c => string.IsNullOrEmpty(c.ImageUrl1));
+                NeedsImageUploadCount = _exportableCards.Count(CardHasMissingUploads);
                 TotalValue = _exportableCards.Where(c => c.ListingPrice.HasValue).Sum(c => c.ListingPrice!.Value);
             }
             catch (Exception ex)
@@ -93,8 +93,9 @@ namespace FlipKit.Desktop.ViewModels
         [RelayCommand]
         private async Task UploadImagesAsync()
         {
+            // A card needs work if any slot has a local path but no hosted URL yet.
             var cardsNeedingUpload = _exportableCards
-                .Where(c => string.IsNullOrEmpty(c.ImageUrl1) && !string.IsNullOrEmpty(c.ImagePathFront))
+                .Where(CardHasMissingUploads)
                 .ToList();
 
             if (cardsNeedingUpload.Count == 0)
@@ -115,11 +116,20 @@ namespace FlipKit.Desktop.ViewModels
                 {
                     try
                     {
-                        var (url1, url2) = await _imageUploadService.UploadCardImagesAsync(
-                            card.ImagePathFront!, card.ImagePathBack);
+                        var paths = GetImagePathSlots(card);
+                        var existingUrls = GetImageUrlSlots(card);
 
-                        if (url1 != null) card.ImageUrl1 = url1;
-                        if (url2 != null) card.ImageUrl2 = url2;
+                        // Only upload slots that have a path but no URL — preserves any URLs
+                        // already filled in (e.g. from a partial earlier run).
+                        var pathsToUpload = new List<string?>(8);
+                        for (int i = 0; i < 8; i++)
+                            pathsToUpload.Add(string.IsNullOrEmpty(existingUrls[i]) ? paths[i] : null);
+
+                        var newUrls = await _imageUploadService.UploadCardImagesAsync(pathsToUpload);
+
+                        for (int i = 0; i < 8; i++)
+                            if (newUrls[i] != null)
+                                SetImageUrlSlot(card, i, newUrls[i]);
 
                         if (card.Status == CardStatus.Priced)
                             card.Status = CardStatus.Ready;
@@ -135,12 +145,50 @@ namespace FlipKit.Desktop.ViewModels
                     UploadProgress++;
                 }
 
-                NeedsImageUploadCount = _exportableCards.Count(c => string.IsNullOrEmpty(c.ImageUrl1));
-                StatusMessage = $"Uploaded {UploadProgress} images.";
+                NeedsImageUploadCount = _exportableCards.Count(CardHasMissingUploads);
+                StatusMessage = $"Uploaded images for {UploadProgress} cards.";
             }
             finally
             {
                 IsUploading = false;
+            }
+        }
+
+        private static bool CardHasMissingUploads(Card card)
+        {
+            var paths = GetImagePathSlots(card);
+            var urls = GetImageUrlSlots(card);
+            for (int i = 0; i < 8; i++)
+                if (!string.IsNullOrEmpty(paths[i]) && string.IsNullOrEmpty(urls[i]))
+                    return true;
+            return false;
+        }
+
+        private static string?[] GetImagePathSlots(Card card) => new[]
+        {
+            card.ImagePathFront, card.ImagePathBack,
+            card.ImagePath3, card.ImagePath4, card.ImagePath5,
+            card.ImagePath6, card.ImagePath7, card.ImagePath8,
+        };
+
+        private static string?[] GetImageUrlSlots(Card card) => new[]
+        {
+            card.ImageUrl1, card.ImageUrl2, card.ImageUrl3, card.ImageUrl4,
+            card.ImageUrl5, card.ImageUrl6, card.ImageUrl7, card.ImageUrl8,
+        };
+
+        private static void SetImageUrlSlot(Card card, int index, string? url)
+        {
+            switch (index)
+            {
+                case 0: card.ImageUrl1 = url; break;
+                case 1: card.ImageUrl2 = url; break;
+                case 2: card.ImageUrl3 = url; break;
+                case 3: card.ImageUrl4 = url; break;
+                case 4: card.ImageUrl5 = url; break;
+                case 5: card.ImageUrl6 = url; break;
+                case 6: card.ImageUrl7 = url; break;
+                case 7: card.ImageUrl8 = url; break;
             }
         }
 

@@ -6,7 +6,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="700"
              x:Class="FlipKit.Desktop.Views.EditCardView"
-             x:DataType="vm:EditCardViewModel">
+             x:DataType="vm:EditCardViewModel"
+             x:Name="EditRoot">
 
     <UserControl.Resources>
         <conv:FilePathToFullSizeBitmapConverter x:Key="FullSizeBitmapConverter"/>
@@ -72,6 +73,49 @@
                                        MaxHeight="200" Stretch="Uniform"
                                        HorizontalAlignment="Center"/>
                             </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Additional Photos (slots 3-8) -->
+                    <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
+                            BorderThickness="1" CornerRadius="8" Padding="12"
+                            Background="{DynamicResource SystemChromeLowColor}">
+                        <StackPanel Spacing="8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Additional Photos" FontSize="12" FontWeight="SemiBold" Opacity="0.7"/>
+                                <TextBlock Text="(uploaded to ImgBB at export time)"
+                                           FontSize="10" Opacity="0.4" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <ItemsControl ItemsSource="{Binding AdditionalPhotos}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PhotoSlot">
+                                        <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                                BorderThickness="1" CornerRadius="4" Padding="6" Margin="0,2">
+                                            <Grid ColumnDefinitions="60,*,Auto">
+                                                <Image Grid.Column="0"
+                                                       Source="{Binding DisplayImage, Converter={StaticResource FullSizeBitmapConverter}}"
+                                                       Width="56" Height="56" Stretch="UniformToFill"/>
+                                                <StackPanel Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DisplayImage}" FontSize="10" Opacity="0.6"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="Hosted" FontSize="9" Opacity="0.5"
+                                                               IsVisible="{Binding Url, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="2" Content="Remove"
+                                                        Padding="8,2" FontSize="10"
+                                                        Command="{Binding #EditRoot.DataContext.RemoveAdditionalPhotoCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Button Content="+ Add Photo"
+                                    Command="{Binding AddAdditionalPhotoCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    Padding="8,6" FontSize="12"/>
                         </StackPanel>
                     </Border>
 

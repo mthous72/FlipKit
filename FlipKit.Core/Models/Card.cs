@@ -68,8 +68,17 @@ namespace FlipKit.Core.Models
         public string ShippingProfile { get; set; } = "4 oz";
 
         // === IMAGES ===
+        // Slots 1 (front) and 2 (back) are captured at scan time and sent to the AI for
+        // identification. Slots 3-8 are user-attached extras (condition shots, edge shots,
+        // slab close-ups) — uploaded to ImgBB but never sent to the LLM.
         public string? ImagePathFront { get; set; }
         public string? ImagePathBack { get; set; }
+        public string? ImagePath3 { get; set; }
+        public string? ImagePath4 { get; set; }
+        public string? ImagePath5 { get; set; }
+        public string? ImagePath6 { get; set; }
+        public string? ImagePath7 { get; set; }
+        public string? ImagePath8 { get; set; }
         public string? ImageUrl1 { get; set; }
         public string? ImageUrl2 { get; set; }
         public string? ImageUrl3 { get; set; }
