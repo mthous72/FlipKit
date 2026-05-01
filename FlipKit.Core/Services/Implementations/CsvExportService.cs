@@ -27,15 +27,18 @@ namespace FlipKit.Core.Services
         private readonly ISettingsService _settingsService;
         private readonly TitleTemplateService _titleTemplateService;
         private readonly WhatnotExporter _whatnotExporter;
+        private readonly EbayExporter _ebayExporter;
         private readonly ExportValidator _validator;
 
         public CsvExportService(
             ISettingsService settingsService,
             WhatnotExporter whatnotExporter,
+            EbayExporter ebayExporter,
             ExportValidator validator)
         {
             _settingsService = settingsService;
             _whatnotExporter = whatnotExporter;
+            _ebayExporter = ebayExporter;
             _validator = validator;
             _titleTemplateService = new TitleTemplateService();
         }
@@ -151,15 +154,25 @@ namespace FlipKit.Core.Services
             //    while Generic / COMC fall through to the Whatnot writer (matches the
             //    pre-refactor behavior — those platforms always produced Whatnot-style
             //    CSVs but with platform-specific titles).
+            var settings = _settingsService.Load();
+            var titleFor = (Card c) => GenerateTitle(c, platform);
+            var descFor = (Card c) => GenerateDescription(c);
+
             switch (platform)
             {
                 case ExportPlatform.eBay:
-                    throw new System.NotSupportedException(
-                        "eBay export is not yet implemented. Use Whatnot for now or wait for the next release.");
+                    await _ebayExporter.WriteAsync(cards, outputPath, titleFor, descFor, new EbayExportOptions
+                    {
+                        CategoryId      = "261328",
+                        Duration        = "GTC",
+                        SellerLocation  = settings.EbaySellerLocation,
+                        DispatchTimeMax = settings.EbayDispatchTimeMax,
+                        ReturnsAccepted = settings.EbayReturnsAccepted,
+                        UseVerifyAdd    = settings.EbayUseVerifyAdd,
+                    });
+                    break;
 
                 default:
-                    var titleFor = (Card c) => GenerateTitle(c, platform);
-                    var descFor = (Card c) => GenerateDescription(c);
                     await _whatnotExporter.WriteAsync(
                         cards, outputPath, titleFor, descFor, new WhatnotExportOptions());
                     break;

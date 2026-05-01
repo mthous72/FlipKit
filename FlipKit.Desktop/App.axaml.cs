@@ -121,8 +121,10 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 // Export pipeline — registered unconditionally (no DbContext dependency).
                 services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
+                services.AddSingleton<FlipKit.Core.Services.Export.EbayTemplateProvider>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ShippingProfileNormalizer>();
                 services.AddSingleton<FlipKit.Core.Services.Export.WhatnotExporter>();
+                services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
                 services.AddTransient<IVariationVerifier, VariationVerifierService>();
