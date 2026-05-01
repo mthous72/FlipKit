@@ -77,6 +77,7 @@ namespace FlipKit.Core.Data
             card.HasIndex(c => c.Sport);
             card.HasIndex(c => c.PlayerName);
             card.HasIndex(c => c.Year);
+            card.HasIndex(c => c.Sku).IsUnique();
 
             // PriceHistory configuration
             var priceHistory = modelBuilder.Entity<PriceHistory>();

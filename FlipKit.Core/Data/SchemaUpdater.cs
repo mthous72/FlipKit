@@ -44,6 +44,44 @@ namespace FlipKit.Core.Data
             await EnsureAutoGradeColumnAsync(db);
             await EnsureChecklistLearningColumnsAsync(db);
             await EnsureSoldPriceRecordsTableAsync(db);
+            await EnsureExportColumnsAsync(db);
+        }
+
+        private static async Task EnsureExportColumnsAsync(FlipKitDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(cards)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+                await reader.CloseAsync();
+
+                if (!columns.Contains("Sku"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN Sku TEXT");
+
+                for (int i = 3; i <= 8; i++)
+                {
+                    var col = "ImageUrl" + i;
+                    if (!columns.Contains(col))
+                        await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN " + col + " TEXT");
+                }
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
+
+            // Partial unique index: enforce uniqueness only on non-null/non-empty SKUs
+            // so the column can stay nullable for cards that haven't been assigned one yet.
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_cards_Sku
+                ON cards (Sku)
+                WHERE Sku IS NOT NULL AND Sku <> ''");
         }
 
         private static async Task EnsureAutoGradeColumnAsync(FlipKitDbContext db)

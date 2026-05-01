@@ -72,6 +72,15 @@ namespace FlipKit.Core.Models
         public string? ImagePathBack { get; set; }
         public string? ImageUrl1 { get; set; }
         public string? ImageUrl2 { get; set; }
+        public string? ImageUrl3 { get; set; }
+        public string? ImageUrl4 { get; set; }
+        public string? ImageUrl5 { get; set; }
+        public string? ImageUrl6 { get; set; }
+        public string? ImageUrl7 { get; set; }
+        public string? ImageUrl8 { get; set; }
+
+        // === EXPORT IDENTIFIERS ===
+        public string? Sku { get; set; }
 
         // === WHATNOT-SPECIFIC ===
         public string WhatnotCategory { get; set; } = "Sports Cards";
