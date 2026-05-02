@@ -21,6 +21,9 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IVariationVerifier _variationVerifier;
         private readonly IBulkScanErrorLogger _errorLogger;
+        private readonly IOpenRouterModelCatalog _modelCatalog;
+        private readonly IPaidModelConsentService _consentService;
+        private readonly IImageUploadService _imageUploadService;
         private readonly ILogger<BulkScanViewModel> _logger;
 
         private CancellationTokenSource? _scanCts;
@@ -36,22 +39,24 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _statusMessage;
 
         // Model selection and concurrency
-        [ObservableProperty] private string _selectedModel = string.Empty;
+        [ObservableProperty] private ModelOption? _selectedModel;
         [ObservableProperty] private int _maxConcurrentScans = 1;
+        [ObservableProperty] private bool _isLoadingModels;
+        [ObservableProperty] private string? _modelLoadError;
 
-        public List<string> ModelOptions { get; } = new(OpenRouterScannerService.AllVisionModels);
+        public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
-        // Computed property: is the selected model a free model?
-        public bool IsSelectedModelFree => SelectedModel.Contains(":free");
+        // Treats Auto and any explicit free pick as "free": forces concurrency = 1 to
+        // avoid hammering rate limits.
+        public bool IsSelectedModelFree =>
+            SelectedModel == null
+            || SelectedModel.IsAuto
+            || (SelectedModel.Model?.IsFree ?? SelectedModel.Value.Contains(":free"));
 
-        partial void OnSelectedModelChanged(string value)
+        partial void OnSelectedModelChanged(ModelOption? value)
         {
             OnPropertyChanged(nameof(IsSelectedModelFree));
-            // If switching to free model, force concurrency to 1
-            if (IsSelectedModelFree)
-            {
-                MaxConcurrentScans = 1;
-            }
+            if (IsSelectedModelFree) MaxConcurrentScans = 1;
         }
 
         public ObservableCollection<BulkScanItem> Items { get; } = new();
@@ -70,6 +75,9 @@ namespace FlipKit.Desktop.ViewModels
             ISettingsService settingsService,
             IVariationVerifier variationVerifier,
             IBulkScanErrorLogger errorLogger,
+            IOpenRouterModelCatalog modelCatalog,
+            IPaidModelConsentService consentService,
+            IImageUploadService imageUploadService,
             ILogger<BulkScanViewModel> logger)
         {
             _scannerService = scannerService;
@@ -78,12 +86,55 @@ namespace FlipKit.Desktop.ViewModels
             _settingsService = settingsService;
             _variationVerifier = variationVerifier;
             _errorLogger = errorLogger;
+            _modelCatalog = modelCatalog;
+            _consentService = consentService;
+            _imageUploadService = imageUploadService;
             _logger = logger;
 
             // Initialize from settings
             var settings = _settingsService.Load();
-            _selectedModel = settings.DefaultModel;
             _maxConcurrentScans = settings.MaxConcurrentScans;
+
+            _ = LoadModelsAsync();
+        }
+
+        private async Task LoadModelsAsync()
+        {
+            IsLoadingModels = true;
+            ModelLoadError = null;
+            try
+            {
+                var catalog = await _modelCatalog.GetAsync();
+                ModelOptions.Clear();
+                ModelOptions.Add(ModelOption.Auto());
+                foreach (var m in catalog.FreeVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
+                foreach (var m in catalog.PaidVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
+
+                var savedId = _settingsService.Load().DefaultModel;
+                ModelOption? choice = null;
+                if (!string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
+                    choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
+                if (choice == null && !string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
+                {
+                    choice = ModelOption.Stale(savedId);
+                    ModelOptions.Add(choice);
+                }
+                SelectedModel = choice ?? ModelOptions.First();
+
+                if (catalog.IsEmpty)
+                    ModelLoadError = "Couldn't reach OpenRouter for the live model list.";
+            }
+            catch (Exception ex)
+            {
+                ModelLoadError = ex.Message;
+                ModelOptions.Clear();
+                ModelOptions.Add(ModelOption.Auto());
+                SelectedModel = ModelOptions[0];
+            }
+            finally
+            {
+                IsLoadingModels = false;
+            }
         }
 
         [RelayCommand]
@@ -149,20 +200,43 @@ namespace FlipKit.Desktop.ViewModels
             var settings = _settingsService.Load();
             var isFreeModel = IsSelectedModelFree;
 
-            // For free models, force concurrency to 1 to respect rate limits
+            // Resolve the model chain once for the whole bulk run.
+            //   • Explicit pick → single-model chain.
+            //   • Auto + paid not allowed → free-only chain.
+            //   • Auto + paid allowed → free chain + cheapest paid as final fallback.
+            var modelChain = await BuildBulkModelChainAsync();
+            if (modelChain == null)
+            {
+                // User declined paid consent; cancel cleanly.
+                IsScanning = false;
+                _scanCts = null;
+                StatusMessage = null;
+                SuccessMessage = "Bulk scan canceled — no paid model was used.";
+                return;
+            }
+
+            if (modelChain.Count == 0)
+            {
+                IsScanning = false;
+                _scanCts = null;
+                ErrorMessage = "No usable models available. Check your network connection or pick a model manually.";
+                return;
+            }
+
+            // For free chains, force concurrency to 1 to respect rate limits.
             var maxConcurrency = isFreeModel ? 1 : MaxConcurrentScans;
 
-            _logger.LogInformation("Starting bulk scan of {Count} cards with max concurrency {Concurrency}",
-                pending.Count, maxConcurrency);
+            _logger.LogInformation("Starting bulk scan of {Count} cards with model chain {Models} (max concurrency {Concurrency})",
+                pending.Count, string.Join(",", modelChain), maxConcurrency);
 
-            // Start error tracking session
-            _errorLogger.StartSession(pending.Count, SelectedModel);
+            // Start error tracking session — log the head model for context.
+            _errorLogger.StartSession(pending.Count, modelChain[0]);
 
             // Create semaphore to limit concurrent scans (Moss Machine pattern)
             using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
             // Process all items concurrently with semaphore limiting
-            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, SelectedModel, isFreeModel));
+            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel));
 
             try
             {
@@ -201,7 +275,44 @@ namespace FlipKit.Desktop.ViewModels
                 SuccessMessage = $"Scanned {scanned} cards successfully";
         }
 
-        private async Task ProcessItemAsync(BulkScanItem item, SemaphoreSlim semaphore, AppSettings settings, string modelToUse, bool isFreeModel)
+        /// <summary>
+        /// Builds the per-card model chain for a bulk run. Returns null if the user
+        /// declined paid consent, an empty list if no usable models exist, or a list
+        /// of model ids to try in order otherwise.
+        /// </summary>
+        private async Task<IReadOnlyList<string>?> BuildBulkModelChainAsync()
+        {
+            // Explicit pick → trust it; single-element chain.
+            if (SelectedModel != null && !SelectedModel.IsAuto)
+                return new[] { SelectedModel.Value };
+
+            var catalog = await _modelCatalog.GetAsync();
+            if (catalog.IsEmpty) return Array.Empty<string>();
+
+            var chain = catalog.FreeVisionModels.Select(m => m.Id).ToList();
+
+            if (catalog.PaidVisionModels.Count > 0)
+            {
+                var cheapest = catalog.PaidVisionModels[0];
+                var consented = await _consentService.AskAsync(
+                    cheapest,
+                    $"Bulk scan: when all {catalog.FreeVisionModels.Count} free models fail for a card, " +
+                    $"should we try the cheapest paid model ({cheapest.DisplayName}) as a fallback? " +
+                    "If you decline, cards that all free models fail on will be marked as errors.");
+                if (!consented)
+                {
+                    // User said no — return null to signal "user canceled the whole run".
+                    // (Alternative: continue with free-only and let cards fail. The current
+                    // semantics of "Cancel" in the dialog reads as "don't run", so we honor that.)
+                    return null;
+                }
+                chain.Add(cheapest.Id);
+            }
+
+            return chain;
+        }
+
+        private async Task ProcessItemAsync(BulkScanItem item, SemaphoreSlim semaphore, AppSettings settings, IReadOnlyList<string> modelChain, bool isFreeModel)
         {
             // _scanCts is guaranteed non-null when this method is called from ScanAllAsync
 #pragma warning disable CS8602
@@ -219,8 +330,27 @@ namespace FlipKit.Desktop.ViewModels
 
                 try
                 {
-                    var scanResult = await _scannerService.ScanCardAsync(
-                        item.FrontImagePath, item.BackImagePath, modelToUse);
+                    // Walk the model chain — first model that succeeds wins. If every model
+                    // throws, the outer catch records the final error.
+                    ScanResult? scanResult = null;
+                    Exception? lastError = null;
+                    string usedModel = modelChain[0];
+                    foreach (var modelId in modelChain)
+                    {
+                        try
+                        {
+                            scanResult = await _scannerService.ScanCardAsync(
+                                item.FrontImagePath, item.BackImagePath, modelId);
+                            usedModel = modelId;
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            lastError = ex;
+                            _logger.LogDebug("Card {Index}: model {Model} failed, trying next.", item.Index, modelId);
+                        }
+                    }
+                    if (scanResult == null) throw lastError ?? new Exception("All models in chain failed.");
 
                     scanResult.Card.ImagePathFront = item.FrontImagePath;
                     if (!string.IsNullOrEmpty(item.BackImagePath))
@@ -282,7 +412,7 @@ namespace FlipKit.Desktop.ViewModels
                     item.ErrorMessage = ex.Message;
 
                     // Log detailed error for tracking
-                    _errorLogger.LogError(item.Index, item.FrontImagePath, item.BackImagePath, ex, modelToUse);
+                    _errorLogger.LogError(item.Index, item.FrontImagePath, item.BackImagePath, ex, modelChain[0]);
                 }
 
                 // Thread-safe increment of progress
@@ -334,7 +464,16 @@ namespace FlipKit.Desktop.ViewModels
                     var card = item.CardDetail!.ToCard();
                     card.ImagePathFront = item.FrontImagePath;
                     card.ImagePathBack = item.BackImagePath;
-                    card.Status = CardStatus.Draft;
+
+                    // Auto-fill Whatnot category/subcategory from Sport when blank.
+                    FlipKit.Core.Helpers.WhatnotCategoryDefaulter.ApplyDefaults(card);
+
+                    // Auto-upload any local images that don't yet have a hosted URL.
+                    await TryUploadMissingUrlsAsync(card);
+
+                    // Auto-status: Ready when both images and price are present; Draft otherwise.
+                    card.Status = FlipKit.Core.Helpers.CardStatusEvaluator.Evaluate(card);
+
                     await _cardRepository.InsertCardAsync(card);
 
                     item.Status = BulkScanStatus.Saved;
@@ -349,6 +488,44 @@ namespace FlipKit.Desktop.ViewModels
 
             IsSaving = false;
             SuccessMessage = $"Saved {saved} cards to My Cards!";
+        }
+
+        /// <summary>
+        /// Uploads any local image paths that don't yet have a corresponding hosted URL.
+        /// Updates the card's <c>ImageUrl{N}</c> fields in place. Network errors are
+        /// swallowed — the card still saves with whatever URLs were obtained.
+        /// </summary>
+        private async Task TryUploadMissingUrlsAsync(Card card)
+        {
+            var paths = new[] { card.ImagePathFront, card.ImagePathBack,
+                                card.ImagePath3, card.ImagePath4, card.ImagePath5,
+                                card.ImagePath6, card.ImagePath7, card.ImagePath8 };
+            var urls  = new[] { card.ImageUrl1, card.ImageUrl2,
+                                card.ImageUrl3, card.ImageUrl4, card.ImageUrl5,
+                                card.ImageUrl6, card.ImageUrl7, card.ImageUrl8 };
+
+            var pathsToUpload = new List<string?>(8);
+            for (int i = 0; i < 8; i++)
+                pathsToUpload.Add(string.IsNullOrEmpty(urls[i]) ? paths[i] : null);
+
+            if (!pathsToUpload.Any(p => !string.IsNullOrEmpty(p))) return;
+
+            try
+            {
+                var newUrls = await _imageUploadService.UploadCardImagesAsync(pathsToUpload);
+                if (newUrls[0] != null) card.ImageUrl1 = newUrls[0];
+                if (newUrls[1] != null) card.ImageUrl2 = newUrls[1];
+                if (newUrls[2] != null) card.ImageUrl3 = newUrls[2];
+                if (newUrls[3] != null) card.ImageUrl4 = newUrls[3];
+                if (newUrls[4] != null) card.ImageUrl5 = newUrls[4];
+                if (newUrls[5] != null) card.ImageUrl6 = newUrls[5];
+                if (newUrls[6] != null) card.ImageUrl7 = newUrls[6];
+                if (newUrls[7] != null) card.ImageUrl8 = newUrls[7];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Image upload during bulk save failed for card.");
+            }
         }
 
         [RelayCommand]

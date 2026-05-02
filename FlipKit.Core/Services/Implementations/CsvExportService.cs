@@ -6,39 +6,57 @@ using System.Text;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services.Export;
 using CsvHelper;
 using CsvHelper.Configuration;
 
 namespace FlipKit.Core.Services
 {
+    /// <summary>
+    /// Per-platform CSV export dispatcher. Validates the input cards via
+    /// <see cref="ExportValidator"/>, then routes to the platform-specific exporter
+    /// (currently <see cref="WhatnotExporter"/>; eBay lands in the next step).
+    ///
+    /// Title/description generation lives here because both exporters take callbacks
+    /// for those — this keeps the dispatcher as the single owner of the platform-aware
+    /// title-template logic without the exporters needing to know about
+    /// <see cref="ISettingsService"/>.
+    /// </summary>
     public class CsvExportService : IExportService
     {
         private readonly ISettingsService _settingsService;
         private readonly TitleTemplateService _titleTemplateService;
+        private readonly WhatnotExporter _whatnotExporter;
+        private readonly EbayExporter _ebayExporter;
+        private readonly ExportValidator _validator;
 
-        public CsvExportService(ISettingsService settingsService)
+        public CsvExportService(
+            ISettingsService settingsService,
+            WhatnotExporter whatnotExporter,
+            EbayExporter ebayExporter,
+            ExportValidator validator)
         {
             _settingsService = settingsService;
+            _whatnotExporter = whatnotExporter;
+            _ebayExporter = ebayExporter;
+            _validator = validator;
             _titleTemplateService = new TitleTemplateService();
         }
 
         public string GenerateTitle(Card card)
         {
-            // Use the active export platform's template
             var settings = _settingsService.Load();
             var template = GetTemplateForPlatform(settings.ActiveExportPlatform, settings);
-
             return _titleTemplateService.GenerateTitle(card, template);
         }
 
         /// <summary>
-        /// Generate title for a specific platform (overload for flexibility)
+        /// Generate title for a specific platform (overload for flexibility).
         /// </summary>
         public string GenerateTitle(Card card, ExportPlatform platform)
         {
             var settings = _settingsService.Load();
             var template = GetTemplateForPlatform(platform, settings);
-
             return _titleTemplateService.GenerateTitle(card, template);
         }
 
@@ -95,68 +113,73 @@ namespace FlipKit.Core.Services
             return sb.ToString().Trim();
         }
 
+        /// <summary>
+        /// Per-card pre-flight validator (legacy entry point — returns human-readable
+        /// strings for the existing ViewModel). Delegates to <see cref="ExportValidator"/>
+        /// so the rules stay in one place. Validates against the active export platform
+        /// from settings.
+        /// </summary>
         public List<string> ValidateCardForExport(Card card)
         {
-            var errors = new List<string>();
+            var settings = _settingsService.Load();
+            var errors = ValidateBatch(new List<Card> { card }, settings.ActiveExportPlatform);
+            return errors
+                .Where(e => e.Severity == ExportErrorSeverity.Error)
+                .Select(e => e.Message)
+                .ToList();
+        }
 
-            if (string.IsNullOrEmpty(card.PlayerName))
-                errors.Add("Missing player name");
-            if (!card.ListingPrice.HasValue || card.ListingPrice <= 0)
-                errors.Add("Missing listing price");
-            if (string.IsNullOrEmpty(card.WhatnotSubcategory))
-                errors.Add("Missing subcategory");
-
-            return errors;
+        public IReadOnlyList<ExportRowError> ValidateBatch(IList<Card> cards, ExportPlatform platform)
+        {
+            return platform == ExportPlatform.eBay
+                ? _validator.ValidateForEbay(cards)
+                : _validator.ValidateForWhatnot(cards);
         }
 
         public async Task ExportCsvAsync(List<Card> cards, string outputPath)
         {
-            // Use active export platform from settings (default behavior)
             var settings = _settingsService.Load();
             await ExportCsvAsync(cards, outputPath, settings.ActiveExportPlatform);
         }
 
         public async Task ExportCsvAsync(List<Card> cards, string outputPath, ExportPlatform platform)
         {
-            await using var writer = new StreamWriter(outputPath, false, new UTF8Encoding(false));
-            await using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                HasHeaderRecord = true
-            });
+            // 1. Pre-flight validation. Blocking errors throw; warnings are silently
+            //    accepted (the caller can re-run the validator directly to surface them).
+            var errors = platform == ExportPlatform.eBay
+                ? _validator.ValidateForEbay(cards)
+                : _validator.ValidateForWhatnot(cards);
+            var blockers = errors.Where(e => e.Severity == ExportErrorSeverity.Error).ToList();
+            if (blockers.Count > 0)
+                throw new ExportValidationException(blockers);
 
-            // Write header
-            csv.WriteField("Category");
-            csv.WriteField("Sub Category");
-            csv.WriteField("Title");
-            csv.WriteField("Description");
-            csv.WriteField("Quantity");
-            csv.WriteField("Type");
-            csv.WriteField("Price");
-            csv.WriteField("Shipping Profile");
-            csv.WriteField("Offerable");
-            csv.WriteField("Condition");
-            for (int i = 1; i <= 8; i++)
-                csv.WriteField($"Image URL {i}");
-            await csv.NextRecordAsync();
+            // 2. Dispatch to the platform-specific exporter.
+            //    eBay lands in the next step; for now, only Whatnot writes a real file
+            //    while Generic / COMC fall through to the Whatnot writer (matches the
+            //    pre-refactor behavior — those platforms always produced Whatnot-style
+            //    CSVs but with platform-specific titles).
+            var settings = _settingsService.Load();
+            var titleFor = (Card c) => GenerateTitle(c, platform);
+            var descFor = (Card c) => GenerateDescription(c);
 
-            // Write rows
-            foreach (var card in cards)
+            switch (platform)
             {
-                csv.WriteField("Sports Cards");
-                csv.WriteField(card.WhatnotSubcategory ?? GetSubcategoryFromSport(card));
-                csv.WriteField(GenerateTitle(card, platform));
-                csv.WriteField(GenerateDescription(card));
-                csv.WriteField(card.Quantity);
-                csv.WriteField(card.ListingType);
-                csv.WriteField(card.ListingPrice?.ToString("F2") ?? "0.00");
-                csv.WriteField(card.ShippingProfile);
-                csv.WriteField(card.Offerable ? "TRUE" : "FALSE");
-                csv.WriteField(card.Condition);
-                csv.WriteField(card.ImageUrl1 ?? "");
-                csv.WriteField(card.ImageUrl2 ?? "");
-                for (int i = 3; i <= 8; i++)
-                    csv.WriteField("");
-                await csv.NextRecordAsync();
+                case ExportPlatform.eBay:
+                    await _ebayExporter.WriteAsync(cards, outputPath, titleFor, descFor, new EbayExportOptions
+                    {
+                        CategoryId      = "261328",
+                        Duration        = "GTC",
+                        SellerLocation  = settings.EbaySellerLocation,
+                        DispatchTimeMax = settings.EbayDispatchTimeMax,
+                        ReturnsAccepted = settings.EbayReturnsAccepted,
+                        UseVerifyAdd    = settings.EbayUseVerifyAdd,
+                    });
+                    break;
+
+                default:
+                    await _whatnotExporter.WriteAsync(
+                        cards, outputPath, titleFor, descFor, new WhatnotExportOptions());
+                    break;
             }
         }
 
@@ -190,17 +213,6 @@ namespace FlipKit.Core.Services
                 csv.WriteField(card.NetProfit?.ToString("F2") ?? "0.00");
                 await csv.NextRecordAsync();
             }
-        }
-
-        private static string GetSubcategoryFromSport(Card card)
-        {
-            return card.Sport switch
-            {
-                Models.Enums.Sport.Football => "Football Cards",
-                Models.Enums.Sport.Baseball => "Baseball Cards",
-                Models.Enums.Sport.Basketball => "Basketball Cards",
-                _ => "Other Sports Cards"
-            };
         }
     }
 }

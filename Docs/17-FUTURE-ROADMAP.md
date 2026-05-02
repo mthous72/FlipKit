@@ -32,6 +32,26 @@ This document outlines planned future enhancements, architectural improvements, 
 
 ## High Priority (Next 3-6 Months)
 
+### 0. User-Driven Checklist Excel Import (Checklist Insider)
+
+**Status:** 📋 Planned
+**Priority:** High
+**Effort:** Medium (2-3 weeks)
+**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
+
+**Description:** Let users populate `SetChecklist` by downloading per-set Excel files from [checklistinsider.com](https://www.checklistinsider.com/) themselves and importing the .xlsx into FlipKit via a file picker. Closes the gap where most modern releases aren't pre-seeded in the bundled checklist DB.
+
+**Why user-driven (not automated):** Checklist Insider's ToU forbids commercial scraping/mirroring but grants individual users a personal-use download license. By having FlipKit only ship a parser (ClosedXML) and a UI — never touching their site — we stay clean of ToU and rate-limit issues entirely. Same legal posture as any app that opens a user-supplied file.
+
+**What it adds:**
+- "Import Checklist" view (Desktop + Web) with file picker, parse-preview, edit metadata, commit
+- ClosedXML-based `ExcelChecklistImporter` in FlipKit.Core that walks the all-caps subset-header rows used by Checklist Insider's Able2Extract-generated files
+- New fields on `ChecklistCard`: `IsAutograph`, `IsParallel`, `IsInsert` (derived from subset name)
+- New fields on `SetChecklist`: `DataSource`, `ImportedAt` (provenance tracking)
+- "Get Checklist for this set" deeplink in scan results when no checklist is imported yet
+
+**Phase 2 follow-ups:** PDF odds-sheet importer (PdfPig) for parallels/print-runs/signers, batch folder import, manufacturer dealer-kit PDF support.
+
 ### 1. Complete Bulk Scanning Feature
 
 **Status:** 🚧 In Progress (feature/bulk-scan)
@@ -525,5 +545,8 @@ This is a living document. Priorities will shift based on user feedback, technic
 
 ---
 
-**Last Updated:** February 2026
-**Next Review:** May 2026
+**Last Updated:** May 2026
+**Next Review:** August 2026
+
+**Recent additions:**
+- 2026-05-01 — Added "User-Driven Checklist Excel Import" (item 0) — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)

@@ -12,7 +12,7 @@
         <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
     </UserControl.Resources>
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer Padding="24,24,24,60">
         <StackPanel Spacing="24" MaxWidth="700">
 
             <TextBlock Text="Settings" FontSize="24" FontWeight="Bold"/>
@@ -57,7 +57,7 @@
                     </StackPanel>
 
                     <Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,8,0,0">
-                        <TextBlock TextWrapping="Wrap" FontSize="12">
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#212121">
                             💡 <Run FontWeight="Bold">Both services are FREE!</Run> OpenRouter provides free AI models (11 available), and ImgBB offers free image hosting. No credit card required.
                         </TextBlock>
                     </Border>
@@ -113,12 +113,24 @@
                     </TextBlock>
 
                     <!-- Model Selection -->
-                    <TextBlock Text="Default AI Model" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                        <TextBlock Grid.Column="0" Text="Default AI Model" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Refresh from OpenRouter"
+                                Command="{Binding RefreshModelsCommand}"
+                                IsEnabled="{Binding !IsLoadingModels}"
+                                Padding="12,4" FontSize="11"/>
+                    </Grid>
                     <ComboBox ItemsSource="{Binding ModelOptions}"
-                              SelectedItem="{Binding DefaultModel}"
+                              SelectedItem="{Binding SelectedDefaultModel}"
+                              DisplayMemberBinding="{Binding Label}"
+                              IsEnabled="{Binding !IsLoadingModels}"
                               HorizontalAlignment="Stretch"/>
-                    <TextBlock Text="Free vision models — auto falls back to next model on rate limit"
-                               FontSize="11" Opacity="0.5" Margin="0,-6,0,0"/>
+                    <TextBlock Text="{Binding ModelLoadStatus}" FontSize="11" Opacity="0.6"
+                               IsVisible="{Binding ModelLoadStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{Binding ModelLoadError}" FontSize="11" Foreground="#E53935" TextWrapping="Wrap"
+                               IsVisible="{Binding ModelLoadError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="'Auto' tries free models first, then asks before any paid model. Free models rotate on rate-limit."
+                               FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,-2,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -449,6 +461,42 @@
                                        IsVisible="{Binding SearchTemplatePreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="11" Foreground="Blue" TextWrapping="Wrap"/>
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
+            <!-- eBay Export Settings (Collapsible) -->
+            <Expander Header="🛒 eBay Export Settings">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7">
+                            Defaults applied to every row when exporting an eBay CSV.
+                            Seller location is required; the rest have sensible defaults.
+                        </TextBlock>
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" RowSpacing="8" ColumnSpacing="16">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Seller Location"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Handling Time (days)"/>
+                            <TextBox Grid.Row="1" Grid.Column="0"
+                                     Text="{Binding EbaySellerLocation}"
+                                     Watermark="ZIP code or 'City, ST'"/>
+                            <TextBox Grid.Row="1" Grid.Column="1"
+                                     Text="{Binding EbayDispatchTimeMax}"/>
+                        </Grid>
+
+                        <CheckBox IsChecked="{Binding EbayReturnsAccepted}"
+                                  Content="Accept returns (30 days, money-back, buyer pays return shipping)"/>
+
+                        <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                                CornerRadius="4" Padding="10" Background="{DynamicResource SystemChromeLowColor}">
+                            <StackPanel Spacing="4">
+                                <CheckBox IsChecked="{Binding EbayUseVerifyAdd}"
+                                          Content="Dry-run mode (VerifyAdd instead of Add)" FontWeight="SemiBold"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7"
+                                           Text="When enabled, eBay validates each listing without creating it. Use this for the first batch of any new export pipeline; switch off once your CSVs upload cleanly."/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
             </Expander>

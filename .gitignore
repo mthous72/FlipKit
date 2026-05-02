@@ -371,6 +371,7 @@ Docs/debug/
 *.db-wal
 *.db-shm
 settings.json
+!.claude/settings.json
 wwwroot/uploads/
 publish/
 

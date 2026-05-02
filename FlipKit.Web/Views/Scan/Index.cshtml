@@ -94,33 +94,43 @@
                                 <strong>AI Model</strong> <span class="text-muted">(fallback when Ximilar doesn't match)</span>
                             </label>
                             <select class="form-select form-select-lg" id="selectedModel" name="selectedModel">
-                                <optgroup label="Free Models (Recommended)">
-                                    @{
-                                        var freeModels = Model.AvailableModels.Where(m => m.Contains(":free")).ToList();
-                                        foreach (var modelName in freeModels)
+                                <optgroup label="Recommended">
+                                    <option value="@FlipKit.Web.Models.WebModelOption.AutoValue"
+                                            selected="@(Model.SelectedModel == FlipKit.Web.Models.WebModelOption.AutoValue)">
+                                        @FlipKit.Web.Models.WebModelOption.AutoLabel
+                                    </option>
+                                </optgroup>
+                                @if (Model.FreeModels.Count > 0)
+                                {
+                                    <optgroup label="Free Models">
+                                        @foreach (var m in Model.FreeModels)
                                         {
-                                            <option value="@modelName" selected="@(modelName == Model.SelectedModel)">
-                                                @modelName.Replace(":free", "")
+                                            <option value="@m.Id" selected="@(m.Id == Model.SelectedModel)">
+                                                @FlipKit.Core.Services.Scanning.ModelCostFormatter.FormatDropdownLabel(m)
                                             </option>
                                         }
-                                    }
-                                </optgroup>
-                                <optgroup label="Paid Models">
-                                    @{
-                                        var paidModels = Model.AvailableModels.Where(m => !m.Contains(":free")).ToList();
-                                        foreach (var modelName in paidModels)
+                                    </optgroup>
+                                }
+                                @if (Model.PaidModels.Count > 0)
+                                {
+                                    <optgroup label="Paid Models (cheapest first)">
+                                        @foreach (var m in Model.PaidModels)
                                         {
-                                            var priceLabel = modelName == "openai/gpt-4o-mini" ? "($0.15/$0.60 per 1M)" :
-                                                           modelName == "anthropic/claude-3.5-sonnet" ? "($5/$25 per 1M)" : "(Paid)";
-                                            <option value="@modelName" selected="@(modelName == Model.SelectedModel)">
-                                                @modelName @priceLabel
+                                            <option value="@m.Id" selected="@(m.Id == Model.SelectedModel)">
+                                                @FlipKit.Core.Services.Scanning.ModelCostFormatter.FormatDropdownLabel(m)
                                             </option>
                                         }
-                                    }
-                                </optgroup>
+                                    </optgroup>
+                                }
                             </select>
+                            @if (!string.IsNullOrEmpty(Model.CatalogError))
+                            {
+                                <small class="text-danger d-block mt-2">
+                                    <i class="bi bi-exclamation-triangle"></i> @Model.CatalogError
+                                </small>
+                            }
                             <small class="text-muted d-block mt-2" style="line-height: 1.5;">
-                                <i class="bi bi-info-circle"></i> Free models are recommended and may take 30-60 seconds. Paid models are faster but require credits.
+                                <i class="bi bi-info-circle"></i> Auto rotates through every free model. If they all fail and you want paid fallback, pick a specific paid model from the list, or run the scan from the Desktop app.
                             </small>
                         </div>
 

@@ -98,6 +98,7 @@ namespace FlipKit.Desktop
                     services.AddDbContext<FlipKitDbContext>(options =>
                         options.UseSqlite($"Data Source={FlipKitDbContext.GetDbPath()}"));
                     services.AddTransient<ICardRepository, CardRepository>();
+                    services.AddTransient<ISkuGenerator, FlipKit.Core.Services.Export.SkuGenerator>();
                 }
                 else
                 {
@@ -115,9 +116,19 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IXimilarService, XimilarService>();
                 services.AddSingleton<OpenRouterScannerService>();
                 services.AddSingleton<IScannerService, CompositeScannerService>();
+                // Live model catalog from OpenRouter — single instance, app-lifetime cache
+                services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
+                services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
+                // Export pipeline — registered unconditionally (no DbContext dependency).
+                services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
+                services.AddSingleton<FlipKit.Core.Services.Export.EbayTemplateProvider>();
+                services.AddSingleton<FlipKit.Core.Services.Export.ShippingProfileNormalizer>();
+                services.AddSingleton<FlipKit.Core.Services.Export.WhatnotExporter>();
+                services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
+                services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
                 services.AddTransient<IVariationVerifier, VariationVerifierService>();
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();

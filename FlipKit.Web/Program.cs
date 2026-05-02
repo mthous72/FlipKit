@@ -48,6 +48,7 @@ if (dataMode == DataAccessMode.Local)
     builder.Services.AddDbContext<FlipKitDbContext>(options =>
         options.UseSqlite($"Data Source={dbPath}"));
     builder.Services.AddScoped<ICardRepository, CardRepository>();
+    builder.Services.AddScoped<ISkuGenerator, FlipKit.Core.Services.Export.SkuGenerator>();
 }
 else
 {
@@ -64,7 +65,16 @@ else
 builder.Services.AddSingleton<IXimilarService, XimilarService>();
 builder.Services.AddSingleton<OpenRouterScannerService>();
 builder.Services.AddSingleton<IScannerService, CompositeScannerService>();
+// Live model catalog from OpenRouter — single instance, app-lifetime cache
+builder.Services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
+// Export pipeline — registered unconditionally (no DbContext dependency).
+builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
+builder.Services.AddSingleton<FlipKit.Core.Services.Export.EbayTemplateProvider>();
+builder.Services.AddSingleton<FlipKit.Core.Services.Export.ShippingProfileNormalizer>();
+builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotExporter>();
+builder.Services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
+builder.Services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
 builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on DbContext
 builder.Services.AddSingleton<IImageUploadService, ImgBBUploadService>();
 builder.Services.AddScoped<IVariationVerifier, VariationVerifierService>(); // Depends on DbContext

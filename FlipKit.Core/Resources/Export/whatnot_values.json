@@ -1,0 +1,1648 @@
+{
+  "categories": [
+    "Action Figures",
+    "Antiques, Vintage & Ephemera",
+    "Arts & Handmade",
+    "Baby & Kids",
+    "Bags & Accessories",
+    "Beauty",
+    "Books",
+    "Candles & Aromatherapy",
+    "Car Parts",
+    "Case Packs & Bundles",
+    "Coins & Money",
+    "Comics & Manga",
+    "Disneyana",
+    "Electronics",
+    "Entertainment Cards",
+    "Estate Sales & Storage Units",
+    "Food & Drink",
+    "Home & Garden",
+    "Jewelry",
+    "Knives & Hunting",
+    "Men's Fashion",
+    "Movies",
+    "Music",
+    "Outdoor Gear",
+    "Pallets",
+    "Pet Supplies",
+    "Rocks & Crystals",
+    "Sneakers & Streetwear",
+    "Sporting Gear",
+    "Sports Cards",
+    "Sports Memorabilia",
+    "Toys & Hobbies",
+    "Trading Card Games",
+    "Video Games",
+    "Watches",
+    "Women's Fashion",
+    "and Whatnot"
+  ],
+  "shipping_profiles": [
+    "0-1 oz",
+    "1-3 oz",
+    "4-7 oz",
+    "8-11 oz",
+    "12-15 oz",
+    "1 lb",
+    "1-2 lbs",
+    "2-3 lbs",
+    "3-4 lbs",
+    "4-6 lbs",
+    "10-14 lbs",
+    "Sports singles (3oz)",
+    "0 to <20 grams",
+    "20 to <100 grams",
+    "100 to <250 grams",
+    "250 to <500 grams",
+    "500 to <750 grams",
+    "750 grams to <1 KGs",
+    "1 KGs to <2 KGs",
+    "2 KGs to <3 KGs",
+    "3 KGs to <5 KGs",
+    "5 KGs to <7 KGs",
+    "7 to <10 KGs"
+  ],
+  "hazmat": [
+    "Not Hazmat",
+    "Hazmat - Standard",
+    "Hazmat - Lithium Battery"
+  ],
+  "subcategories": {
+    "Action Figures": [
+      "Anime Figures",
+      "DC Figures",
+      "G.I. Joe Figures",
+      "Hot Toys",
+      "MOTU Figures",
+      "Marvel Figures",
+      "Other Action Figures",
+      "Power Rangers",
+      "Simpsons Figures",
+      "Star Wars Figures",
+      "TMNT Figures",
+      "Transformers Figures",
+      "Wrestling Figures"
+    ],
+    "Antiques, Vintage & Ephemera": [
+      "Antiques",
+      "Ephemera & Postcards",
+      "Postage Stamps",
+      "Vintage Decor"
+    ],
+    "Arts & Handmade": [
+      "3D Prints",
+      "Art & Prints",
+      "Artisan Home Goods",
+      "Beads, Pens & Keychains",
+      "Craft Stamps",
+      "Embroidery and Needlework",
+      "Fiber Arts & Sewing Supplies",
+      "Glass Art",
+      "Handmade Clothing & Accessories",
+      "Heat Transfers & Wraps",
+      "Jewelry Making Supplies",
+      "Other Craft Supplies",
+      "Resin Art",
+      "Scrapbooks",
+      "Stickers",
+      "Woodworking"
+    ],
+    "Baby & Kids": [
+      "Baby & Kids Clothes",
+      "Baby & Kids Shoes",
+      "Baby & Kids Supplies"
+    ],
+    "Bags & Accessories": [
+      "Luxury Bags & Accessories",
+      "Midrange & Fashion Bags",
+      "Other Accessories",
+      "Sunglasses & Eyewear"
+    ],
+    "Beauty": [
+      "Bath & Body Essentials",
+      "Fragrances",
+      "Hair Products",
+      "Makeup & Skincare",
+      "Men's Grooming",
+      "Nails",
+      "Other Beauty"
+    ],
+    "Books": [
+      "Graphic Novels",
+      "Magazines",
+      "New & Used Books",
+      "Rare & Vintage Books"
+    ],
+    "Coins & Money": [
+      "Coins & Bullion",
+      "Paper Money & Currency"
+    ],
+    "Comics & Manga": [
+      "Anime & Manga",
+      "Comic Art",
+      "Modern Comics",
+      "Pop Culture Memorabilia",
+      "Vintage Comics"
+    ],
+    "Disneyana": [
+      "Disney Accessories",
+      "Disney Clothing",
+      "Disney Original & Animation Art",
+      "Disney Pins",
+      "Loungefly",
+      "Other Disneyana"
+    ],
+    "Electronics": [
+      "Cameras & Photography",
+      "Everyday Electronics",
+      "Headphones and Speakers",
+      "Other Electronics",
+      "Tools"
+    ],
+    "Entertainment Cards": [
+      "Disney Cards",
+      "Garbage Pail Kids",
+      "Marvel Cards",
+      "Other Entertainment Cards",
+      "Star Wars Cards",
+      "TV & Movie Cards"
+    ],
+    "Estate Sales & Storage Units": [
+      "Deal Hunting",
+      "Estate Sales",
+      "Garage Sales",
+      "Other Estate Sales & Storage Units ",
+      "Storage Unit Finds"
+    ],
+    "Food & Drink": [
+      "Baked Goods",
+      "Candy",
+      "Chocolate",
+      "Coffee & Tea",
+      "Condiments & Sauces",
+      "Fresh & Specialty Food",
+      "Fresh Produce",
+      "Other Food & Drink",
+      "Snacks",
+      "Soda & Drinks",
+      "Supplements"
+    ],
+    "Home & Garden": [
+      "Hand Tools",
+      "Holiday Decor",
+      "Home Decor",
+      "Hydration",
+      "Kitchen & Dining",
+      "Other Home & Garden",
+      "Plants & Garden"
+    ],
+    "Jewelry": [
+      "Contemporary Costume",
+      "Fine & Precious Metals",
+      "Handcrafted & Artisan Jewelry",
+      "Men's Jewelry",
+      "Vintage & Antique Jewelry"
+    ],
+    "Men's Fashion": [
+      "Men's Modern",
+      "Men's Vintage Clothing",
+      "Other Men's Fashion",
+      "Sports Jerseys"
+    ],
+    "Movies": [
+      "Blu-ray",
+      "DVDs",
+      "Movie Memorabilia",
+      "VHS"
+    ],
+    "Music": [
+      "CDs & Cassettes",
+      "Instruments & Accessories",
+      "Music Memorabilia",
+      "Other Music",
+      "Vinyl Records"
+    ],
+    "Outdoor Gear": [
+      "Camping and Hiking Gear",
+      "Lures",
+      "Other Fishing Equipment",
+      "Other Outdoors Gear",
+      "Reels",
+      "Rods",
+      "Winter Sports"
+    ],
+    "Pet Supplies": [
+      "Dogs & Cats",
+      "Horse Tack",
+      "Other Pets",
+      "Pet Fish"
+    ],
+    "Rocks & Crystals": [
+      "Crystals & Gems",
+      "Fossils",
+      "Other Rocks"
+    ],
+    "Sneakers & Streetwear": [
+      "Sneakers",
+      "Streetwear"
+    ],
+    "Sporting Gear": [
+      "Baseball & Softball",
+      "Cycling",
+      "Disc Golf",
+      "Football",
+      "Golf Accessories",
+      "Golf Apparel",
+      "Golf Bags",
+      "Golf Balls",
+      "Golf Clubs",
+      "Golf Shoes",
+      "Other Golf Items",
+      "Other Sporting Goods",
+      "Racquet Sports",
+      "Skateboarding",
+      "Soccer"
+    ],
+    "Sports Cards": [
+      "AFL Breaks",
+      "AFL Mystery",
+      "AFL Singles",
+      "Baseball Breaks",
+      "Baseball Mystery",
+      "Baseball Singles",
+      "Basketball Breaks",
+      "Basketball Mystery",
+      "Basketball Singles",
+      "F1 Cards",
+      "Football Breaks",
+      "Football Mystery",
+      "Football Singles",
+      "Hockey Breaks",
+      "Hockey Mystery",
+      "Hockey Singles",
+      "NASCAR Cards",
+      "Other Sports Cards",
+      "Soccer Breaks",
+      "Soccer Mystery",
+      "Soccer Singles",
+      "UFC Breaks",
+      "UFC Mystery",
+      "UFC Singles",
+      "Wrestling Breaks",
+      "Wrestling Mystery",
+      "Wrestling Singles"
+    ],
+    "Sports Memorabilia": [
+      "Baseball Bats",
+      "Baseball Jerseys",
+      "Baseball Photos",
+      "Baseballs",
+      "Basketball Jerseys",
+      "Basketball Photos",
+      "Basketballs",
+      "Football Jerseys",
+      "Football Photos",
+      "Footballs",
+      "Helmets",
+      "Other Baseball Memorabilia",
+      "Other Basketball Memorabilia",
+      "Other Football Memorabilia",
+      "Other Soccer Memorabilia",
+      "Other Sports Memorabilia",
+      "Soccer Balls",
+      "Soccer Jerseys",
+      "Soccer Photos"
+    ],
+    "Toys & Hobbies": [
+      "Baby & Kids Toys ",
+      "Barbie",
+      "Beanie Babies & Boos",
+      "Bearbrick",
+      "Board Games",
+      "D&D & Role-playing Games",
+      "Diecast Cars",
+      "Disney Plush",
+      "Fast Food & Cereal Toys",
+      "FigPin",
+      "Funko Pop!",
+      "Funko Soda",
+      "Kawaii",
+      "LEGO Minifigures",
+      "LEGO Sets",
+      "Labubu & Blindboxes",
+      "Littlest Pet Shop",
+      "Models & Kits",
+      "Monster High",
+      "Other Designer Toys",
+      "Other Diecast",
+      "Other Dolls",
+      "Other Funko Products",
+      "Other LEGO",
+      "Other Plush",
+      "Other Tabletop Games",
+      "Other Toys",
+      "Pokémon Plush",
+      "Puzzles",
+      "Radio Control Vehicles & Toys",
+      "Slime & Squishy Toys",
+      "Slot Cars",
+      "Sonny Angel and Smiski",
+      "Squishmallows",
+      "Thrilljoy",
+      "Vintage Toys",
+      "Warhammer 40k & Wargames"
+    ],
+    "Trading Card Games": [
+      "Akora",
+      "DC Cards",
+      "Digimon Cards",
+      "Dragon Ball Cards",
+      "Flesh & Blood",
+      "Gundam",
+      "Kickstarter & Other Cards",
+      "Kryptik",
+      "Lorcana",
+      "Magic: The Gathering",
+      "MetaZoo",
+      "Naruto Cards",
+      "One Piece Cards",
+      "Pokémon Cards",
+      "Riftbound",
+      "Sorcery: Contested Realm",
+      "TCG Accessories",
+      "UniVersus Cards",
+      "Union Arena",
+      "VeeFriends",
+      "Weiß Schwarz",
+      "Yu-Gi-Oh! Cards"
+    ],
+    "Video Games": [
+      "Consoles & Accessories",
+      "Modern Games",
+      "Retro Games",
+      "Strategy Guides, Manuals, Replacement Cases"
+    ],
+    "Women's Fashion": [
+      "Other Women's Fashion",
+      "Women's Activewear",
+      "Women's Contemporary",
+      "Women's Shoes",
+      "Women's True Vintage",
+      "Y2K"
+    ],
+    "and Whatnot": [
+      "Breweriana",
+      "Other"
+    ]
+  },
+  "conditions": {
+    "Action Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Akora": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Anime & Manga": [
+      "Graded",
+      "Gem Mint",
+      "Mint",
+      "Near Mint",
+      "Very Fine",
+      "Fine",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Anime Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Antiques": [
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Antiques, Vintage & Ephemera": [
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Art & Prints": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Baby & Kids": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Baby & Kids Clothes": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Baby & Kids Shoes": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Baby & Kids Supplies": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Bags & Accessories": [
+      "New With Tags",
+      "New Without Tags",
+      "New With Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Very Good",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Poor"
+    ],
+    "Baseball Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Basketball Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Beads, Pens & Keychains": [
+      "New",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Beanie Babies & Boos": [
+      "New",
+      "Used"
+    ],
+    "Blu-ray": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Books": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "CDs & Cassettes": [
+      "Mint (M)",
+      "Near mint (NM)",
+      "Excellent (EX)",
+      "Very Good Plus (VG+)",
+      "Very Good (VG), Good Plus (G+)",
+      "Good (G)",
+      "Poor (P)",
+      "Fair (F)"
+    ],
+    "Cameras & Photography": [
+      "Brand New",
+      "Open-box",
+      "Refurbished - Excellent",
+      "Refurbished - Very Good",
+      "Refurbished - Good",
+      "Refurbished - Fair",
+      "Used and fully functioning",
+      "For parts, not fully functioning, or untested"
+    ],
+    "Camping and Hiking Gear": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Coins & Bullion": [
+      "Poor - Fair",
+      "Good - Extremely Fine",
+      "Uncirculated - Mint"
+    ],
+    "Comic Art": [
+      "Graded",
+      "Gem Mint",
+      "Mint",
+      "Near Mint",
+      "Very Fine",
+      "Fine",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Consoles & Accessories": [
+      "Brand New, Factory Sealed",
+      "Open Box",
+      "Refurbished",
+      "Used",
+      "For Parts or Not Working"
+    ],
+    "Contemporary Costume": [
+      "New",
+      "New with defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "DC Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "DC Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "DVDs": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Diecast Cars": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Digimon Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Disney Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Disney Pins": [
+      "New",
+      "Used"
+    ],
+    "Disney Plush": [
+      "New",
+      "Used"
+    ],
+    "Dragon Ball Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Electronics": [
+      "Brand New",
+      "Open-box",
+      "Refurbished - Excellent",
+      "Refurbished - Very Good",
+      "Refurbished - Good",
+      "Refurbished - Fair",
+      "Used and fully functioning",
+      "For parts, not fully functioning, or untested"
+    ],
+    "Entertainment Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Ephemera & Postcards": [
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Everyday Electronics": [
+      "Brand New",
+      "Open-box",
+      "Refurbished - Excellent",
+      "Refurbished - Very Good",
+      "Refurbished - Good",
+      "Refurbished - Fair",
+      "Used and fully functioning",
+      "For parts, not fully functioning, or untested"
+    ],
+    "Fiber Arts & Sewing Supplies": [
+      "New",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Fine & Precious Metals": [
+      "New",
+      "New with defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Flesh & Blood": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Football Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Funko Pop!": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Funko Soda": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "G.I. Joe Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Garbage Pail Kids": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Golf Accessories": [
+      "New",
+      "Used"
+    ],
+    "Golf Apparel": [
+      "New",
+      "Used"
+    ],
+    "Golf Bags": [
+      "New",
+      "Used"
+    ],
+    "Golf Balls": [
+      "New",
+      "Used"
+    ],
+    "Golf Clubs": [
+      "New",
+      "Used"
+    ],
+    "Golf Shoes": [
+      "New",
+      "Used"
+    ],
+    "Graphic Novels": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Gundam": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Hand Tools": [
+      "New with box",
+      "New without box",
+      "New with defects",
+      "Refurbished",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Handcrafted & Artisan Jewelry": [
+      "New",
+      "New with defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Headphones and Speakers": [
+      "Brand New",
+      "Open-box",
+      "Refurbished - Excellent",
+      "Refurbished - Very Good",
+      "Refurbished - Good",
+      "Refurbished - Fair",
+      "Used and fully functioning",
+      "For parts, not fully functioning, or untested"
+    ],
+    "Hockey Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Home Decor": [
+      "New with box",
+      "New without box",
+      "New with defects",
+      "Refurbished",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Hot Toys": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Instruments & Accessories": [
+      "Mint",
+      "Excellent",
+      "Very Good",
+      "Good, Fair",
+      "Poor"
+    ],
+    "Jewelry": [
+      "New",
+      "New with defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Jewelry Making Supplies": [
+      "New",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Kickstarter & Other Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Kitchen & Dining": [
+      "New with box",
+      "New without box",
+      "New with defects",
+      "Refurbished",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Knives & Hunting": [
+      "New with box",
+      "New without box",
+      "New with defects",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Kryptik": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "LEGO Minifigures": [
+      "New in box",
+      "New with damaged box",
+      "New without box",
+      "Used - Like New",
+      "Used - Good",
+      "Used - Fair",
+      "Used - Poor"
+    ],
+    "LEGO Sets": [
+      "New in box",
+      "New with damaged box",
+      "New without box",
+      "Used - Like New",
+      "Used - Good",
+      "Used - Fair",
+      "Used - Poor"
+    ],
+    "Lorcana": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Lures": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Luxury Bags & Accessories": [
+      "New With Tags",
+      "New Without Tags",
+      "New With Defects",
+      "Excellent",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "MOTU Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Magazines": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Magic: The Gathering": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Marvel Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Marvel Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Men's Fashion": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Men's Jewelry": [
+      "New",
+      "New with defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Men's Modern": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Men's Vintage Clothing": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "MetaZoo": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Midrange & Fashion Bags": [
+      "New With Tags",
+      "New Without Tags",
+      "New with Defects",
+      "Excellent",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Modern Comics": [
+      "Graded",
+      "Gem Mint",
+      "Mint",
+      "Near Mint",
+      "Very Fine",
+      "Fine",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Modern Games": [
+      "Brand New, Factory Sealed",
+      "Complete in Box",
+      "Missing Manual",
+      "Loose",
+      "Graded"
+    ],
+    "Movie Memorabilia": [
+      "Mint",
+      "Excellent",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Music Memorabilia": [
+      "Mint",
+      "Excellent",
+      "Very Good",
+      "Good, Fair",
+      "Poor"
+    ],
+    "Naruto Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "New & Used Books": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "One Piece Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Other Accessories": [
+      "New With Tags",
+      "New Without Tags",
+      "New With Defects",
+      "Excellent",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Other Action Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Other Craft Supplies": [
+      "New",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Other Diecast": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Other Electronics": [
+      "Brand New",
+      "Open-box",
+      "Refurbished - Excellent",
+      "Refurbished - Very Good",
+      "Refurbished - Good",
+      "Refurbished - Fair",
+      "Used and fully functioning",
+      "For parts, not fully functioning, or untested"
+    ],
+    "Other Entertainment Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Other Fishing Equipment": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Other Funko Products": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Other Home & Garden": [
+      "New with box",
+      "New without box",
+      "New with defects",
+      "Refurbished",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Other LEGO": [
+      "New in box",
+      "New with damaged box",
+      "New without box",
+      "Used - Like New",
+      "Used - Good",
+      "Used - Fair",
+      "Used - Poor"
+    ],
+    "Other Men's Fashion": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Other Outdoors Gear": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Other Plush": [
+      "New",
+      "Used"
+    ],
+    "Other Sports Cards": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Other Women's Fashion": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Paper Money & Currency": [
+      "Gem Uncirculated",
+      "Uncirculated",
+      "Very Fine",
+      "Fine",
+      "Good",
+      "Poor"
+    ],
+    "Pokémon Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Pokémon Plush": [
+      "New",
+      "Used"
+    ],
+    "Pop Culture Memorabilia": [
+      "Graded",
+      "Gem Mint",
+      "Mint",
+      "Near Mint",
+      "Very Fine",
+      "Fine",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Postage Stamps": [
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Power Rangers": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Rare & Vintage Books": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Reels": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Retro Games": [
+      "Brand New, Factory Sealed",
+      "Complete in Box",
+      "Missing Manual",
+      "Loose",
+      "Graded"
+    ],
+    "Riftbound": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Rods": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Simpsons Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Sneakers": [
+      "New",
+      "New With Defects",
+      "Used",
+      "Not Specified"
+    ],
+    "Soccer Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Sorcery: Contested Realm": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Sports Jerseys": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Squishmallows": [
+      "New",
+      "Used"
+    ],
+    "Star Wars Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Star Wars Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Strategy Guides, Manuals, Replacement Cases": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Acceptable"
+    ],
+    "Streetwear": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Sunglasses & Eyewear": [
+      "New With Tags",
+      "New Without Tags",
+      "New With Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Very Good",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Poor"
+    ],
+    "TCG Accessories": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "TMNT Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "TV & Movie Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Tools": [
+      "Brand New",
+      "Open-box",
+      "Refurbished - Excellent",
+      "Refurbished - Very Good",
+      "Refurbished - Good",
+      "Refurbished - Fair",
+      "Used and fully functioning",
+      "For parts, not fully functioning, or untested"
+    ],
+    "Trading Card Games": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Transformers Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "UFC Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "UniVersus Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Union Arena": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "VHS": [
+      "Brand New",
+      "Like New",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "VeeFriends": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Vintage & Antique Jewelry": [
+      "New",
+      "New with defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Vintage Comics": [
+      "Graded",
+      "Gem Mint",
+      "Mint",
+      "Near Mint",
+      "Very Fine",
+      "Fine",
+      "Very Good",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Vintage Decor": [
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Vinyl Records": [
+      "Mint (M)",
+      "Near Mint (NM or M-)",
+      "Excellent (EX)",
+      "Very Good Plus (VG+)",
+      "Very Good (VG)",
+      "Good Plus (G+)",
+      "Good (G)",
+      "Fair (F)"
+    ],
+    "Weiß Schwarz": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ],
+    "Winter Sports": [
+      "New",
+      "pre-owned - Excellent",
+      "pre-owned - good",
+      "pre-owned - fair",
+      "pre-owned - damaged"
+    ],
+    "Women's Activewear": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Women's Contemporary": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Women's Fashion": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Women's Shoes": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Women's True Vintage": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Wrestling Figures": [
+      "Mint",
+      "Near Mint",
+      "Good",
+      "Fair",
+      "Poor"
+    ],
+    "Wrestling Singles": [
+      "Graded",
+      "Raw - Near Mint or Better",
+      "Raw - Excellent",
+      "Raw - Very Good",
+      "Raw - Poor"
+    ],
+    "Y2K": [
+      "New With Tags",
+      "New without Tags",
+      "New with Defects",
+      "Pre-owned - Excellent",
+      "Pre-owned - Good",
+      "Pre-owned - Fair",
+      "Pre-owned - Damaged"
+    ],
+    "Yu-Gi-Oh! Cards": [
+      "Graded",
+      "New",
+      "Mint",
+      "Near Mint",
+      "Light Played",
+      "Moderately Played",
+      "Heavily Played",
+      "Damaged"
+    ]
+  }
+}

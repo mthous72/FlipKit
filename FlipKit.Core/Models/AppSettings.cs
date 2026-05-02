@@ -36,6 +36,20 @@ namespace FlipKit.Core.Models
         // Active export platform (used for exports)
         public ExportPlatform ActiveExportPlatform { get; set; } = ExportPlatform.Whatnot;
 
+        // SKU auto-generation — assigned to cards on first export if blank.
+        // Format: {SkuPrefix}{N:DSkuPadWidth} (e.g. "FK-000123" with prefix "FK-", pad 6).
+        public string SkuPrefix { get; set; } = "FK-";
+        public int SkuPadWidth { get; set; } = 6;
+
+        // eBay export defaults — populate before exporting eBay listings.
+        // SellerLocation is required for the *Location column (zip code or "City, ST").
+        public string EbaySellerLocation { get; set; } = string.Empty;
+        public int EbayDispatchTimeMax { get; set; } = 2;
+        public bool EbayReturnsAccepted { get; set; } = true;
+        // When true, the Action column on every row is "VerifyAdd" — eBay validates the
+        // listing without creating it. Useful as a dry-run before real submission.
+        public bool EbayUseVerifyAdd { get; set; } = false;
+
         // Search Query Templates - Optimized for pricing research
         // Exclude overly specific fields (CardNumber, Serial) to get broader results
         // Terapeak: Focus on key identifiers without team (already covered by player)

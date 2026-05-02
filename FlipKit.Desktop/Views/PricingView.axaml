@@ -96,7 +96,7 @@
         </Grid>
 
         <!-- Main Content -->
-        <ScrollViewer Grid.Row="1" IsVisible="{Binding HasCards}">
+        <ScrollViewer Grid.Row="1" IsVisible="{Binding HasCards}" Padding="0,0,0,60">
             <StackPanel Spacing="16" MaxWidth="700">
 
                 <!-- Card Info -->

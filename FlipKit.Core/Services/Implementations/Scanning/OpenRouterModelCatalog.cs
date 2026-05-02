@@ -1,0 +1,209 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
+namespace FlipKit.Core.Services.Scanning
+{
+    /// <summary>
+    /// Live model catalog backed by OpenRouter's public /api/v1/models endpoint.
+    /// Filters to vision-language models (image input → text output), classifies
+    /// each as free vs paid, and sorts the paid list cheapest-first by prompt token cost.
+    ///
+    /// Cache lifetime: app launch. Manual <see cref="InvalidateCache"/> via the Settings UI.
+    /// </summary>
+    public class OpenRouterModelCatalog : IOpenRouterModelCatalog
+    {
+        private const string ModelsUrl = "https://openrouter.ai/api/v1/models";
+
+        private readonly HttpClient _httpClient;
+        private readonly ILogger<OpenRouterModelCatalog>? _logger;
+
+        // Single-flight: concurrent callers share one fetch, and the result is cached
+        // for the rest of the process lifetime unless InvalidateCache is called.
+        private readonly SemaphoreSlim _fetchLock = new(1, 1);
+        private ModelCatalog? _cached;
+
+        public OpenRouterModelCatalog(HttpClient httpClient, ILogger<OpenRouterModelCatalog>? logger = null)
+        {
+            _httpClient = httpClient;
+            _logger = logger;
+        }
+
+        public async Task<ModelCatalog> GetAsync(CancellationToken ct = default)
+        {
+            if (_cached != null) return _cached;
+
+            await _fetchLock.WaitAsync(ct);
+            try
+            {
+                if (_cached != null) return _cached;
+                _cached = await FetchAsync(ct);
+                return _cached;
+            }
+            finally
+            {
+                _fetchLock.Release();
+            }
+        }
+
+        public void InvalidateCache()
+        {
+            _cached = null;
+        }
+
+        private async Task<ModelCatalog> FetchAsync(CancellationToken ct)
+        {
+            _logger?.LogInformation("Fetching OpenRouter model catalog from {Url}", ModelsUrl);
+
+            ModelsResponse? response;
+            try
+            {
+                response = await _httpClient.GetFromJsonAsync<ModelsResponse>(ModelsUrl, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "OpenRouter model fetch failed; returning empty catalog. Caller should fall back gracefully.");
+                return new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow);
+            }
+
+            if (response?.Data == null)
+            {
+                _logger?.LogWarning("OpenRouter /api/v1/models returned null or empty data field.");
+                return new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow);
+            }
+
+            var visionModels = response.Data
+                .Where(IsVisionLanguageModel)
+                .Select(ToOpenRouterModel)
+                .Where(m => m != null)
+                .Cast<OpenRouterModel>()
+                .Where(IsLikelyRealVisionLanguageModel)   // drop routers, sentinel pricing, music gen
+                .ToList();
+
+            var free = visionModels.Where(m => m.IsFree).ToList();
+            var paid = visionModels.Where(m => !m.IsFree)
+                                   .OrderBy(m => m.PromptPricePerMillion)
+                                   .ThenBy(m => m.CompletionPricePerMillion)
+                                   .ToList();
+
+            _logger?.LogInformation(
+                "OpenRouter catalog: {Free} free vision models, {Paid} paid vision models (filtered from {Total} total).",
+                free.Count, paid.Count, response.Data.Count);
+
+            return new ModelCatalog(free, paid, DateTime.UtcNow);
+        }
+
+        // === filtering / mapping ===
+
+        private static bool IsVisionLanguageModel(ModelEntry m)
+        {
+            // Prefer the structured input_modalities/output_modalities arrays when present.
+            if (m.Architecture?.InputModalities != null && m.Architecture.OutputModalities != null)
+            {
+                var inputs = m.Architecture.InputModalities;
+                var outputs = m.Architecture.OutputModalities;
+                return inputs.Any(s => string.Equals(s, "image", StringComparison.OrdinalIgnoreCase))
+                    && outputs.Any(s => string.Equals(s, "text", StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Fall back to the legacy modality string ("text+image->text", "text->text", etc.).
+            var modality = m.Architecture?.Modality;
+            if (string.IsNullOrEmpty(modality)) return false;
+            var arrowParts = modality.Split("->", 2, StringSplitOptions.TrimEntries);
+            if (arrowParts.Length != 2) return false;
+            var input = arrowParts[0];
+            var output = arrowParts[1];
+            return input.Contains("image", StringComparison.OrdinalIgnoreCase)
+                && output.Contains("text", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsLikelyRealVisionLanguageModel(OpenRouterModel m)
+        {
+            // Paid models must have actual positive prices — filters out OpenRouter's
+            // "Auto Router" sentinel ($-1M) and any other meta-routers we don't want
+            // to surface in the cost-sorted dropdown.
+            if (!m.IsFree && (m.PromptPricePerMillion <= 0m || m.CompletionPricePerMillion <= 0m))
+                return false;
+
+            // Heuristic: drop entries whose name strongly suggests a non-vision use case
+            // that OpenRouter happens to mis-classify as image-input (e.g. music
+            // generation models like Google Lyria, video gen, audio gen). The user's
+            // scanning workflow needs vision-language reasoning over a still card.
+            var lowerName = m.DisplayName.ToLowerInvariant();
+            string[] excludeTokens = { "lyria", "music", "audio gen", "tts", "speech",
+                                        "image gen", "video", "embedding" };
+            foreach (var t in excludeTokens)
+                if (lowerName.Contains(t)) return false;
+
+            return true;
+        }
+
+        private static OpenRouterModel? ToOpenRouterModel(ModelEntry m)
+        {
+            if (string.IsNullOrEmpty(m.Id)) return null;
+
+            var promptPerToken = ParseDecimalSafe(m.Pricing?.Prompt) ?? 0m;
+            var completionPerToken = ParseDecimalSafe(m.Pricing?.Completion) ?? 0m;
+            var imagePerImage = ParseDecimalSafe(m.Pricing?.Image);
+
+            var promptPerMillion = promptPerToken * 1_000_000m;
+            var completionPerMillion = completionPerToken * 1_000_000m;
+
+            var isFree = promptPerToken == 0m && completionPerToken == 0m;
+
+            return new OpenRouterModel(
+                Id: m.Id,
+                DisplayName: !string.IsNullOrEmpty(m.Name) ? m.Name! : m.Id,
+                IsFree: isFree,
+                PromptPricePerMillion: promptPerMillion,
+                CompletionPricePerMillion: completionPerMillion,
+                ImagePricePerImage: imagePerImage,
+                Description: m.Description ?? string.Empty);
+        }
+
+        private static decimal? ParseDecimalSafe(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return null;
+            return decimal.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
+                ? d : null;
+        }
+
+        // === DTOs for /api/v1/models ===
+
+        private sealed class ModelsResponse
+        {
+            [JsonPropertyName("data")] public List<ModelEntry>? Data { get; set; }
+        }
+
+        private sealed class ModelEntry
+        {
+            [JsonPropertyName("id")]            public string? Id { get; set; }
+            [JsonPropertyName("name")]          public string? Name { get; set; }
+            [JsonPropertyName("description")]   public string? Description { get; set; }
+            [JsonPropertyName("architecture")]  public ArchitectureInfo? Architecture { get; set; }
+            [JsonPropertyName("pricing")]       public PricingInfo? Pricing { get; set; }
+        }
+
+        private sealed class ArchitectureInfo
+        {
+            [JsonPropertyName("modality")]          public string? Modality { get; set; }
+            [JsonPropertyName("input_modalities")]  public List<string>? InputModalities { get; set; }
+            [JsonPropertyName("output_modalities")] public List<string>? OutputModalities { get; set; }
+        }
+
+        private sealed class PricingInfo
+        {
+            [JsonPropertyName("prompt")]     public string? Prompt { get; set; }
+            [JsonPropertyName("completion")] public string? Completion { get; set; }
+            [JsonPropertyName("image")]      public string? Image { get; set; }
+            [JsonPropertyName("request")]    public string? Request { get; set; }
+        }
+    }
+}

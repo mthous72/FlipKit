@@ -7,7 +7,7 @@
              x:Class="FlipKit.Desktop.Views.ReportsView"
              x:DataType="vm:ReportsViewModel">
 
-    <ScrollViewer Padding="24">
+    <ScrollViewer Padding="24,24,24,60">
         <StackPanel Spacing="20" MaxWidth="750">
 
             <Grid ColumnDefinitions="*,Auto">
