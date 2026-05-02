@@ -2,185 +2,70 @@
 
 ## Document Purpose
 
-This document outlines planned future enhancements, architectural improvements, and long-term vision for FlipKit. As of February 2026, the MVP is ~80-90% complete with full end-to-end functionality. This roadmap guides continued development.
+This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.3.6 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. This roadmap guides what comes next.
 
 ---
 
 ## Current Status Summary
 
-**✅ What Works Today:**
-- AI-powered card scanning (11 free vision models)
-- Variation verification with checklist database
-- Single-card and bulk scanning workflows
-- Inventory management with filtering and search
-- Pricing research via browser integration
-- Whatnot CSV export with image hosting
+**✅ Shipped (as of v3.3.6):**
+- AI-powered card scanning with live OpenRouter model catalog and paid-model consent
+- Bulk scanning workflow with front/back pairing, progress tracking, and rate-limit handling
+- Variation verification with bundled checklists
+- Inventory management with filtering, search, and editing
+- Pricing research via browser deeplinks (Terapeak/eBay)
+- Whatnot CSV export and eBay Bulk CSV export — both spec-compliant with template-based validation
 - Sales tracking and financial reporting
 - Graded card support (PSA, BGS, CGC, etc.)
-- Checklist learning and management
-- Setup wizard and settings
-
-**🚧 In Progress:**
-- Bulk scanning feature (feature/bulk-scan branch)
-
-**📋 This Document:**
-- What we're planning to build next
-- Priority levels and rationale
-- Technical approach considerations
+- Setup wizard, settings, ImgBB image hosting
+- 4-project architecture (Core / Desktop / Web / Api) with shared SQLite + WAL
+- Tailscale-friendly remote access via Api server
+- Inno Setup Windows installer + Hub zip portables
 
 ---
 
 ## High Priority (Next 3-6 Months)
 
-### 0. User-Driven Checklist Excel Import (Checklist Insider)
+### 1. User-Driven Checklist Excel Import (Checklist Insider)
 
 **Status:** 📋 Planned
-**Priority:** High
 **Effort:** Medium (2-3 weeks)
 **Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
 
-**Description:** Let users populate `SetChecklist` by downloading per-set Excel files from [checklistinsider.com](https://www.checklistinsider.com/) themselves and importing the .xlsx into FlipKit via a file picker. Closes the gap where most modern releases aren't pre-seeded in the bundled checklist DB.
+Let users populate `SetChecklist` by downloading per-set Excel files from [checklistinsider.com](https://www.checklistinsider.com/) themselves and importing the .xlsx into FlipKit via a file picker. Closes the gap where most modern releases aren't pre-seeded.
 
-**Why user-driven (not automated):** Checklist Insider's ToU forbids commercial scraping/mirroring but grants individual users a personal-use download license. By having FlipKit only ship a parser (ClosedXML) and a UI — never touching their site — we stay clean of ToU and rate-limit issues entirely. Same legal posture as any app that opens a user-supplied file.
+**Why user-driven (not automated):** Checklist Insider's ToU forbids commercial scraping/mirroring but grants individual users a personal-use download license. FlipKit ships only a parser (ClosedXML) and UI — never touches their site. Same legal posture as any app that opens a user-supplied file. TCDB and Beckett are off the table for the same reason.
 
 **What it adds:**
 - "Import Checklist" view (Desktop + Web) with file picker, parse-preview, edit metadata, commit
-- ClosedXML-based `ExcelChecklistImporter` in FlipKit.Core that walks the all-caps subset-header rows used by Checklist Insider's Able2Extract-generated files
-- New fields on `ChecklistCard`: `IsAutograph`, `IsParallel`, `IsInsert` (derived from subset name)
-- New fields on `SetChecklist`: `DataSource`, `ImportedAt` (provenance tracking)
+- ClosedXML-based `ExcelChecklistImporter` in FlipKit.Core
+- New fields on `ChecklistCard`: `IsAutograph`, `IsParallel`, `IsInsert`
+- New fields on `SetChecklist`: `DataSource`, `ImportedAt`
 - "Get Checklist for this set" deeplink in scan results when no checklist is imported yet
 
 **Phase 2 follow-ups:** PDF odds-sheet importer (PdfPig) for parallels/print-runs/signers, batch folder import, manufacturer dealer-kit PDF support.
 
-### 1. Complete Bulk Scanning Feature
+### 2. Automated Price Scraping
 
-**Status:** 🚧 In Progress (feature/bulk-scan)
-
-**Description:** Multi-card batch scanning workflow with front/back pairing, progress tracking, and rate-limit handling.
-
-**What's Left:**
-- Finalize UI polish
-- Enhanced error handling for failed scans
-- Batch save with validation
-- Testing with 50+ card batches
-
-**Success Criteria:**
-- Can scan 50+ cards in one session
-- Front/back pairing works reliably
-- Progress can be paused and resumed
-- Rate limits don't break the workflow
-
-### 2. Three-Project Architecture Refactor
-
-**Priority:** High
-**Effort:** Medium (2-3 weeks)
-**Benefits:** Better testability, cleaner separation of concerns
-
-**Current:** Single FlipKit.csproj with all code
-**Target:** Three projects with clean boundaries
-
-**New Structure:**
-```
-FlipKit.App/           # Avalonia UI layer
-├── Views/               # XAML views
-├── Converters/          # Value converters
-├── Styles/              # Themes and styles
-├── Assets/              # Images, icons
-├── App.axaml.cs         # DI setup, startup
-└── ViewLocator.cs       # ViewModel → View mapping
-
-FlipKit.Core/         # Business logic (no UI refs)
-├── ViewModels/          # All ViewModels
-├── Models/              # Domain entities
-├── Services/            # Service interfaces only
-└── Helpers/             # Pure logic helpers
-
-FlipKit.Infrastructure/  # External integrations
-├── Data/                   # EF Core, repositories
-├── Services/               # Service implementations
-├── ApiModels/              # API DTOs
-└── Migrations/             # EF migrations
-```
-
-**Migration Steps:**
-1. Create new projects
-2. Move files to appropriate projects
-3. Update namespaces
-4. Update ViewLocator (Core.ViewModels → App.Views)
-5. Fix all references
-6. Test thoroughly
-
-**Breaking Changes:**
-- Namespace changes require ViewLocator update
-- DI registration moves to App project
-
-### 3. Unit and Integration Tests
-
-**Priority:** High
-**Effort:** Medium (3-4 weeks)
-**Benefits:** Confidence in refactoring, catch regressions
-
-**Test Projects:**
-```
-FlipKit.Core.Tests/
-├── ViewModels/          # ViewModel unit tests
-│   ├── ScanViewModelTests.cs
-│   ├── InventoryViewModelTests.cs
-│   └── PricingViewModelTests.cs
-├── Helpers/
-│   └── FuzzyMatcherTests.cs
-└── Services/            # Mock-based tests
-    └── CardRepositoryTests.cs
-
-FlipKit.Infrastructure.Tests/
-├── Data/
-│   └── CardRepositoryIntegrationTests.cs
-└── Services/
-    ├── OpenRouterScannerTests.cs  # Recorded responses
-    └── CsvExportServiceTests.cs
-```
-
-**Testing Strategy:**
-- Unit tests: ViewModels with mocked services
-- Integration tests: Database operations with in-memory SQLite
-- API tests: Use recorded responses (VCR pattern)
-- UI tests: Avalonia.Headless for critical flows
-
-**Coverage Goals:**
-- ViewModels: 80%+
-- Services: 70%+
-- Helpers: 90%+
-
-### 4. Automated Price Scraping
-
-**Priority:** High
+**Status:** 📋 Planned
 **Effort:** High (4-6 weeks)
-**Benefits:** Eliminates manual Terapeak/eBay lookups
 
-**Current:** Opens browser, user manually checks prices
-**Target:** Automated price lookup with multiple sources
+Today PricerService only builds Terapeak/eBay search URLs and opens them in a browser. Target: pull median sold prices automatically.
 
 **Approach Options:**
 
-**Option A: eBay API (Recommended)**
-- Use eBay Finding API for sold listings
-- Requires eBay Developer account (free)
-- Rate limits: 5,000 calls/day
-- Pros: Official, reliable, no scraping issues
-- Cons: Requires approval, API key management
+**Option A: eBay Finding API (Recommended)**
+- Official eBay developer API — sold listings via `findCompletedItems`
+- Free developer account, ~5,000 calls/day
+- Pros: official, reliable, no scraping risk
+- Cons: requires approval + key management
 
-**Option B: Web Scraping**
-- Scrape eBay sold listings HTML
-- Use HtmlAgilityPack or AngleSharp
-- Pros: No API key needed
-- Cons: Fragile (breaks when eBay changes HTML), legal gray area
+**Option B: Web scraping (HtmlAgilityPack)**
+- Pros: no API key
+- Cons: fragile (eBay HTML changes), legal gray area
 
 **Option C: Terapeak Research API**
-- Official eBay seller tool
-- Requires eBay Store subscription ($30/month)
-- Best data quality
-- Pros: Most accurate pricing
-- Cons: Subscription cost, limited to eBay sellers
+- Best data quality but requires eBay Store subscription ($30/month)
 
 **Recommended Implementation:**
 ```csharp
@@ -199,354 +84,127 @@ public class PriceDataResult
 }
 ```
 
-**UI Changes:**
-- PricingView: Add "Get Market Price" button
-- Automatically populate EstimatedValue
-- Show confidence interval (e.g., "$12-18 based on 15 sales")
-- Cache results for 24 hours
+**UI Changes:** "Get Market Price" button on PricingView, auto-populate `EstimatedValue`, show confidence interval ("$12-18 based on 15 sales"), 24-hour cache.
 
-**Configuration:**
-- Settings → eBay API key
-- Toggle auto-price vs manual
-- Set price source priority (eBay, COMC, 130point)
+**Configuration:** Settings → eBay API key, toggle auto-price vs manual.
+
+### 3. Unit and Integration Tests
+
+**Status:** 📋 Planned
+**Effort:** Medium (3-4 weeks)
+
+Currently zero tests in the repo. Without them, every refactor is high-risk and regressions ship invisibly.
+
+**Test Projects:**
+```
+FlipKit.Core.Tests/
+├── ViewModels/         # ScanViewModel, BulkScanViewModel, ExportViewModel, etc.
+├── Helpers/            # FuzzyMatcher, WhatnotCategoryDefaulter, CardStatusEvaluator
+├── Services/           # CsvExportService, EbayExporter, WhatnotExporter, ExportValidator
+└── Data/               # In-memory SQLite repository tests
+```
+
+**Strategy:**
+- Unit tests: ViewModels with mocked services (xUnit + Moq)
+- Integration tests: Database operations with in-memory SQLite
+- API/scanner tests: recorded responses (VCR pattern) — avoids hitting OpenRouter
+- UI smoke tests: Avalonia.Headless for critical flows
+
+**Coverage goals:** ViewModels 80%+, Services 70%+, Helpers 90%+.
 
 ---
 
 ## Medium Priority (6-12 Months)
 
-### 5. Cloud Sync and Backup
+### 4. Webcam Capture for Scanning
 
-**Priority:** Medium
-**Effort:** High (6-8 weeks)
-**Benefits:** Multi-device access, automatic backup
+**Status:** 📋 Planned
+**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md)
 
-**Approach Options:**
+Allow scanning directly from a connected webcam instead of requiring file uploads, enabling a true "stream of cards" workflow on Desktop.
 
-**Option A: Dropbox/OneDrive Sync**
-- Store cards.db in cloud folder
-- Let OS handle sync
-- Pros: Simple, no backend needed
-- Cons: Conflicts with simultaneous edits, requires user setup
+### 5. Finish COMC Exporter
 
-**Option B: Custom Cloud Backend**
-- Build REST API (ASP.NET Core)
-- Store data in cloud SQL database
-- Implement conflict resolution
-- Pros: Full control, real-time sync
-- Cons: High effort, hosting costs
+**Status:** 🟡 Partial
+**Effort:** Small (1 week)
 
-**Option C: Supabase/Firebase**
-- Use BaaS for data sync
-- Built-in authentication
-- Pros: Fast to implement, real-time
-- Cons: Vendor lock-in, monthly costs
+`ExportPlatform` enum has a `COMC` entry and `CsvExportService` has a title template, but no dedicated `COMCExporter` class exists. Build it out alongside an export validator and consignment-specific category mapping.
 
-**Recommended: Hybrid Approach**
-1. Keep local SQLite as primary (offline-first)
-2. Add optional cloud sync via Supabase
-3. Manual sync button + automatic on app close
-4. Conflict resolution: last-write-wins with user prompt
+### 6. Inventory Performance — Virtualization & Image Cache
 
-### 6. Additional Export Formats
-
-**Priority:** Medium
-**Effort:** Medium (2-3 weeks per format)
-
-**Target Platforms:**
-
-**eBay Bulk Upload CSV:**
-- Different column format than Whatnot
-- Requires eBay category mapping
-- Support for item specifics
-- Shipping policies
-
-**COMC (Check Out My Cards):**
-- CSV format for consignment
-- Requires specific categorization
-- Graded card support
-
-**MySlabs (Graded Cards):**
-- Focus on PSA/BGS graded
-- Certification number validation
-- Population report integration
-
-**TCGPlayer (if expanding to TCG):**
-- Trading card games (Pokemon, Magic, etc.)
-- Different data model (set/card number)
-
-### 7. Performance Optimizations
-
-**Priority:** Medium
+**Status:** 🟡 Partial
 **Effort:** Medium (3-4 weeks)
 
-**Current Issues:**
-- InventoryView slows down with 500+ cards
-- Full card list loaded into memory
-- No pagination or virtualization
+DB indexes are in place. Remaining gaps:
+- DataGrid virtualization in InventoryView (slows down past ~500 cards)
+- Lazy / cached thumbnails (images currently loaded eagerly)
+- Frequently-accessed checklist cache (reduce DB round-trips on every scan)
 
-**Optimizations:**
+### 7. Dark Theme Toggle
 
-**Database Indexes:**
-```sql
-CREATE INDEX idx_card_status ON Cards(Status);
-CREATE INDEX idx_card_sport ON Cards(Sport);
-CREATE INDEX idx_card_player ON Cards(PlayerName);
-CREATE INDEX idx_card_pricedate ON Cards(PriceDate);
-```
-
-**Pagination:**
-- Load 50 cards at a time
-- Virtual scrolling in DataGrid
-- Background loading with progress indicator
-
-**Lazy Loading:**
-- Don't load images until visible
-- Thumbnail generation and caching
-- Use ImageBrush with UriSource
-
-**Caching:**
-- Cache frequently accessed data (checklists)
-- In-memory cache with expiration
-- Reduce database round-trips
-
-### 8. Dark Theme Support
-
-**Priority:** Medium
+**Status:** 🟡 Partial
 **Effort:** Low (1-2 weeks)
 
-**Implementation:**
-- Avalonia supports theme switching
-- Create dark version of AppStyles.axaml
-- Add theme toggle in Settings
-- Persist preference
-- System theme detection (Windows/macOS)
-
-**Color Palette:**
-- Light theme: Current Fluent theme
-- Dark theme: Dark background, light text
-- Accent colors: Keep brand colors
-- Ensure sufficient contrast (WCAG AA)
+`App.axaml` already follows the system theme, but there's no in-app toggle and no audited dark variant. Add Settings → Theme (System / Light / Dark), persist preference, ensure WCAG AA contrast across all views.
 
 ---
 
 ## Low Priority (Future Considerations)
 
-### 9. Mobile Companion App
+### 8. Mobile Companion App (PWA)
 
-**Priority:** Low
-**Effort:** Very High (3-6 months)
+**Status:** 💭 Considering
+**Effort:** Medium (4-6 weeks for PWA)
 
-**Purpose:** Quick card scanning on the go with phone camera
+The Web app is already mobile-responsive and accessible via Tailscale, which covers most of this. Only worth pursuing if/when offline-mobile-camera scanning is a real need. **Recommended path: PWA, not native** — reuses existing FlipKit.Web, no app store, works on any device. Skip MAUI/React Native unless there's a specific reason.
 
-**Tech Stack Options:**
-- React Native (cross-platform)
-- .NET MAUI (share code with desktop)
-- Flutter (good camera support)
+### 9. Price Alerts and Notifications
 
-**Features:**
-- Take photo → upload → AI scan
-- View inventory (read-only)
-- Quick price check
-- Sync with desktop app
-
-**Challenges:**
-- Different UI paradigm (mobile vs desktop)
-- Camera integration
-- Network sync complexity
-- Maintenance burden (2 codebases)
-
-**Alternative:** Progressive Web App (PWA)
-- Web-based, works on any device
-- Camera API support
-- Offline capability
-- No app store approval needed
-
-### 10. Barcode/QR Code Scanning
-
-**Priority:** Low
+**Status:** 💭 Considering
 **Effort:** Medium (2-3 weeks)
+**Depends on:** Item 2 (Automated Price Scraping)
 
-**Use Case:** Scan graded card slabs with QR/barcode
-
-**Implementation:**
-- Use ZXing.Net for barcode reading
-- PSA, BGS have cert lookup APIs
-- Auto-fill grading data from certification
-
-**Challenge:** Most raw cards don't have barcodes
-
-### 11. Price Alerts and Notifications
-
-**Priority:** Low
-**Effort:** Medium (2-3 weeks)
-
-**Features:**
-- Alert when card value changes significantly
-- Notify when stale prices need updating
-- Desktop notifications or email
-- Configurable thresholds
-
-**Requires:**
-- Background service or scheduled task
-- Price tracking over time
-- Email/notification infrastructure
-
-### 12. Multi-User / Team Features
-
-**Priority:** Low
-**Effort:** Very High (4-6 months)
-
-**Use Case:** Card shops with multiple employees
-
-**Features:**
-- User accounts and permissions
-- Activity log (who scanned/sold what)
-- Team inventory management
-- Role-based access (admin, employee, viewer)
-
-**Challenges:**
-- Shifts from single-user to multi-tenant
-- Authentication and authorization
-- Database schema changes
-- Hosting requirements
+Once we have automated pricing, alerting on significant value changes or stale prices becomes useful. Not worth building until #2 ships.
 
 ---
 
 ## Technical Debt and Maintenance
 
-### Code Quality Improvements
+### Code Quality
 
-**Current Issues:**
-- Some ViewModels are large (500+ lines)
-- Limited error handling in some services
-- Magic strings for API endpoints
-- Hardcoded timeouts
-
-**Improvements:**
-- Refactor large ViewModels into smaller pieces
-- Centralized error handling middleware
-- Configuration-driven API endpoints
-- Configurable timeouts and retries
+- A few ViewModels are pushing 500+ lines (ScanViewModel, BulkScanViewModel, ExportViewModel) — consider splitting into smaller pieces or extracting helpers as they grow
+- Magic strings for OpenRouter model IDs and API endpoints — move to typed configuration
+- Hardcoded timeouts in HttpClient calls — make configurable
 
 ### Documentation
 
-**Needed:**
-- API documentation (if adding backend)
-- Inline XML comments for public APIs
-- Architecture decision records (ADRs)
-- End-user manual (screenshots + walkthroughs)
+- Inline XML comments on public Core APIs
+- Architecture decision records (ADRs) for non-obvious choices (e.g., why Hub vs separate apps, why net8 + net9 mix)
+- End-user help (Desktop F1, screenshots) — `M:\Software Development\Releases\Help\` per Motz SOP
 
-### Dependencies
+### Dependency Hygiene
 
-**Regular Updates:**
-- Avalonia (currently 11.3.11)
-- CommunityToolkit.Mvvm
-- EF Core
-- NuGet packages (check for security updates)
-
-**Breaking Changes:**
-- Avalonia 12+ when released
-- .NET 9/10 migration
-- Plan upgrade path
-
----
-
-## Community and Open Source
-
-### Potential Contributions
-
-**Areas for Community Help:**
-- Additional checklist data (more sets, years)
-- Bug reports and testing
-- Feature requests and prioritization
-- Translations (internationalization)
-
-### Licensing Considerations
-
-**Current:** Proprietary (private repo)
-**Future:** Consider open-sourcing under MIT or Apache 2.0
-
-**Benefits:**
-- Community contributions
-- Faster bug fixes
-- Trust and transparency
-- Portfolio/resume value
-
-**Concerns:**
-- Support burden
-- Quality control
-- Competitor cloning
-
----
-
-## Success Metrics
-
-### Usage Metrics (If Implemented)
-
-- Active users (daily/monthly)
-- Cards scanned per user
-- Export success rate
-- Feature adoption rates
-- Crash reports and errors
-
-### Quality Metrics
-
-- Unit test coverage (target: 70%+)
-- Bug report count (trend down)
-- Average time to fix bugs
-- User satisfaction (if surveys)
-
-### Performance Metrics
-
-- App startup time (< 2 seconds)
-- Scan time (< 10 seconds per card)
-- Export time (< 5 seconds for 50 cards)
-- Database query time (< 100ms)
+Current floor: Avalonia 11.3.11, EF Core 8.0.11, .NET 8/9 mix.
+- Plan Avalonia 12 migration when it stabilizes
+- Plan unified .NET 9 (or 10) once Avalonia supports it cleanly — would eliminate the Core/Api framework split
 
 ---
 
 ## Decision Framework
 
-### Prioritization Criteria
-
 When deciding what to build next:
 
-1. **User Impact:** Does it solve a major pain point?
-2. **Effort:** How long will it take? ROI?
-3. **Risk:** Could it break existing features?
-4. **Dependencies:** Does it block other features?
-5. **Maintenance:** Ongoing cost to support?
-
-### Feature Evaluation Template
-
-For each proposed feature:
-
-```
-Feature: [Name]
-Problem: [What pain does it solve?]
-Users Affected: [How many? Who?]
-Current Workaround: [How do users solve it today?]
-Effort: [Hours/weeks estimate]
-Risk: [Low/Medium/High]
-Recommendation: [Build now / Later / Never]
-```
+1. **User Impact:** Does it solve a real pain point in the daily reseller workflow?
+2. **Effort vs ROI:** How long, and what does it unlock?
+3. **Risk:** Could it break existing flows?
+4. **Dependencies:** Does it block higher-priority work?
+5. **Maintenance:** Ongoing support burden?
 
 ---
 
-## Conclusion
-
-FlipKit has achieved MVP status with a solid foundation. The roadmap focuses on:
-
-1. **Short-term:** Complete bulk scanning, refactor architecture, add tests
-2. **Medium-term:** Automated pricing, cloud sync, more export formats
-3. **Long-term:** Mobile apps, advanced features, scale
-
-This is a living document. Priorities will shift based on user feedback, technical discoveries, and market changes. Revisit quarterly.
-
----
-
-**Last Updated:** May 2026
+**Last Updated:** 2026-05-02
 **Next Review:** August 2026
 
-**Recent additions:**
-- 2026-05-01 — Added "User-Driven Checklist Excel Import" (item 0) — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
+**Recent changes:**
+- 2026-05-02 — Audit pass: removed completed items (Bulk Scan, Architecture Refactor, eBay Bulk CSV) and dropped items no longer in scope (Cloud Sync/Backup, MySlabs, TCGPlayer, Barcode/QR Scanning, Multi-User/Team). Renumbered. Added Webcam Capture as item 4.
+- 2026-05-01 — Added "User-Driven Checklist Excel Import" — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)

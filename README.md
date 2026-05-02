@@ -1,6 +1,6 @@
 # FlipKit
 
-AI-powered inventory management for sports card sellers. Scan cards with your phone, research pricing, and export to Whatnot.
+AI-powered inventory management for sports card sellers. Scan cards with your phone, research pricing, and export to Whatnot or eBay.
 
 ## Deployment Options
 
@@ -9,8 +9,9 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 
 | Platform | Download |
 |----------|----------|
-| Windows (x64) | `FlipKit-Hub-Windows-x64-v3.2.2.zip` |
-| Linux (x64) | `FlipKit-Hub-Linux-x64-v3.2.2.zip` |
+| Windows (Installer) | `FlipKit-Setup-v3.3.6.exe` |
+| Windows (Portable Hub) | `FlipKit-Hub-Windows-x64-v3.3.6.zip` |
+| Linux (Portable Hub) | `FlipKit-Hub-Linux-x64-v3.3.6.zip` |
 
 ### Docker (Headless Server)
 Run FlipKit as a headless web server on any Linux machine or NAS:
@@ -30,12 +31,13 @@ Access the web UI at `http://[server-ip]:5000` and configure API keys at `/Setti
 
 ## Features
 
-- **AI Card Scanning** - Upload photos, AI extracts player, year, set, parallel, serial numbers (11 free vision models via OpenRouter)
-- **Variation Verification** - Cross-references against 97 seeded checklists (2017-2024 Panini/Topps sets)
+- **AI Card Scanning** - Upload photos, AI extracts player, year, set, parallel, serial numbers via the live OpenRouter model catalog (free + paid models, with consent prompt before paid use)
+- **Bulk Scanning** - Multi-card front/back batch workflow with progress tracking and rate-limit handling
+- **Variation Verification** - Cross-references scans against bundled checklists; user-driven Excel import for additional sets is on the roadmap
 - **Pricing Research** - Smart Terapeak/eBay search URLs with customizable templates
-- **Whatnot CSV Export** - SEO-optimized titles for different marketplaces
+- **CSV Export** - Spec-compliant Whatnot and eBay Bulk Upload exports with template-based validation, ImgBB image hosting, and re-export support
 - **Sales Tracking** - Record sales, calculate profit, generate reports
-- **Mobile Scanning** - Camera integration for phone browsers
+- **Mobile Scanning** - Camera integration for phone browsers via the Web app
 - **Tailscale Support** - Access your inventory from anywhere on your private network
 
 ## Tech Stack
@@ -46,7 +48,7 @@ Access the web UI at `http://[server-ip]:5000` and configure API keys at `/Setti
 | Web | ASP.NET Core 8.0 MVC, Bootstrap 5 |
 | API | .NET 9 Minimal API |
 | Database | SQLite + Entity Framework Core |
-| AI | OpenRouter API (free vision models) |
+| AI | OpenRouter API (live model catalog: free + paid vision models) |
 
 ## Building from Source
 
@@ -65,8 +67,11 @@ dotnet run --project FlipKit.Web
 # Build Docker image
 docker build -t flipkit:latest .
 
-# Build release packages
-.\build-release.ps1 -Version 3.2.2
+# Build release packages (Hub zips for Windows + Linux)
+.\build-release.ps1 -Version 3.3.6
+
+# Build the Windows Inno Setup installer
+.\build-hub-for-installer.ps1
 ```
 
 ## Configuration
