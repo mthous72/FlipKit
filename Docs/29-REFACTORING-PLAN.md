@@ -67,7 +67,7 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 5 | Targeted Code Refactors (4 sub-phases 5a–5d) | High | 7–11 days | Pending (Phase 4 done) | DI fixes, OpenRouter catalog, ViewModel splits (Settings + BulkScan only), **+2 prod bugs** |
 | 5a | — Mechanical fixes bundle | Low | 1–2 days | Pending | §7.1 DI lifetime + §7.3 HttpClient timeouts + §7.8 OpenRouter retry + §7.10 Settings VM races |
 | 5b | — OpenRouter catalog consolidation | Medium | 1–2 days | Pending | §7.2 — closes D4 latent empty-catalog bug as side effect |
-| 5c | — SettingsViewModel split (803 lines) | High | 3–4 days est. → 1 day actual | 5c.1 ✓ unmerged (Option A: NetworkAddressProvider only) | §7.4a — full split deferred; only the IP/QR/URL extraction landed to keep XAML + 169 existing VM tests untouched |
+| 5c | — SettingsViewModel split (803 lines) | High | 3–4 days est. → 1 day actual | ✓ Done (Option A: NetworkAddressProvider only) | §7.4a — full split deferred; only the IP/QR/URL extraction landed to keep XAML + 169 existing VM tests untouched |
 | 5d | — BulkScanViewModel split (585 lines) | High | 2–3 days | Pending | §7.4b — second biggest, queue + rate-limit extraction |
 | 6 | Roadmap Revamp + deferred doc work | None (docs) | 1 day | Pending | Rewrite 17/26/27/28 + §7.5 Doc 07 refresh + InventoryVM/ScanVM/ExportVM split decision |
 

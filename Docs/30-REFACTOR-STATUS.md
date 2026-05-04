@@ -1,7 +1,7 @@
 # FlipKit Refactor — Status Checkpoint
 
-**Snapshot date:** 2026-05-04 (updated post-Phase 4.5)
-**Master HEAD:** `938cd75` (CHANGELOG history pointer); push pipeline now linear (origin master rebased to drop merge commits per branch protection rule)
+**Snapshot date:** 2026-05-04 (updated post-Phase 5c.1)
+**Master HEAD:** `0ff42bc` (Plan + status: mark Phase 5c.1 DONE); push pipeline now linear (origin master rebased to drop merge commits per branch protection rule)
 **Plan:** [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md)
 **Audit:** [AUDIT-2026-05.md](AUDIT-2026-05.md)
 
@@ -26,7 +26,7 @@ This is a **breakpoint snapshot** — a single doc to read when picking the work
 | 4e | Coverage gap-fill + CI gate + regression checklist | `refactor/phase-4e-coverage-gate` | ✓ | 1 | +23 fill-in tests (481 total); XimilarService 51%→79.5%; CI gate wired into build scripts; REGRESSION-CHECKLIST.md committed; **Phase 4 complete** |
 | 5a | Mechanical fixes bundle (DI lifetimes + HttpClient timeout + OpenRouter retry + Settings race) | `refactor/phase-5a-fixes-cleanup` | ✓ | 1 | Closes D1 + D2 + §7.10 Race 1 + §7.3 timeout config. +1 test (482 total). |
 | 5b | OpenRouter catalog consolidation | `refactor/phase-5b-openrouter-catalog` | ✓ | 1 | Closes D4. Static arrays moved to OpenRouterModelDefaults, fallback catalog returned (with IsFallback flag) on fetch failure. +2 tests (484 total). |
-| 5c.1 | NetworkAddressProvider extraction (SettingsViewModel slim-down, Option A) | `refactor/phase-5c-settings-vm-split` | unmerged | 1 | Extracts `INetworkInfoProvider` (Core) + `NetworkAddressProvider` (Desktop) from `SettingsViewModel.UpdateLocalIpAddresses` (~95 lines → ~17). +6 tests (490 total). XAML/existing 169 tests untouched. |
+| 5c.1 | NetworkAddressProvider extraction (SettingsViewModel slim-down, Option A) | `refactor/phase-5c-settings-vm-split` | ✓ | 2 | Extracts `INetworkInfoProvider` (Core) + `NetworkAddressProvider` (Desktop) from `SettingsViewModel.UpdateLocalIpAddresses` (~95 lines → ~17). +6 tests (490 total). XAML/existing 169 tests untouched. |
 
 **Master is in sync with `origin/master`.** Branch protection on origin rejects merge commits, so the original 13-commit merge-heavy local history was rebased to a linear 9-commit chain before pushing. Going forward, every phase merge to local master gets `git push origin master` after a clean rebase if needed.
 
