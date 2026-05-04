@@ -157,35 +157,18 @@ namespace FlipKit.Desktop
                 // Ensure database is created and seeded (only in local mode)
                 if (dataMode == DataAccessMode.Local)
                 {
-                    // One-time migration from CardLister to FlipKit
-                    if (LegacyMigrator.HasCardListerData())
-                    {
-                        Log.Information("Detected CardLister data, initiating migration...");
-                        if (LegacyMigrator.MigrateFromCardLister())
-                        {
-                            Log.Information("Successfully migrated data from CardLister to FlipKit");
-                        }
-                        else
-                        {
-                            Log.Warning("CardLister migration failed or was skipped");
-                        }
-                    }
-
                     try
                     {
                         using var scope = _services.CreateScope();
                         var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
                         Log.Information("Initializing database at {DbPath}", FlipKitDbContext.GetDbPath());
                         db.Database.EnsureCreated();
-                    Log.Debug("Running schema updates");
-                    SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
-                    // Disabled sample card seeding - users don't want auto-generated cards
-                    // Log.Debug("Running database seeder");
-                    // DatabaseSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
-                    Log.Debug("Running checklist seeder");
-                    ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
-                    Log.Information("Database initialization complete");
-                }
+                        Log.Debug("Running schema updates");
+                        SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
+                        Log.Debug("Running checklist seeder");
+                        ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
+                        Log.Information("Database initialization complete");
+                    }
                     catch (Exception ex)
                     {
                         Log.Fatal(ex, "Database initialization failed");

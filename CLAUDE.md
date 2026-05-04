@@ -136,7 +136,7 @@ Minimal API design (no controllers, endpoint mapping in Program.cs):
 - Enums stored as strings in the database.
 - All I/O operations must be `async Task`.
 - Avalonia `DataAnnotationsValidationPlugin` is disabled in `App.axaml.cs` to avoid conflicts with CommunityToolkit validation.
-- **DbContext class** is `FlipKitDbContext` (defined in `CardListerDbContext.cs` — legacy filename from rebrand).
+- **DbContext class** is `FlipKitDbContext` in `FlipKit.Core/Data/FlipKitDbContext.cs`.
 - **Api targets net9.0** while Core, Desktop, and Web target net8.0.
 
 ## Git Branching Workflow
@@ -153,7 +153,6 @@ Minimal API design (no controllers, endpoint mapping in Program.cs):
 - **Binding not working:** Ensure properties use `[ObservableProperty]` (generates public property from `_camelCase` field) or manually raise `PropertyChanged`.
 - **Command not firing:** Check `CanExecute` logic and ensure dependent properties call `OnPropertyChanged` when they change.
 - **OpenRouter JSON parse fails:** Strip markdown code blocks (` ```json `) from API response before deserializing.
-- **DbContext file mismatch:** The class is `FlipKitDbContext` but lives in `CardListerDbContext.cs` (legacy filename from CardLister rebrand).
 - **Data access mode issues:** Check `DataAccessModeDetector` — it auto-detects Local vs Remote mode based on Tailscale availability.
 - **Server management:** Web and API servers are managed as child processes by `ServerManagementService` in Desktop. Check server health via `/health` endpoints.
 
