@@ -11,7 +11,11 @@ _Nothing yet._
 ## [3.3.6] - 2026-05
 
 ### Notes
-- Current shipping release. The detailed 3.x changelog (Hub unification, Tailscale sync, eBay Bulk CSV export, Quick Edit Panel, full-resolution images, paid-model consent, live OpenRouter catalog) is captured in the deleted `release-notes-v3.x.md` files (preserved in `git log` and the `Docs/archive/REBRAND-COMPLETION-SUMMARY.md`). A backfilled per-version 3.x history is on the docs cleanup punch list.
+- Current shipping release. Headline 3.x features: Hub unification (Desktop + embedded Web/API), Tailscale sync, eBay Bulk CSV export, Quick Edit Panel, full-resolution images, paid-model consent, live OpenRouter catalog.
+
+### v3.x history
+- Per-version 3.x notes are intentionally not duplicated here. To recover the full pre-3.3.6 history, read the original `release-notes-v3.x.md` files via git: `git show b540c67^:release-notes-v3.0.0.md` (and `v3.1.0.md`). They were deleted in commit `b540c67` (Phase 2 doc tidy).
+- The CardLister → FlipKit rebrand record lives at [Docs/archive/REBRAND-COMPLETION-SUMMARY.md](Docs/archive/REBRAND-COMPLETION-SUMMARY.md).
 
 ## [2.0.4] - 2025-01-XX
 
