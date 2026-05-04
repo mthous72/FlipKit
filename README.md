@@ -13,22 +13,6 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 | Windows (Portable Hub) | `FlipKit-Hub-Windows-x64-v3.3.6.zip` |
 | Linux (Portable Hub) | `FlipKit-Hub-Linux-x64-v3.3.6.zip` |
 
-### Docker (Headless Server)
-Run FlipKit as a headless web server on any Linux machine or NAS:
-
-```bash
-# Quick start
-docker run -d --name flipkit \
-  -p 5000:5000 -p 5001:5001 \
-  -v flipkit-data:/data \
-  flipkit:latest
-
-# Or with docker-compose
-docker-compose up -d
-```
-
-Access the web UI at `http://[server-ip]:5000` and configure API keys at `/Settings`.
-
 ## Features
 
 - **AI Card Scanning** - Upload photos, AI extracts player, year, set, parallel, serial numbers via the live OpenRouter model catalog (free + paid models, with consent prompt before paid use)
@@ -38,7 +22,7 @@ Access the web UI at `http://[server-ip]:5000` and configure API keys at `/Setti
 - **CSV Export** - Spec-compliant Whatnot and eBay Bulk Upload exports with template-based validation, ImgBB image hosting, and re-export support
 - **Sales Tracking** - Record sales, calculate profit, generate reports
 - **Mobile Scanning** - Camera integration for phone browsers via the Web app
-- **Tailscale Support** - Access your inventory from anywhere on your private network
+- **Tailscale Support** - Access your inventory from anywhere on your private network (see [Docs/Tailscale-Sync-Architecture.md](Docs/Tailscale-Sync-Architecture.md))
 
 ## Tech Stack
 

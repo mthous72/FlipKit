@@ -6,29 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Added
-- **Tailscale Sync** - Multi-computer card access via private Tailscale network
-  - Simple REST API sync server (`FlipKit.Api`) runs on main computer
-  - Automatic synchronization on startup and exit (optional)
-  - Manual "Sync Now" button in Settings
-  - Timestamp-based conflict resolution (newest UpdatedAt wins)
-  - Real-time sync status feedback with color-coded messages
-  - Zero cost solution - no cloud hosting required
-  - Secure and private - data stays on Tailscale network
-  - Fast local network speeds even when remote
-  - Perfect for laptop + desktop workflows
-- **Quick Edit Panel** - Inline editing in inventory view
-  - Side panel opens without navigation
-  - Preserves scroll position and selection
-  - "Full Edit" button to open comprehensive edit view when needed
-- **Full-Resolution Images** - Edit view now displays full-size images
-  - Prioritizes ImgBB URLs (used for Whatnot) over local files
-  - Automatic download from hosted URLs
-  - Better card detail visibility for verification
+_Nothing yet._
 
-### Fixed
-- Entity Framework tracking conflicts when saving quick edits from inventory view
-- Detached already-tracked entities before updating to prevent database errors
+## [3.3.6] - 2026-05
+
+### Notes
+- Current shipping release. The detailed 3.x changelog (Hub unification, Tailscale sync, eBay Bulk CSV export, Quick Edit Panel, full-resolution images, paid-model consent, live OpenRouter catalog) is captured in the deleted `release-notes-v3.x.md` files (preserved in `git log` and the `Docs/archive/REBRAND-COMPLETION-SUMMARY.md`). A backfilled per-version 3.x history is on the docs cleanup punch list.
 
 ## [2.0.4] - 2025-01-XX
 

@@ -15,7 +15,7 @@ Desktop and Web share a single SQLite database with WAL mode for concurrent acce
 
 **Core Features:** AI vision scanning (OpenRouter API), inventory management, pricing research (eBay/Terapeak), Whatnot CSV export, sales tracking, financial reports.
 
-**Current State:** v3.2.0 FlipKit Hub released. Unified package with Desktop app + embedded Web and API servers. Desktop and Web both feature-complete. Servers managed from Desktop Settings UI.
+**Current State:** v3.3.6 FlipKit Hub released. Unified package with Desktop app + embedded Web and API servers. Desktop and Web both feature-complete. Servers managed from Desktop Settings UI.
 
 ## Build & Run Commands
 
@@ -137,7 +137,6 @@ Minimal API design (no controllers, endpoint mapping in Program.cs):
 - All I/O operations must be `async Task`.
 - Avalonia `DataAnnotationsValidationPlugin` is disabled in `App.axaml.cs` to avoid conflicts with CommunityToolkit validation.
 - **DbContext class** is `FlipKitDbContext` (defined in `CardListerDbContext.cs` — legacy filename from rebrand).
-- **Legacy Migration** - `LegacyMigrator` handles one-time data migration from CardLister to FlipKit folder.
 - **Api targets net9.0** while Core, Desktop, and Web target net8.0.
 
 ## Git Branching Workflow
