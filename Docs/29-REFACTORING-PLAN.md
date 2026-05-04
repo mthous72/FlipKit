@@ -152,6 +152,7 @@ Create `Docs/archive/` and move:
 - `22-PHASE3-PROGRESS-SUMMARY.md`
 - `23-FUNCTIONAL-TEST-RESULTS.md`
 - `24-PHASE3-COMPLETION-SUMMARY.md`
+- `25-DISTRIBUTION-PACKAGING.md` (per AUDIT-2026-05 Q1 — documents the dead `build-web-package.bat`/`.sh` distribution path)
 
 These are all `Phase N completion / Phase N progress` write-ups from prior refactors. They have historical value (audit trail of what was decided when) but should not be in the main `Docs/` folder where they crowd out load-bearing docs.
 
@@ -177,7 +178,6 @@ Load-bearing docs (referenced by README.md or CLAUDE.md or active plan docs) —
 - `15-VERIFICATION-BUILD-GUIDE.md`
 - `16-CHECKLIST-DATA-SPEC.md`
 - `17-FUTURE-ROADMAP.md`
-- `25-DISTRIBUTION-PACKAGING.md`
 - `26-CSV-EXPORT-IMPLEMENTATION-PLAN.md`
 - `27-WEBCAM-CAPTURE-PLAN.md`
 - `28-CHECKLIST-INSIDER-IMPORT-PLAN.md`
@@ -191,6 +191,9 @@ Add `Docs/archive/README.md` — one paragraph explaining "these are historical 
 Move to `Docs/archive/`:
 - `REBRAND-COMPLETION-SUMMARY.md`
 - `GITHUB-RENAME-INSTRUCTIONS.md`
+
+Move + rename (per AUDIT-2026-05 Q2):
+- `TAILSCALE-SYNC-GUIDE.md` → `Docs/Tailscale-Sync-Architecture.md`. Update README.md links.
 
 Delete:
 - `rename-folders.ps1`, `rename-flipkit-content.ps1`, `rename-to-flipkit.ps1`
@@ -215,6 +218,11 @@ Update `CHANGELOG.md`:
 Update `CLAUDE.md`:
 - Bump version line from "v3.2.0" to "v3.3.6" (drift the user explicitly flagged).
 - Update the troubleshooting note about `CardListerDbContext.cs` once Phase 3 renames the file.
+- Remove the `LegacyMigrator` line at `CLAUDE.md:140` (per AUDIT-2026-05 §5.1) — the helper is being deleted in Phase 3.
+
+Update `README.md` (per AUDIT-2026-05 §5.3):
+- Remove the entire "Docker (Headless Server)" section at lines 16-30. The Docker files are being deleted in this phase, so the README cannot continue to advertise them as a deployment option.
+- Update Tailscale link to point to `Docs/Tailscale-Sync-Architecture.md` (per Q2).
 
 **Exit criteria:** Repo root has < 12 files visible. `Docs/` main directory has only 25-ish numbered docs + key references. Manual checklist passes (only flow #10 needed since this is doc-only).
 
@@ -231,10 +239,10 @@ Update `CLAUDE.md`:
 ### 5.2 Delete confirmed-dead code
 
 - `FlipKit.Core/Data/DatabaseSeeder.cs` — delete. Remove the commented-out call in `App.axaml.cs:182–184`.
-- `FlipKit.Core/Services/Implementations/MockScannerService.cs` — delete (only consumer was the dead ScreenshotTool).
+- `FlipKit.Core/Services/Implementations/MockScannerService.cs` — delete. (`ScreenshotTool/MockServices.cs` also defines a second `MockScannerService` that goes with the ScreenshotTool deletion below — see AUDIT §5.2.)
 - `FlipKit.Desktop/Converters/BoolToVisibilityConverter.cs` — delete (no XAML binding).
 - `ScreenshotTool/` — delete the entire directory (§10 Q2).
-- `FlipKit.Core/Helpers/LegacyMigrator.cs` — delete (§10 Q1). Remove its call site from `App.axaml.cs` and `FlipKit.Web/Program.cs` if present.
+- `FlipKit.Core/Helpers/LegacyMigrator.cs` — delete (§10 Q1). **6 active call sites in 3 files** (per AUDIT §5.1) — remove all of them: `FlipKit.Desktop/App.axaml.cs:161,164`, `FlipKit.Web/Program.cs:96,99`, `FlipKit.Api/Program.cs:35,38`. Don't miss the Api project.
 
 ### 5.3 Single-tool sanity sweeps
 
@@ -342,28 +350,39 @@ Effort: 3-4 weeks. Phase 5 does not start until coverage targets are green.
 
 Each subsection is independent — pick them off one at a time on separate feature branches, run the manual checklist + smoke tests after each merge.
 
-### 7.1 DI lifetime fix (BUG, surfaces under load)
+### 7.1 DI lifetime fixes (BUGS, 4 services — scope expanded per AUDIT §4)
 
-`App.axaml.cs:135` registers `Point130SoldPriceService` as `Singleton`, but its constructor takes `FlipKitDbContext` (Scoped). This is a captive-dependency bug — the singleton holds the first-resolved DbContext forever and will throw `ObjectDisposedException` after the first request scope ends.
+The plan originally flagged a single Singleton+DbContext bug. Phase 1 audit found Web has explicitly corrected the lifetime for **3 more services** that Desktop still has wrong. All four are misaligned with Web's already-correct registrations:
 
-The Web project (`FlipKit.Web/Program.cs:82`) already correctly uses `AddScoped`. Per `Docs/22-PHASE3-PROGRESS-SUMMARY.md` this was identified before but never fixed in Desktop.
+| Service | Desktop (`App.axaml.cs`) | Web (`Program.cs`) | Fix |
+|---|---|---|---|
+| `ISoldPriceService` (Point130SoldPriceService) | Singleton (line 135) | Scoped (line 82) | Change to Scoped — **catastrophic captive-dependency bug** |
+| `IPricerService` (PricerService) | Transient (line 123) | Scoped (line 70, comment: "Depends on DbContext via repositories") | Change to Scoped |
+| `IExportService` (CsvExportService) | Transient (line 132) | Scoped (line 78, comment: "Depends on DbContext") | Change to Scoped |
+| `IVariationVerifier` (VariationVerifierService) | Transient (line 133) | Scoped (line 80, comment: "Depends on DbContext") | Change to Scoped |
 
-**Fix:** Change `AddSingleton<ISoldPriceService, Point130SoldPriceService>()` → `AddScoped<…>()` in `App.axaml.cs`. Audit every other registration in the same file for the same pattern (specifically anything taking `FlipKitDbContext`).
+Singleton + DbContext is the catastrophic case — the singleton holds the first-resolved DbContext forever and throws `ObjectDisposedException` after the first request scope ends. Transient + DbContext is less catastrophic (only fails when consumer outlives the scope) but still inconsistent with Web and against EF Core best practice.
 
-**Risk note:** This is a real behavioral change. Even though `ISoldPriceService` is currently not injected anywhere active in Desktop (per the "SHELVED" comment), fixing the registration is preventive and maintains parity with Web.
+**Verification gate:** Before each change, read the service constructor and confirm it takes `FlipKitDbContext` (or a repository that takes it). If a constructor doesn't take DbContext, leave the Transient registration alone.
 
-### 7.2 Magic-string elimination for OpenRouter model IDs
+**Risk note:** All four are real behavioral changes. The Phase 4 ViewModel + service tests (with mocked DbContext or in-memory SQLite) will catch any regression introduced by the lifetime change.
 
-The model ID `"nvidia/nemotron-nano-12b-v2-vl:free"` is hardcoded as a default parameter in 4 files (`IScannerService.cs`, `OpenRouterScannerService.cs`, `MockScannerService.cs` (now deleted), `CompositeScannerService.cs`). When this model is rotated, all four sites must be updated in lockstep.
+Per `Docs/22-PHASE3-PROGRESS-SUMMARY.md` (being archived in Phase 2), the Singleton bug was identified previously but never fixed in Desktop.
 
-**Fix:** Introduce `FlipKit.Core/Configuration/ScannerDefaults.cs`:
-```csharp
-public static class ScannerDefaults
-{
-    public const string DefaultFreeModelId = "nvidia/nemotron-nano-12b-v2-vl:free";
-}
-```
-Replace every occurrence. SOP-aligned: this is a typed-config introduction, not a sprawling refactor.
+### 7.2 OpenRouter catalog consolidation (per AUDIT §5.5 + Q5)
+
+**Real shape of the problem (AUDIT correction):** the plan's original framing as a single magic-string was wrong. `OpenRouterScannerService.cs:23-30` owns two static arrays — `FreeVisionModels[]` (5 IDs) and `PaidVisionModels[]` — that are the *fallback catalog*. Meanwhile `OpenRouterModelCatalog` is the *live-fetch catalog* but currently has **no fallback path** — when the OpenRouter `/api/v1/models` fetch fails, `GetAsync` returns an empty `ModelCatalog` with a logged warning "Caller should fall back gracefully" (lines 73, 79), but no caller actually has a fallback to fall back to. This is a latent bug.
+
+**Fix:** Move the static catalog into `OpenRouterModelCatalog` so live + fallback live in one place, and close the empty-catalog gap as a side effect:
+
+1. Move `FreeVisionModels[]` and `PaidVisionModels[]` from `OpenRouterScannerService` into `OpenRouterModelCatalog` as `FallbackFreeModels` / `FallbackPaidModels` static fields.
+2. Modify `OpenRouterModelCatalog.GetAsync()` to return a `ModelCatalog` populated from the fallback arrays when the live fetch returns null/empty, instead of returning empty arrays.
+3. Add `OpenRouterModelCatalog.DefaultFreeModelId` constant (`"nvidia/nemotron-nano-12b-v2-vl:free"` for now). Reference it from `CompositeScannerService.cs:32`'s default parameter and any other site that hardcodes the same string.
+4. `OpenRouterScannerService` no longer holds the catalog statically — it only does HTTP + parsing.
+
+**Net effect:** single source of truth for the model catalog (live + fallback + default), no scattered magic strings, plus the latent "empty catalog on fetch failure" bug gets fixed for free.
+
+**No new `ScannerDefaults` class** — `OpenRouterModelCatalog` is the right home (per AUDIT Q5).
 
 ### 7.3 HttpClient timeout configuration
 
@@ -478,8 +497,17 @@ Hard rules:
 | Q7 | Test scope for Phase 4 — hybrid or full coverage? | **Full coverage** (80% VMs / 70% Services / 90% Helpers); roadmap #4 folds in and is struck | Phase 4 §6, Phase 6 §8.1 |
 | Q8 | ViewModel split pattern — helper services or partials? | **Helper services** to `FlipKit.Core/Services/`, no SOP gate | Phase 5 §7.4 |
 
-### Remaining INVESTIGATE items (resolve during Phase 1, no hard gate)
+### Phase 1 Audit Decisions (2026-05-04 — supersedes the original INVESTIGATE list)
 
-- `test-web-app.ps1` — outdated against current Web routes? Update + keep, or delete.
-- `TAILSCALE-SYNC-GUIDE.md` (root) vs `Docs/Tailscale-Setup-*.md` — pick one home.
-- `installers/FlipKit-Windows-x64-v3.3.0.zip` — old build artifact in source; delete (binaries don't belong in git).
+The Phase 1 audit raised five additional questions. Decisions:
+
+| # | Question | Decision |
+|---|---|---|
+| A1 | `Docs/25-DISTRIBUTION-PACKAGING.md` — archive or salvage? | Archive whole → `Docs/archive/` (Phase 2 §4.1). Phase-completion summary documenting dead distribution path. |
+| A2 | `TAILSCALE-SYNC-GUIDE.md` — move or merge? | Move + rename → `Docs/Tailscale-Sync-Architecture.md` (Phase 2 §4.2). Update README links. |
+| A3 | `test-web-app.ps1` — keep or delete? | Keep through Phase 4 as web smoke-test bridge; retire when integration tests cover same routes. Fold into `REGRESSION-CHECKLIST.md`. |
+| A4 | DI lifetime fix scope — 1 or 4 services? | Expand to 4. See Phase 5.1 §7.1. |
+| A5 | OpenRouter catalog — `OpenRouterModelCatalog` or new `ScannerDefaults`? | `OpenRouterModelCatalog` owns live + fallback + default. Closes empty-catalog-on-fetch-failure bug as side effect. See Phase 5.2 §7.2. |
+| — | `installers/FlipKit-Windows-x64-v3.3.0.zip` | Delete + add `installers/*.zip` to `.gitignore` (Phase 2 §4.2). |
+
+Full audit at [AUDIT-2026-05.md](AUDIT-2026-05.md).
