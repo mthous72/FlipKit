@@ -422,7 +422,7 @@ Singleton + DbContext is the catastrophic case — the singleton holds the first
 
 Per `Docs/22-PHASE3-PROGRESS-SUMMARY.md` (being archived in Phase 2), the Singleton bug was identified previously but never fixed in Desktop.
 
-### 7.2 OpenRouter catalog consolidation (per AUDIT §5.5 + Q5)
+### 7.2 OpenRouter catalog consolidation (per AUDIT §5.5 + Q5 — **DONE in Phase 5b**)
 
 **Real shape of the problem (AUDIT correction):** the plan's original framing as a single magic-string was wrong. `OpenRouterScannerService.cs:23-30` owns two static arrays — `FreeVisionModels[]` (5 IDs) and `PaidVisionModels[]` — that are the *fallback catalog*. Meanwhile `OpenRouterModelCatalog` is the *live-fetch catalog* but currently has **no fallback path** — when the OpenRouter `/api/v1/models` fetch fails, `GetAsync` returns an empty `ModelCatalog` with a logged warning "Caller should fall back gracefully" (lines 73, 79), but no caller actually has a fallback to fall back to. This is a latent bug.
 
