@@ -106,9 +106,22 @@ The big test-coverage build-out is roughly half done. Three sub-phases remain.
 | 4d | Web controllers + Avalonia.Headless smoke | ~3-4 days | 6 controllers via NSubstitute + `WebApplicationFactory` for integration tests. Plus 4 Avalonia.Headless smoke tests for App boot and navigation. |
 | 4e | Coverage gap-fill + CI gate | ~2-3 days | Bring the 3 below-target services from Phase 4b up to 70% (VariationVerifier, Ximilar, ChecklistLearning). Wire Coverlet into `build-installers.ps1`. Commit `Docs/REGRESSION-CHECKLIST.md`. Decide whether to retire `test-web-app.ps1` (per AUDIT Q3). |
 
-### Phase 5 — Targeted Code Refactors (gated on Phase 4 complete)
+### Phase 5 — Targeted Code Refactors (4 sub-phases, post-regroup scope)
 
-Cannot start until Phase 4 coverage targets are green (per plan §1 hard rule). Subsections from plan §7:
+Phase 4 is now complete (§coverage targets met or carryovers documented). Phase 5 has been **scoped down** in the post-Phase-4 regroup:
+
+| # | Branch | Scope | Estimate |
+|---|---|---|---|
+| 5a | `refactor/phase-5a-fixes-cleanup` | §7.1 DI fixes (2 services) + §7.3 HttpClient timeouts + §7.8 OpenRouter retry filter + §7.10 SettingsViewModel races | 1-2 days |
+| 5b | `refactor/phase-5b-openrouter-catalog` | §7.2 OpenRouter catalog consolidation (closes D4 latent bug) | 1-2 days |
+| 5c | `refactor/phase-5c-settings-vm-split` | §7.4a Split SettingsViewModel (803 lines) | 3-4 days |
+| 5d | `refactor/phase-5d-bulkscan-vm-split` | §7.4b Split BulkScanViewModel (585 lines) | 2-3 days |
+
+**Dropped from Phase 5** (re-evaluated in Phase 6): InventoryViewModel / ScanViewModel / ExportViewModel splits. All three are testable as-is (Phase 4c coverage), and decomposition opportunities are less obvious without a fresh read. Phase 6 roadmap revamp decides if they're worth it.
+
+**Deferred to Phase 6:** §7.5 Doc 07 refresh (already a docs-heavy phase).
+
+Subsections from plan §7 (full reference):
 
 - **§7.1** DI lifetime fixes — 2 services (Point130, VariationVerifier), per the corrected scope above
 - **§7.2** OpenRouter catalog consolidation — closes D2 indirectly + closes D4 as a side effect

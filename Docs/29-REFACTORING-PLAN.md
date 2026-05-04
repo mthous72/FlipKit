@@ -64,8 +64,12 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 4c | — Desktop ViewModels | Medium | ~1 week | Pending | 12 VMs with mocked Core services. |
 | 4d | — Web controllers + Avalonia.Headless smoke | Medium | ~3-4 days | Pending | `WebApplicationFactory` + 4 UI smoke tests. |
 | 4e | — Coverage gap-fill + CI gate | Low | ~2-3 days | Pending | Coverlet wiring, build-script gate, `REGRESSION-CHECKLIST.md`. |
-| 5 | Targeted Code Refactors | High | 1–2 weeks | Pending (gated on Phase 4) | DI fixes, ViewModel splits, magic-string elimination, **+2 production-bug fixes discovered in Phase 4b** |
-| 6 | Roadmap Revamp | None (docs) | 0.5 day | Pending | Rewrite 17/26/27/28 against the cleaned tree |
+| 5 | Targeted Code Refactors (4 sub-phases 5a–5d) | High | 7–11 days | Pending (Phase 4 done) | DI fixes, OpenRouter catalog, ViewModel splits (Settings + BulkScan only), **+2 prod bugs** |
+| 5a | — Mechanical fixes bundle | Low | 1–2 days | Pending | §7.1 DI lifetime + §7.3 HttpClient timeouts + §7.8 OpenRouter retry + §7.10 Settings VM races |
+| 5b | — OpenRouter catalog consolidation | Medium | 1–2 days | Pending | §7.2 — closes D4 latent empty-catalog bug as side effect |
+| 5c | — SettingsViewModel split (803 lines) | High | 3–4 days | Pending | §7.4a — biggest VM, helper-service extraction |
+| 5d | — BulkScanViewModel split (585 lines) | High | 2–3 days | Pending | §7.4b — second biggest, queue + rate-limit extraction |
+| 6 | Roadmap Revamp + deferred doc work | None (docs) | 1 day | Pending | Rewrite 17/26/27/28 + §7.5 Doc 07 refresh + InventoryVM/ScanVM/ExportVM split decision |
 
 Earlier phases are intentionally lowest-risk and produce permanent artifacts (manual checklist, helper tests) that gate the riskier work in Phase 5.
 
@@ -437,7 +441,17 @@ Per `Docs/22-PHASE3-PROGRESS-SUMMARY.md` (being archived in Phase 2), the Single
 
 Only one hardcoded timeout was found: `ServerManagementService.cs:42` → `_httpClient.Timeout = TimeSpan.FromSeconds(2)`. Roadmap calls out "hardcoded timeouts" plural, so audit any `Task.Delay(N)` and `CancellationTokenSource(...timeout)` while we're here. Centralize in `AppSettings` if more than one timeout exists.
 
-### 7.4 ViewModel decomposition (the big one)
+### 7.4 ViewModel decomposition (scoped down post-Phase 4)
+
+**Original plan scope:** split all 5 VMs over 500 lines (Settings 803, BulkScan 585, Inventory 556, Scan 546, Export 299).
+**Revised scope (post-Phase 4 regroup):** **only Settings (5c) + BulkScan (5d).** The remaining three VMs (Inventory, Scan, Export) stay in current shape; Phase 6 roadmap revamp re-evaluates whether they're worth splitting given how the cleaned codebase actually feels to work in.
+
+Rationale for the scope cut:
+- Settings (803 lines) and BulkScan (585) are the worst offenders by a wide margin and have the most concrete decomposition opportunities (server-management coordinator, queue/rate-limiter helper, etc.).
+- Inventory (556), Scan (546), Export (299) are testable as-is (Phase 4c got them all to ≥80% coverage) and the decomposition opportunities are less obvious without re-reading.
+- Splitting all 5 VMs was a 1-2 week investment. Splitting just the worst 2 is 5-7 days. Frees up time to start Roadmap #1 work (now unblocked by D3 fix) sooner.
+
+
 
 Sizes confirmed by `wc -l`:
 | ViewModel | Lines |
@@ -460,9 +474,11 @@ Note: `SettingsViewModel` was *not* on the user's flagged list but is the worst 
 
 Do these one at a time, on separate branches, each followed by the full manual regression checklist + the new helper unit tests.
 
-### 7.5 Stale `Docs/07-CLAUDE-CODE-GUIDE.md`
+### 7.5 Stale `Docs/07-CLAUDE-CODE-GUIDE.md` — **DEFERRED to Phase 6**
 
-This doc still references `MockScannerService` and `BoolToVisibilityConverter` as live files, and uses the old folder layout. Refresh it to match the cleaned tree. (Defer to Phase 6 if scope is tight.)
+This doc still references `MockScannerService` and `BoolToVisibilityConverter` as live files, and uses the old folder layout. Refresh it to match the cleaned tree.
+
+**Status:** Deferred from Phase 5 to Phase 6 in the post-Phase 4 regroup. Phase 6 is already doc-heavy (roadmap revamp, ADRs); folding this in keeps Phase 5 focused on code work.
 
 ### 7.8 OpenRouterScannerService retry filter fix (BUG, discovered in Phase 4b)
 
@@ -473,6 +489,16 @@ While writing scanner tests, the fallback chain logic was found broken for every
 **Fix:** Either (preferred) include the integer status code in the exception message at the throw site (`OpenRouterScannerService.cs:333`), or extend `IsRetryableHttpError` to also check the enum names.
 
 **Risk note:** Phase 4b's tests were forced to use 404s to drive fallback behavior since 5xx doesn't actually trigger it. After this fix, the existing scanner tests should still pass (404 path unchanged) but additional 5xx/429 fallback tests should be added.
+
+### 7.10 SettingsViewModel race conditions (DISCOVERED in Phase 4c)
+
+Two production races surfaced while writing SettingsViewModel tests in Phase 4c — both are explicit Phase 5a fix targets.
+
+**Race 1: `UpdateServerStatus` overwrites Start/Stop messages.** A 2-second `Timer` polls `_serverManagement.GetServerStatus()` and refreshes `WebServerStatus` / `ApiServerStatus`. When the user clicks "Start Web Server", the command sets `WebServerStatus = "Running on port 5000"` after a successful start — but if the Timer's poll runs immediately after (before the server's IsWebRunning flag updates), `UpdateServerStatus` sees IsWebRunning=false and overwrites the message back to "Stopped". Visible to the user as the success message vanishing within ~2 seconds. Same shape for failure messages and stop flow.
+
+**Race 2: `OnSelectedDefaultModelChanged` fires during `LoadModelsAsync`.** When `LoadModelsAsync` sets `SelectedDefaultModel = ...`, the partial method handler immediately writes `DefaultModel = value.Value`. Any caller who set `DefaultModel` separately before/during `LoadModelsAsync` gets clobbered. Phase 4c's test helper had to add a null-check to `Substitute.For<ISettingsService>()` to work around this.
+
+**Fix (Phase 5a, before §7.4 split):** Either gate the Timer on a `_serverManagementInProgress` flag, or extract the server-management coordinator to its own object that owns the status state. Either fix should land before Phase 5c's full SettingsViewModel split — splits should refactor *correct* behavior, not codify races.
 
 ### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b — **DONE in Phase 4.5**)
 
