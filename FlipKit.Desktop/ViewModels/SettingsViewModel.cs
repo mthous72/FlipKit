@@ -30,6 +30,11 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IServerManagementService _serverManagement;
         private Timer? _statusRefreshTimer;
 
+        // Phase 5.10 fix — gate the 2-second Timer's UpdateServerStatus while an explicit
+        // user Start/Stop command is in flight, so the Timer doesn't clobber the success
+        // or failure message before the user sees it. See AUDIT-2026-05 §7.10.
+        private volatile bool _explicitOperationInProgress;
+
         // API Keys
         [ObservableProperty] private string _openRouterApiKey = string.Empty;
         [ObservableProperty] private string _imgBBApiKey = string.Empty;
@@ -210,6 +215,11 @@ namespace FlipKit.Desktop.ViewModels
 
         partial void OnSelectedDefaultModelChanged(ModelOption? value)
         {
+            // By design: DefaultModel string field stays in sync with SelectedDefaultModel
+            // ModelOption. LoadModelsAsync resolves saved DefaultModel → ModelOption, the
+            // assignment fires this partial, and DefaultModel gets written back to the
+            // resolved value. If saved value matches an existing option no change; if it
+            // doesn't, we get the Stale stub's value, which is what we want.
             if (value != null) DefaultModel = value.Value;
         }
 
@@ -531,63 +541,89 @@ namespace FlipKit.Desktop.ViewModels
         [RelayCommand]
         private async Task StartWebServerAsync()
         {
-            WebServerStatus = "Starting...";
-            var result = await _serverManagement.StartWebServerAsync(WebServerPort);
-
-            if (result.Success)
+            _explicitOperationInProgress = true;
+            try
             {
-                ActualWebPort = result.ActualPort;
-                WebServerStatus = $"Running on port {result.ActualPort}";
-                UpdateLocalIpAddresses();
+                WebServerStatus = "Starting...";
+                var result = await _serverManagement.StartWebServerAsync(WebServerPort);
 
-                if (AutoOpenBrowser && result.ActualPort > 0)
+                if (result.Success)
                 {
-                    _browserService.OpenUrl($"http://localhost:{result.ActualPort}");
+                    ActualWebPort = result.ActualPort;
+                    WebServerStatus = $"Running on port {result.ActualPort}";
+                    UpdateLocalIpAddresses();
+
+                    if (AutoOpenBrowser && result.ActualPort > 0)
+                    {
+                        _browserService.OpenUrl($"http://localhost:{result.ActualPort}");
+                    }
+                }
+                else
+                {
+                    WebServerStatus = $"Failed: {result.ErrorMessage}";
                 }
             }
-            else
+            finally
             {
-                WebServerStatus = $"Failed: {result.ErrorMessage}";
+                _explicitOperationInProgress = false;
             }
-
-            UpdateServerStatus();
         }
 
         [RelayCommand]
         private async Task StopWebServerAsync()
         {
-            WebServerStatus = "Stopping...";
-            await _serverManagement.StopWebServerAsync();
-            WebServerStatus = "Stopped";
-            UpdateServerStatus();
+            _explicitOperationInProgress = true;
+            try
+            {
+                WebServerStatus = "Stopping...";
+                await _serverManagement.StopWebServerAsync();
+                WebServerStatus = "Stopped";
+            }
+            finally
+            {
+                _explicitOperationInProgress = false;
+            }
         }
 
         [RelayCommand]
         private async Task StartApiServerAsync()
         {
-            ApiServerStatus = "Starting...";
-            var result = await _serverManagement.StartApiServerAsync(ApiServerPort);
-
-            if (result.Success)
+            _explicitOperationInProgress = true;
+            try
             {
-                ActualApiPort = result.ActualPort;
-                ApiServerStatus = $"Running on port {result.ActualPort}";
-            }
-            else
-            {
-                ApiServerStatus = $"Failed: {result.ErrorMessage}";
-            }
+                ApiServerStatus = "Starting...";
+                var result = await _serverManagement.StartApiServerAsync(ApiServerPort);
 
-            UpdateServerStatus();
+                if (result.Success)
+                {
+                    ActualApiPort = result.ActualPort;
+                    ApiServerStatus = $"Running on port {result.ActualPort}";
+                }
+                else
+                {
+                    ApiServerStatus = $"Failed: {result.ErrorMessage}";
+                }
+            }
+            finally
+            {
+                _explicitOperationInProgress = false;
+            }
         }
 
         [RelayCommand]
         private async Task StopApiServerAsync()
         {
-            ApiServerStatus = "Stopping...";
-            await _serverManagement.StopApiServerAsync();
-            ApiServerStatus = "Stopped";
-            UpdateServerStatus();
+            _explicitOperationInProgress = true;
+            try
+            {
+                ApiServerStatus = "Stopping...";
+                await _serverManagement.StopApiServerAsync();
+                ApiServerStatus = "Stopped";
+            }
+            finally
+            {
+                _explicitOperationInProgress = false;
+            }
         }
 
         [RelayCommand]
@@ -628,24 +664,32 @@ namespace FlipKit.Desktop.ViewModels
             IsWebRunning = status.IsWebRunning;
             IsApiRunning = status.IsApiRunning;
 
-            if (status.IsWebRunning)
+            // Phase 5.10 fix — when an explicit user Start/Stop command is mid-flight,
+            // skip the status-message overwrite. The command sets its own success/failure
+            // message; the periodic Timer must not clobber it. Without this gate,
+            // IsWebRunning=false (lagging) caused "Failed: port in use" to be replaced
+            // by "Stopped" within ~2 seconds.
+            if (!_explicitOperationInProgress)
             {
-                ActualWebPort = status.WebPort;
-                WebServerStatus = $"Running on port {status.WebPort}";
-            }
-            else if (WebServerStatus != "Starting..." && WebServerStatus != "Stopping...")
-            {
-                WebServerStatus = "Stopped";
-            }
+                if (status.IsWebRunning)
+                {
+                    ActualWebPort = status.WebPort;
+                    WebServerStatus = $"Running on port {status.WebPort}";
+                }
+                else if (WebServerStatus != "Starting..." && WebServerStatus != "Stopping...")
+                {
+                    WebServerStatus = "Stopped";
+                }
 
-            if (status.IsApiRunning)
-            {
-                ActualApiPort = status.ApiPort;
-                ApiServerStatus = $"Running on port {status.ApiPort}";
-            }
-            else if (ApiServerStatus != "Starting..." && ApiServerStatus != "Stopping...")
-            {
-                ApiServerStatus = "Stopped";
+                if (status.IsApiRunning)
+                {
+                    ActualApiPort = status.ApiPort;
+                    ApiServerStatus = $"Running on port {status.ApiPort}";
+                }
+                else if (ApiServerStatus != "Starting..." && ApiServerStatus != "Stopping...")
+                {
+                    ApiServerStatus = "Stopped";
+                }
             }
 
             // Refresh logs if servers are running

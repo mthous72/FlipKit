@@ -35,11 +35,12 @@ namespace FlipKit.Desktop.Services
 
         private readonly object _lockObject = new();
 
-        public ServerManagementService(ILogger<ServerManagementService> logger, HttpClient httpClient)
+        public ServerManagementService(ILogger<ServerManagementService> logger, HttpClient httpClient, ISettingsService settingsService)
         {
             _logger = logger;
             _httpClient = httpClient;
-            _httpClient.Timeout = TimeSpan.FromSeconds(2);
+            // Phase 5.3 — read from AppSettings instead of hardcoding. Defaults to 2s.
+            _httpClient.Timeout = TimeSpan.FromSeconds(settingsService.Load().ServerHealthCheckTimeoutSeconds);
 
             // Start health check timer
             _healthCheckTimer = new Timer(HealthCheckCallback, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));

@@ -330,7 +330,11 @@ Return ONLY the JSON, no other text or markdown.";
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                throw new HttpRequestException($"OpenRouter API error ({response.StatusCode}): {responseBody}");
+                // Include both integer status code and enum name in the message — IsRetryableHttpError
+                // looks for digit substrings ("500", "429") so the integer must be present for fallback
+                // to trigger on 5xx / 429. Pre-Phase 5a, only "404" and the literal "NotFound" worked.
+                // See AUDIT-2026-05 §5.9 for the original bug diagnosis.
+                throw new HttpRequestException($"OpenRouter API error ({(int)response.StatusCode} {response.StatusCode}): {responseBody}");
 
             var apiResponse = JsonSerializer.Deserialize<OpenRouterResponse>(responseBody);
             if (apiResponse?.Choices == null || apiResponse.Choices.Count == 0)

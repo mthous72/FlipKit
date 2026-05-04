@@ -130,9 +130,12 @@ namespace FlipKit.Desktop
                 services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
-                services.AddTransient<IVariationVerifier, VariationVerifierService>();
+                // VariationVerifier and Point130SoldPriceService both take FlipKitDbContext;
+                // must be Scoped so they don't capture the first-resolved DbContext for the
+                // process lifetime. See AUDIT-2026-05 §4 (D1) for the captive-dependency bug.
+                services.AddScoped<IVariationVerifier, VariationVerifierService>();
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
-                services.AddSingleton<ISoldPriceService, Point130SoldPriceService>();
+                services.AddScoped<ISoldPriceService, Point130SoldPriceService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
 
                 // ViewModels

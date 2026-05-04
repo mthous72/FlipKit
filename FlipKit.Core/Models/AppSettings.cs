@@ -79,5 +79,10 @@ namespace FlipKit.Core.Models
         public int ApiServerPort { get; set; } = 5001;
         public bool MinimizeToTray { get; set; } = true;
         public bool AutoOpenBrowser { get; set; } = true;
+
+        // Centralized HTTP timeouts (Phase 5.3 — was hardcoded in ServerManagementService).
+        // Health-check pings against the embedded servers should fail fast — they're
+        // localhost. 2 seconds covers slow startup without hanging the UI.
+        public int ServerHealthCheckTimeoutSeconds { get; set; } = 2;
     }
 }

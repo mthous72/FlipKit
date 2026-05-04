@@ -187,13 +187,10 @@ public class OpenRouterScannerServiceTests
     [Fact]
     public async Task Should_ThrowWithSummaryOfFailures_When_AllModelsFail()
     {
-        // NB: using 404/NotFound to drive fallback — `IsRetryableHttpError` only
-        // recognizes 404 reliably (it explicitly checks `msg.Contains("NotFound")`).
-        // For 5xx / 429, the check looks for digit substrings ("500", "502", etc.),
-        // but HttpClient surfaces those as enum names ("InternalServerError",
-        // "ServiceUnavailable", "TooManyRequests") with no digit, so the retry
-        // filter misses them and the exception propagates without fallback.
-        // Bug logged for Phase 5 — see AUDIT-2026-05 follow-ups.
+        // Phase 5a fix landed — the throw site now includes the integer status code
+        // alongside the enum name, so 5xx / 429 fallback triggers correctly. This
+        // test still uses 404 for parity with the original test; see the new 5xx
+        // test below for explicit confirmation that the D2 fix works.
         var handler = new StubHttpMessageHandler(_ =>
             new HttpResponseMessage(HttpStatusCode.NotFound)
             {
@@ -209,6 +206,34 @@ public class OpenRouterScannerServiceTests
         // Default starting model is index 3 in FreeVisionModels (nemotron 12B), so the
         // chain walks 2 models (indices 3 and 4) before giving up.
         Assert.Equal(2, handler.Requests.Count);
+    }
+
+    [Fact]
+    public async Task Should_FallBackOn5xx_When_FirstModelReturnsServerError()
+    {
+        // Positive test for the Phase 5a D2 fix — pre-fix, 500/502/503/504 errors
+        // propagated immediately because IsRetryableHttpError only matched digit
+        // substrings ("500") but HttpStatusCode.InternalServerError.ToString() is
+        // the enum name ("InternalServerError") with no digit. The fix added the
+        // integer to the throw-site message format.
+        var responses = new Queue<HttpResponseMessage>();
+        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent(@"{""error"":""upstream failure""}"),
+        });
+        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(OpenRouterResponseWith(MinimalScannedCardJson)),
+        });
+
+        var handler = new StubHttpMessageHandler(_ => responses.Dequeue());
+        var svc = CreateService(handler);
+        using var image = new TempImageFile();
+
+        var result = await svc.ScanCardAsync(image.Path);
+
+        Assert.Equal("Mike Trout", result.Card.PlayerName);
+        Assert.Equal(2, handler.Requests.Count); // proved fallback happened on 500
     }
 
     [Fact]
