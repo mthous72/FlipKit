@@ -55,7 +55,12 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 1 | Inventory & Discovery | None | 1 day | Catalog every cleanup target with proof-of-deadness |
 | 2 | Doc Archival & Root Tidy | Very Low | 0.5 day | Move historical docs, delete pure-rebrand artifacts |
 | 3 | Trivial Code Cleanup | Low | 1 day | Dead converters, dead seeders, dead scripts, file rename |
-| 4 | Full Test Coverage | Medium | 3–4 weeks | xUnit + Moq + Avalonia.Headless across Core / Desktop / Web; meets 80/70/90 targets |
+| 4 | Full Test Coverage (5 sub-phases 4a–4e) | Medium | 3–4 weeks | xUnit + NSubstitute + Avalonia.Headless + real-SQLite-in-memory across Core / Desktop / Web; meets 80/70/90 targets |
+| 4a | — Core helpers + stateless services | Low | ~1 week | No DbContext, no mocks. Pure functions over fixture data. |
+| 4b | — Core repository + scanner services | Medium | ~1 week | First use of real-SQLite + NSubstitute HTTP mocks. |
+| 4c | — Desktop ViewModels | Medium | ~1 week | 12 VMs with mocked Core services. |
+| 4d | — Web controllers + Avalonia.Headless smoke | Medium | ~3-4 days | `WebApplicationFactory` + 4 UI smoke tests. |
+| 4e | — Coverage gap-fill + CI gate | Low | ~2-3 days | Coverlet wiring, build-script gate, `REGRESSION-CHECKLIST.md`. |
 | 5 | Targeted Code Refactors | High | 1–2 weeks | DI fixes, ViewModel splits, magic-string elimination |
 | 6 | Roadmap Revamp | None (docs) | 0.5 day | Rewrite 17/26/27/28 against the cleaned tree |
 
@@ -269,37 +274,70 @@ These become dead history once `DatabaseSeeder` itself is gone.
 
 Effort: 3-4 weeks. Phase 5 does not start until coverage targets are green.
 
-### 6.1 `FlipKit.Core.Tests` (xUnit)
+### 6.0 Design decisions (from Phase 4 walk-through)
+
+| # | Decision | Rationale |
+|---|---|---|
+| P4-Q1 | **xUnit + NSubstitute** (overrides original plan's xUnit + Moq) | Moq's 2023 SponsorLink incident (silent email exfiltration via NuGet) eroded trust; NSubstitute is cleaner and has no licensing baggage. xUnit is the .NET-team default. |
+| P4-Q2 | **Real SQLite in-memory** via `Microsoft.Data.Sqlite` (`Data Source=:memory:`), per-test connection | EF Core InMemory provider can't validate `SchemaUpdater.cs` raw `ALTER TABLE` SQL or SQLite-specific quirks. Production runs on SQLite + WAL — tests should too. |
+| P4-Q3 | **Sub-phases with merge-per-sub-phase** (4a → 4e) | 3-4 weeks on a single branch is too long. Each sub-phase delivers a working test suite for a specific surface. |
+
+Common scaffolding (set up in 4a, reused by 4b–4d):
+- Test infrastructure folder: `tests/Fixtures/{Cards,Http}/`
+  - `Cards/*.json` — embedded sample card records, deserialized in tests via `System.Text.Json`
+  - `Http/{openrouter,ximilar,imgbb,ebay}/*.json` — recorded HTTP responses (VCR pattern)
+- `Microsoft.NET.Test.Sdk` + `xunit` + `xunit.runner.visualstudio` + `NSubstitute` + `coverlet.collector` package refs
+- Per-test SQLite helper: `using var conn = new SqliteConnection("Data Source=:memory:"); conn.Open(); var ctx = new FlipKitDbContext(opts.UseSqlite(conn).Options); ctx.Database.EnsureCreated();`
+
+### 6.1 Phase 4a — `FlipKit.Core.Tests` part 1: helpers + stateless services (~1 week)
+
+Branch: `refactor/phase-4a-core-tests`. No DbContext, no mocks. Pure functions over fixture data.
 
 **Helpers** (target 90%+):
 - `FuzzyMatcher` — ratio thresholds, null handling, case insensitivity
 - `WhatnotCategoryDefaulter` — every Sport → category mapping (Wrestling/Golf/Tennis/Racing/MMA/Soccer/Hockey)
 - `CardStatusEvaluator` — every CardStatus transition path
 - `PriceCalculator` — fee math, profit math, edge cases (zero fees, negative profit)
-- `ConditionMapper` — every condition string → eBay/Whatnot output
-- `ShippingProfileNormalizer` — every input variant
-- `SkuGenerator` — uniqueness contract, format validation
 - `DataAccessModeDetector` — Local vs Remote detection logic
 
-**Services** (target 70%+):
+**Stateless services** (target 70%+):
 - `WhatnotExporter` — given N `Card` records, output CSV matches expected fixture
 - `EbayExporter` — same, against `ebay_template_header.csv`
 - `ExportValidator` — known-bad rows produce expected errors
-- `CsvExportService` — title template generation per platform
-- `OpenRouterScannerService` — recorded responses (VCR pattern); JSON parse, markdown stripping, error handling
-- `XimilarService` — recorded responses; mode switching (Standard/Magic/Disabled)
-- `CompositeScannerService` — composition logic with mocked dependencies
-- `VariationVerifierService` — fuzzy match against seeded `SetChecklist`
-- `PricerService` — deeplink URL generation
 - `TitleTemplateService` — template substitution
-- `BulkScanErrorLogger` — append + retrieval contracts
+- `ShippingProfileNormalizer` — every input variant (also exposes `WhatnotValuesProvider` / `EbayTemplateProvider` indirectly)
+- `SkuGenerator` (`FlipKit.Core.Services.Export.SkuGenerator`) — uniqueness contract, format validation
+- `BulkScanErrorLogger` — append + retrieval contracts (uses temp directory, not DbContext)
+
+Exit: `dotnet test` green, coverage report shows ≥90% on helpers, ≥70% on listed services. Merge to master, branch off for 4b.
+
+### 6.2 Phase 4b — `FlipKit.Core.Tests` part 2: data + scanner services (~1 week)
+
+Branch: `refactor/phase-4b-core-data-tests`. First use of real-SQLite-in-memory + first use of NSubstitute for HTTP/dependency mocks.
+
+**Repository + DbContext-dependent** (target 70%+):
+- `CardRepository` — full CRUD + queries (unpriced, stale, stats)
+- `VariationVerifierService` — fuzzy match against seeded `SetChecklist`
 - `ChecklistLearningService` — learn-from-scan flow
-- `CardRepository` — in-memory SQLite, full CRUD + queries (unpriced, stale, stats)
-- `ApiCardRepository` — mocked HttpClient (recorded responses)
+- `CsvExportService` — title template generation per platform; depends on DbContext for SKU lookup
+- `PricerService` — deeplink URL generation; depends on DbContext via repository
 
-### 6.2 `FlipKit.Desktop.Tests` (xUnit + Moq + Avalonia.Headless)
+**Scanner services** (target 70%+) — recorded HTTP responses:
+- `OpenRouterScannerService` — JSON parse, markdown stripping, error handling
+- `XimilarService` — mode switching (Standard/Magic/Disabled)
+- `CompositeScannerService` — composition logic with NSubstitute-mocked scanners
+- `OpenRouterModelCatalog` — live fetch + fallback path (note: Phase 5.2 will add the fallback; tests added here will already exercise it once 5.2 lands)
 
-**ViewModels** (target 80%+) — all services mocked via Moq:
+**API client** (target 70%+):
+- `ApiCardRepository` — NSubstitute-mocked `HttpClient` via custom `HttpMessageHandler`
+
+Exit: `dotnet test` green across the full Core.Tests project. Merge to master, branch off for 4c.
+
+### 6.3 Phase 4c — `FlipKit.Desktop.Tests` (~1 week)
+
+Branch: `refactor/phase-4c-desktop-tests`. ViewModels with NSubstitute-mocked Core services. No DbContext touched here.
+
+**ViewModels** (target 80%+):
 - `MainWindowViewModel` — navigation, page resolution
 - `ScanViewModel` — image picking, scan flow, result enrichment
 - `BulkScanViewModel` — queue, cancellation, rate-limit handling
@@ -309,38 +347,44 @@ Effort: 3-4 weeks. Phase 5 does not start until coverage targets are green.
 - `ExportViewModel` — preview, generate, validation
 - `ReportsViewModel` — sales, financial summaries
 - `ChecklistManagerViewModel` — view + edit flows
-- `CardDetailViewModel` — load, edit, save, delete
+- `CardDetailViewModel` (or `EditCardViewModel` — verify exact name during 4c) — load, edit, save, delete
 - `SettingsViewModel` — settings persistence, connection tests (each tester mocked)
 - `SetupWizardViewModel` — first-run wizard
 
-**Avalonia.Headless smoke tests** for critical UI flows:
+Exit: VM coverage ≥80%, all 12 VMs have a test class. Merge to master, branch off for 4d.
+
+### 6.4 Phase 4d — `FlipKit.Web.Tests` + Avalonia.Headless smoke (~3-4 days)
+
+Branch: `refactor/phase-4d-web-tests`.
+
+**Controllers** with mocked Core services:
+- `HomeController` — dashboard render
+- `InventoryController` — list, edit, delete (already has nullable warnings — Phase 5 may touch)
+- `PricingController` — list, research, save
+- `ExportController` — preview, generate
+- `ReportsController` — sales, financials
+- `ScanController` — upload, results
+
+**Integration tests** via `WebApplicationFactory<Program>` — at least one happy-path per controller, hitting real DI but with in-memory SQLite swapped in for production DbContext registration.
+
+**Avalonia.Headless smoke tests** for critical Desktop UI flows (small additional `FlipKit.Desktop.Tests/Headless/` folder, not a separate project):
 - App boot → MainWindow rendered with correct DataContext
 - Navigate Scan → Inventory → Pricing → Export → Reports
 - Open EditCardView dialog and confirm bindings populate
 - SettingsView server start/stop UI commands wire to `IServerManagementService`
 
-### 6.3 `FlipKit.Web.Tests` (xUnit + Moq)
+Exit: web controller coverage ≥70%, smoke tests green. Merge to master, branch off for 4e.
 
-**Controllers** with mocked Core services + WebApplicationFactory for integration tests:
-- `HomeController` — dashboard render
-- `PricingController` — list, research, save
-- `ExportController` — preview, generate
-- `ReportsController` — sales, financials
+### 6.5 Phase 4e — Coverage gap-fill + CI gate + regression checklist (~2-3 days)
 
-### 6.4 Test infrastructure
+Branch: `refactor/phase-4e-coverage-gate`.
 
-- Embedded JSON fixtures for input cards (no DB needed for unit-level tests)
-- Recorded HTTP responses for OpenRouter / Ximilar / ImgBB / eBay (VCR-style under `Tests/Fixtures/Http/`)
-- `WebApplicationFactory<Program>` for Web integration tests
-- Coverlet for coverage measurement; gate at 80/70/90 in CI
+- Run Coverlet across all three test projects, identify any module below its target (80%/70%/90%), add fill-in tests.
+- Wire `dotnet test` + Coverlet into `build-release.ps1` and `build-installers.ps1` — block release on any test failure or coverage regression.
+- Commit `Docs/REGRESSION-CHECKLIST.md` (the 10 manual flows from §1 + the kept `test-web-app.ps1` web smoke from AUDIT Q3).
+- Fold the now-redundant `test-web-app.ps1` retirement into 4d's Web integration tests if those cover the same routes — otherwise keep it through Phase 5.
 
-### 6.5 Wire into build script
-
-- `build-release.ps1` and `build-installers.ps1` run `dotnet test` before publishing
-- Block release on any test failure or coverage drop below targets
-- `Docs/REGRESSION-CHECKLIST.md` committed (the 10 manual flows from §1) — kept as a layer above automated tests for end-to-end sanity after each phase
-
-**Exit criteria:** `dotnet test` green across all three test projects; coverage targets met (80% VMs / 70% Services / 90% Helpers); release build script blocks on failures; manual regression checklist committed.
+**Phase 4 exit criteria:** `dotnet test` green across all three test projects; coverage targets met (80% VMs / 70% Services / 90% Helpers); release build script blocks on failures; `REGRESSION-CHECKLIST.md` committed.
 
 ---
 
