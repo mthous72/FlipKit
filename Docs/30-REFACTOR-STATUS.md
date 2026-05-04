@@ -21,19 +21,28 @@ This is a **breakpoint snapshot** — a single doc to read when picking the work
 | 4a | Core Tests — helpers + stateless services | `refactor/phase-4a-core-tests` | ✓ | 1 | xUnit + NSubstitute scaffolded; 128 tests, all helpers ≥90%, all stateless services ≥70% |
 | 4b | Core Tests — data + scanner services | `refactor/phase-4b-core-data-tests` | ✓ | 1 | +117 tests (245 total); SQLite-in-memory + HTTP-mock patterns validated; 2 production bugs surfaced |
 | 4.5 | Bug-fix interlude (D3 ValueComparer) | `refactor/phase-4.5-checklist-bug-fix` | ✓ | 1 | Out-of-band fix for SetChecklist mutation bug; un-skipped the blocked test; suite now 246/246 |
+| 4c | Desktop Tests — 13 ViewModels | `refactor/phase-4c-desktop-tests` | ✓ | 1 | +162 tests (408 total); 11 of 13 VMs ≥80% coverage; 2 deferred to 4e gap-fill |
+| 4d | Web Tests — 7 controllers + ViewLocator smoke | `refactor/phase-4d-web-tests` | ✓ | 1 | +50 tests (458 total); 48 web controller tests + 2 ViewLocator contract tests; HttpContext.Session paths skipped |
+| 4e | Coverage gap-fill + CI gate + regression checklist | `refactor/phase-4e-coverage-gate` | ✓ | 1 | +23 fill-in tests (481 total); XimilarService 51%→79.5%; CI gate wired into build scripts; REGRESSION-CHECKLIST.md committed; **Phase 4 complete** |
 
 **Master is in sync with `origin/master`.** Branch protection on origin rejects merge commits, so the original 13-commit merge-heavy local history was rebased to a linear 9-commit chain before pushing. Going forward, every phase merge to local master gets `git push origin master` after a clean rebase if needed.
 
 ### Test suite snapshot
 
 ```
-FlipKit.Core.Tests
-  Total:    246 tests
-  Passing:  246
-  Skipped:    0   (the prior skip was un-blocked by Phase 4.5)
+Combined solution suite (Core + Desktop + Web)
+  Total:    481 tests
+  Passing:  481
+  Skipped:    0
   Failing:    0
-  Runtime: ~1 second
+  Runtime: ~7 seconds
   Build:    0 errors, 0 warnings
+
+  FlipKit.Core.Tests:    264 tests
+  FlipKit.Desktop.Tests: 169 tests
+  FlipKit.Web.Tests:      48 tests
+
+  CI gate: build-installers.ps1 + build-release.ps1 abort if dotnet test fails.
 ```
 
 Coverage state (Phase 4 final targets: VMs ≥80%, Services ≥70%, Helpers ≥90%):
@@ -42,9 +51,18 @@ Coverage state (Phase 4 final targets: VMs ≥80%, Services ≥70%, Helpers ≥9
 |---|---|
 | Helpers (5 surfaces) | All ≥95% — target met |
 | Stateless services (5 surfaces, Phase 4a) | All ≥84% — target met |
-| Data + scanner services (11 surfaces, Phase 4b) | 8 of 11 ≥70% — gap-fill in Phase 4e |
-| Desktop ViewModels | Not yet started (Phase 4c) |
-| Web controllers | Not yet started (Phase 4d) |
+| Data + scanner services (11 surfaces, Phase 4b/4e) | 9 of 11 ≥70% — 2 deferred (see below) |
+| Desktop ViewModels (13 surfaces, Phase 4c/4e) | 11 of 13 ≥80% — 2 deferred (see below) |
+| Web controllers (7 surfaces, Phase 4d) | 7 of 7 covered — sufficient unit coverage; integration tests deferred to need-driven |
+
+Below-target carryovers (deferred to Phase 5 work since the surfaces are explicit decomposition/refactor targets):
+
+| Surface | Coverage | Reason for deferral |
+|---|---|---|
+| `ChecklistLearningService` | 29.62% | `TryLoadFromSeedData` reads embedded resources (not testable without test fixtures); other gap is in low-traffic export paths. Phase 5 may extract `ISeedDataLoader` as part of Roadmap #1 work. |
+| `VariationVerifierService` | 56.09% | Confirmation-pass paths now covered (43%→56%); remainder is in `ValidateVisualCues` cross-reference logic with many short branches. Acceptable; Phase 5.4 may split out a `VerificationFieldEvaluator` helper. |
+| `ScanViewModel` | 71.17% | Fill-in tests didn't move the needle — gap is in error-handling branches of `LoadModelsAsync` / `SaveCardAsync` and 6+ branches of `AcceptSuggestion`. Phase 5.4 splits this VM. |
+| `SettingsViewModel` | 78.70% | Gap is in `UpdateLocalIpAddresses` (calls `NetworkHelper.GetNetworkInfo()` static — real network IO) and the QR-code generation path. Phase 5.4 splits this VM. |
 
 Below-target services from Phase 4b (deferred to Phase 4e gap-fill):
 - `VariationVerifierService` — 43.55% (RunConfirmationPassAsync path untested)

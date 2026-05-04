@@ -16,6 +16,17 @@ Write-Host "Building unified packages for Windows and Linux" -ForegroundColor Ye
 Write-Host "(macOS excluded due to code signing requirements)" -ForegroundColor DarkGray
 Write-Host ""
 
+# Run the test suite before any build work — releases must not ship from a
+# repo where tests are red. Phase 4e gate.
+Write-Host "Running test suite (release gate)..." -ForegroundColor Yellow
+dotnet test ".\FlipKit.sln" --nologo --verbosity minimal
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Tests failed - refusing to build release." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Tests passed. Proceeding with build." -ForegroundColor Green
+Write-Host ""
+
 # Clean old releases
 Write-Host "Cleaning old release folder..." -ForegroundColor Yellow
 if (Test-Path ".\releases") {

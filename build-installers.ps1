@@ -41,6 +41,17 @@ Write-Host "FlipKit Installer Build Script v$Version" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Run the test suite before any build work — releases must not ship from a
+# repo where tests are red. Phase 4e gate.
+Write-Host "Running test suite (release gate)..." -ForegroundColor Yellow
+dotnet test "$ProjectRoot\FlipKit.sln" --nologo --verbosity minimal --no-restore:$false
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Tests failed — refusing to build installers." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Tests passed. Proceeding with build." -ForegroundColor Green
+Write-Host ""
+
 # Create output directories
 New-Item -ItemType Directory -Force -Path $PublishDir | Out-Null
 New-Item -ItemType Directory -Force -Path $InstallerDir | Out-Null
