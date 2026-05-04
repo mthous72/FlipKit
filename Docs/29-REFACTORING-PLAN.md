@@ -64,12 +64,12 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 4c | — Desktop ViewModels | Medium | ~1 week | Pending | 12 VMs with mocked Core services. |
 | 4d | — Web controllers + Avalonia.Headless smoke | Medium | ~3-4 days | Pending | `WebApplicationFactory` + 4 UI smoke tests. |
 | 4e | — Coverage gap-fill + CI gate | Low | ~2-3 days | Pending | Coverlet wiring, build-script gate, `REGRESSION-CHECKLIST.md`. |
-| 5 | Targeted Code Refactors (4 sub-phases 5a–5d) | High | 7–11 days | Pending (Phase 4 done) | DI fixes, OpenRouter catalog, ViewModel splits (Settings + BulkScan only), **+2 prod bugs** |
-| 5a | — Mechanical fixes bundle | Low | 1–2 days | Pending | §7.1 DI lifetime + §7.3 HttpClient timeouts + §7.8 OpenRouter retry + §7.10 Settings VM races |
-| 5b | — OpenRouter catalog consolidation | Medium | 1–2 days | Pending | §7.2 — closes D4 latent empty-catalog bug as side effect |
-| 5c | — SettingsViewModel split (803 lines) | High | 3–4 days est. → 1 day actual | ✓ Done (Option A: NetworkAddressProvider only) | §7.4a — full split deferred; only the IP/QR/URL extraction landed to keep XAML + 169 existing VM tests untouched |
-| 5d | — BulkScanViewModel split (585 lines) | High | 2–3 days | Pending | §7.4b — second biggest, queue + rate-limit extraction |
-| 6 | Roadmap Revamp + deferred doc work | None (docs) | 1 day | Pending | Rewrite 17/26/27/28 + §7.5 Doc 07 refresh + InventoryVM/ScanVM/ExportVM split decision |
+| 5 | Targeted Code Refactors (3 sub-phases executed; 5d skipped) | High | ~3 days actual | ✓ Done | DI fixes, OpenRouter catalog, NetworkAddressProvider extraction; 5d BulkScan split skipped after re-read showed the named extractions don't survive contact with the code (see Phase 5 close-out note in §7.4) |
+| 5a | — Mechanical fixes bundle | Low | 1 day | ✓ Done | §7.1 DI lifetime + §7.3 HttpClient timeouts + §7.8 OpenRouter retry + §7.10 Settings VM races |
+| 5b | — OpenRouter catalog consolidation | Medium | 1 day | ✓ Done | §7.2 — closes D4 latent empty-catalog bug as side effect |
+| 5c | — SettingsViewModel split (Option A only) | Medium | 1 day | ✓ Done | §7.4a — only NetworkAddressProvider extraction landed; full connection-tester split deferred to Phase 6 re-cost |
+| 5d | — BulkScanViewModel split | — | — | ✗ Skipped (Phase 5 close-out, 2026-05-04) | §7.4b dropped: file is 506 lines (not 585), the named extractions (`BulkScanQueueService`, `RateLimitTracker`) don't correspond to real code shapes — queue is `Items.Where(Pending).ToList()` + a `SemaphoreSlim`, rate-limiting is one `Task.Delay(4000)`. Splitting would be ceremony, not abstraction. |
+| 6 | Roadmap Revamp + deferred doc work | None (docs) | 1–2 days | In progress | Rewrite/refresh roadmap + Doc 07 + ADRs + decide remaining VM split fate |
 
 Earlier phases are intentionally lowest-risk and produce permanent artifacts (manual checklist, helper tests) that gate the riskier work in Phase 5.
 
@@ -467,7 +467,7 @@ Note: `SettingsViewModel` was *not* on the user's flagged list but is the worst 
 **Decomposition pattern (fixed per §10 Q8):** extract *helper services* (in `FlipKit.Core/Services/`) over partial-class or region splits. Helper services are testable in isolation — partials and regions aren't, and Phase 4's coverage targets demand testable units. Suggested splits:
 
 - `ScanViewModel` → extract `ScanResultEnrichmentService` (the post-scan checklist-learning + verification glue) and `ImageRotationService`.
-- `BulkScanViewModel` → extract `BulkScanQueueService` (queue management + cancellation) and `RateLimitTracker`.
+- `BulkScanViewModel` → extract `BulkScanQueueService` (queue management + cancellation) and `RateLimitTracker`. **Skipped at Phase 5 close-out** — see §7.4b log below.
 - `InventoryViewModel` → extract `InventoryFilterService` (filter/sort logic) and `InventoryColumnConfig`.
 - `ExportViewModel` → extract `ExportPreviewBuilder` (already partially in `ExportableCard`).
 - `SettingsViewModel` → extract `SettingsValidationService`, `XimilarConnectionTester`, `OpenRouterConnectionTester`, `ImgBBConnectionTester` — most of the bulk is connection-test helpers that don't belong in a ViewModel.
@@ -501,6 +501,21 @@ These are still valid work items but are deferred to Phase 6 re-cost.
 **Test count delta:** +6 (484 → 490). All 490 still passing.
 
 **QR bitmap test gap:** `Avalonia.Bitmap` requires `AppBuilder` initialization, which test runs don't have. The provider's `GenerateQrCodeBitmap` swallows that exception and returns null, so all 6 NetworkAddressProvider tests assert `null` for bitmap fields. If a richer headless-Avalonia test layer ever lands, the bitmap-presence assertions can be added then.
+
+#### 7.4b BulkScanViewModel — **SKIPPED** at Phase 5 close-out (2026-05-04)
+
+**Decision:** the BulkScanViewModel split (originally Phase 5d, 2-3 days) was dropped at Phase 5 close-out after re-reading the file. Phase 5 ends at 5c.1; Phase 6 starts directly afterward.
+
+**What the re-read showed:**
+- File is **506 lines, not 585** as the plan assumed (size cited from a pre-Phase-3 measurement).
+- The two big methods (`ScanAllAsync` ~95 lines, `ProcessItemAsync` ~125 lines) read top-to-bottom as a coherent pipeline. Splitting them across helpers would force `_scanCts`, `_errorLogger`, `StatusMessage`, `Interlocked.Increment(ref _scanProgress)` through service boundaries that today are local state.
+- The plan's named extractions don't correspond to real code shapes:
+  - `BulkScanQueueService` (queue + cancellation) — there's no actual queue. Pending items are `Items.Where(i => i.Status == BulkScanStatus.Pending).ToList()` plus a `SemaphoreSlim`. Eight lines.
+  - `RateLimitTracker` — no tracker, no state, no tunable. The "rate limiting" is one line: `await Task.Delay(4000, token)` when the model is free.
+- File is already well-tested (~206 lines of `BulkScanViewModelTests`, ≥80% coverage from Phase 4c). Splitting would invalidate that test surface.
+- `Roadmap #1 (Checklist Insider)` is mostly a Scan VM / `ChecklistLearningService` story, not a BulkScan story — no downstream reason to restructure now.
+
+**What remains as future work (not gated by a refactor):** the two `#pragma warning disable` blocks (`CS8602` around `_scanCts`, `MVVMTK0034` around `Interlocked.Increment`) are minor. If they ever bother future-us they can be cleaned up in a 30-minute targeted edit.
 
 ### 7.5 Stale `Docs/07-CLAUDE-CODE-GUIDE.md` — **DEFERRED to Phase 6**
 

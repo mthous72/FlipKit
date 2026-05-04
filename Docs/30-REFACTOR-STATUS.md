@@ -1,7 +1,9 @@
 # FlipKit Refactor — Status Checkpoint
 
-**Snapshot date:** 2026-05-04 (updated post-Phase 5c.1)
-**Master HEAD:** `0ff42bc` (Plan + status: mark Phase 5c.1 DONE); push pipeline now linear (origin master rebased to drop merge commits per branch protection rule)
+**Snapshot date:** 2026-05-04 (updated at Phase 5 close-out / Phase 6 kick-off)
+**Master HEAD:** `993d0b3` (Status doc bump post-5c.1 merge); push pipeline now linear (origin master rebased to drop merge commits per branch protection rule)
+**Phase 5:** Closed at 5c.1. **Phase 5d (BulkScanViewModel split) skipped** after re-read showed the plan's named extractions don't survive contact with the code — see plan §7.4b for the full reasoning.
+**Phase 6:** In progress on `refactor/phase-6-roadmap-revamp`.
 **Plan:** [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md)
 **Audit:** [AUDIT-2026-05.md](AUDIT-2026-05.md)
 
@@ -117,8 +119,8 @@ Phase 4 is now complete (§coverage targets met or carryovers documented). Phase
 |---|---|---|---|
 | 5a | `refactor/phase-5a-fixes-cleanup` | §7.1 DI fixes (2 services) + §7.3 HttpClient timeouts + §7.8 OpenRouter retry filter + §7.10 SettingsViewModel races | 1-2 days |
 | 5b | `refactor/phase-5b-openrouter-catalog` | §7.2 OpenRouter catalog consolidation (closes D4 latent bug) | 1-2 days |
-| 5c | `refactor/phase-5c-settings-vm-split` | §7.4a Settings VM slim-down — **scoped to Option A** in execution: extract `NetworkAddressProvider` only (5c.1 ✓ unmerged). Server-coordinator split deferred to keep XAML + 169 existing VM tests untouched. | 1 day actual (vs 3-4 originally estimated for the full split) |
-| 5d | `refactor/phase-5d-bulkscan-vm-split` | §7.4b Split BulkScanViewModel (585 lines) | 2-3 days |
+| 5c | `refactor/phase-5c-settings-vm-split` | §7.4a Settings VM slim-down — **scoped to Option A** in execution: extract `NetworkAddressProvider` only. Server-coordinator split deferred to keep XAML + 169 existing VM tests untouched. ✓ merged. | 1 day actual (vs 3-4 originally estimated for the full split) |
+| 5d | — | §7.4b BulkScan split — **SKIPPED** at Phase 5 close-out. File is 506 lines (not 585), the plan's named extractions don't correspond to real code shapes, and the file is already ≥80% covered. Plan §7.4b has the full reasoning. | — |
 
 **Dropped from Phase 5** (re-evaluated in Phase 6): InventoryViewModel / ScanViewModel / ExportViewModel splits. All three are testable as-is (Phase 4c coverage), and decomposition opportunities are less obvious without a fresh read. Phase 6 roadmap revamp decides if they're worth it.
 
@@ -138,11 +140,16 @@ Subsections from plan §7 (full reference):
 
 After Phase 5: re-run the full test suite + manual regression checklist. Anything that doesn't pass becomes a Phase 5 follow-up before Phase 6.
 
-### Phase 6 — Roadmap Revamp
+### Phase 6 — Roadmap Revamp (in progress)
 
-With the codebase clean and tested, re-cost every roadmap item against the new reality. The Phase 5 §7.9 fix is the bigger lever here than it looks — Roadmap #1 (Checklist Insider) was estimated at 4-5 weeks assuming `ChecklistLearningService` actually worked; it does not, and the fix is a precondition.
+Branch: `refactor/phase-6-roadmap-revamp`. With the codebase clean and tested, re-cost every roadmap item against the new reality. The Phase 4.5 D3 fix is the bigger lever here than it looks — Roadmap #1 (Checklist Insider) was estimated at 4-5 weeks assuming `ChecklistLearningService` actually worked; it does not on master prior to that fix, and the fix was a precondition for the work to even start.
 
-ADRs to write in §8.3 (5 of them — see plan).
+Phase 6 deliverables:
+- Refresh `Docs/17-FUTURE-ROADMAP.md` against current code reality (re-cost each item, mark which Phase 5 work moved the needle).
+- Refresh `Docs/07-CLAUDE-CODE-GUIDE.md` (§7.5 carry-over — references dead `MockScannerService` + `BoolToVisibilityConverter` files).
+- Sweep other Docs/ files (e.g. 26/27/28) for stale references created by the Phase 2 doc archival + Phase 3 cleanup.
+- Decide fate of the 3 deferred VM splits (Inventory/Scan/Export) — keep, defer further, or schedule.
+- Write the 5 ADRs from plan §8.3.
 
 ---
 
