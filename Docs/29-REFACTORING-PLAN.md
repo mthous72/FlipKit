@@ -306,8 +306,10 @@ Branch: `refactor/phase-4a-core-tests`. No DbContext, no mocks. Pure functions o
 - `ExportValidator` — known-bad rows produce expected errors
 - `TitleTemplateService` — template substitution
 - `ShippingProfileNormalizer` — every input variant (also exposes `WhatnotValuesProvider` / `EbayTemplateProvider` indirectly)
-- `SkuGenerator` (`FlipKit.Core.Services.Export.SkuGenerator`) — uniqueness contract, format validation
-- `BulkScanErrorLogger` — append + retrieval contracts (uses temp directory, not DbContext)
+
+**Scope corrections (Phase 4a execution):**
+- ~~`SkuGenerator`~~ — actually depends on `FlipKitDbContext`, not stateless. **Moved to Phase 4b.**
+- ~~`BulkScanErrorLogger`~~ — constructor calls `Environment.GetFolderPath(LocalApplicationData)` and creates a real directory at construction. Untestable cleanly without injecting the path. **Deferred to Phase 5** with a small constructor refactor (add optional path parameter).
 
 Exit: `dotnet test` green, coverage report shows ≥90% on helpers, ≥70% on listed services. Merge to master, branch off for 4b.
 
