@@ -3,22 +3,19 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using FlipKit.Core.Data;
 using FlipKit.Core.Helpers;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Desktop.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using QRCoder;
 
 namespace FlipKit.Desktop.ViewModels
 {
@@ -28,6 +25,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IBrowserService _browserService;
         private readonly IServiceProvider _services;
         private readonly IServerManagementService _serverManagement;
+        private readonly INetworkAddressProvider _networkAddresses;
         private Timer? _statusRefreshTimer;
 
         // Phase 5.10 fix — gate the 2-second Timer's UpdateServerStatus while an explicit
@@ -142,12 +140,14 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IOpenRouterModelCatalog? _modelCatalog;
 
         public SettingsViewModel(ISettingsService settingsService, IBrowserService browserService,
-            IServiceProvider services, IServerManagementService serverManagement)
+            IServiceProvider services, IServerManagementService serverManagement,
+            INetworkAddressProvider networkAddresses)
         {
             _settingsService = settingsService;
             _browserService = browserService;
             _services = services;
             _serverManagement = serverManagement;
+            _networkAddresses = networkAddresses;
 
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
@@ -701,115 +701,24 @@ namespace FlipKit.Desktop.ViewModels
 
         private void UpdateLocalIpAddresses()
         {
-            try
-            {
-                // Use NetworkHelper for IP detection
-                var networkInfo = NetworkHelper.GetNetworkInfo();
+            // Phase 5c — delegated to INetworkAddressProvider so the testable parts of
+            // the network/QR logic live outside the VM. The VM's only remaining job is
+            // to apply the provider's snapshot to its bindable [ObservableProperty]
+            // fields (XAML/test contract preserved).
+            var info = _networkAddresses.GetCurrent(ActualWebPort, IsWebRunning);
 
-                LocalNetworkIp = networkInfo.LocalIpAddress;
-                TailscaleIp = networkInfo.TailscaleIpAddress;
-                IsLocalNetworkAvailable = networkInfo.IsLocalNetworkAvailable;
-                IsTailscaleAvailable = networkInfo.IsTailscaleAvailable;
-
-                // Update status messages
-                LocalNetworkStatus = IsLocalNetworkAvailable ? "Available" : "No network";
-                TailscaleStatus = IsTailscaleAvailable ? "Connected" : "Not configured";
-
-                if (IsWebRunning)
-                {
-                    // Generate URLs and QR codes for both networks
-                    if (IsLocalNetworkAvailable && LocalNetworkIp != null)
-                    {
-                        LocalNetworkUrl = $"http://{LocalNetworkIp}:{ActualWebPort}";
-                        LocalQrCodeBitmap = GenerateQrCodeBitmap(LocalNetworkUrl);
-                    }
-                    else
-                    {
-                        LocalNetworkUrl = string.Empty;
-                        LocalQrCodeBitmap = null;
-                    }
-
-                    if (IsTailscaleAvailable && TailscaleIp != null)
-                    {
-                        TailscaleUrl = $"http://{TailscaleIp}:{ActualWebPort}";
-                        TailscaleQrCodeBitmap = GenerateQrCodeBitmap(TailscaleUrl);
-                    }
-                    else
-                    {
-                        TailscaleUrl = string.Empty;
-                        TailscaleQrCodeBitmap = null;
-                    }
-
-                    // Legacy property for backward compatibility
-                    if (IsTailscaleAvailable)
-                    {
-                        LocalIpAddresses = $"🌐 Tailscale: {TailscaleUrl}";
-                        if (IsLocalNetworkAvailable)
-                        {
-                            LocalIpAddresses += $"\n📱 Local: {LocalNetworkUrl}";
-                        }
-                        QrCodeBitmap = TailscaleQrCodeBitmap;
-                    }
-                    else if (IsLocalNetworkAvailable)
-                    {
-                        LocalIpAddresses = $"📱 Local Network: {LocalNetworkUrl}";
-                        QrCodeBitmap = LocalQrCodeBitmap;
-                    }
-                    else
-                    {
-                        LocalIpAddresses = "No network connection";
-                        QrCodeBitmap = null;
-                    }
-                }
-                else
-                {
-                    // Server not running - clear QR codes but show IP info
-                    LocalQrCodeBitmap = null;
-                    TailscaleQrCodeBitmap = null;
-                    QrCodeBitmap = null;
-                    LocalNetworkUrl = string.Empty;
-                    TailscaleUrl = string.Empty;
-
-                    if (IsTailscaleAvailable)
-                    {
-                        LocalIpAddresses = $"🌐 Tailscale IP: {TailscaleIp}\n(Web server not running)";
-                    }
-                    else if (IsLocalNetworkAvailable)
-                    {
-                        LocalIpAddresses = $"📱 Local IP: {LocalNetworkIp}\n(Web server not running)";
-                    }
-                    else
-                    {
-                        LocalIpAddresses = "No network connection";
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LocalIpAddresses = $"Error detecting network: {ex.Message}";
-                LocalQrCodeBitmap = null;
-                TailscaleQrCodeBitmap = null;
-                QrCodeBitmap = null;
-            }
-        }
-
-        private Bitmap? GenerateQrCodeBitmap(string url)
-        {
-            try
-            {
-                using var qrGenerator = new QRCodeGenerator();
-                using var qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
-                using var qrCode = new PngByteQRCode(qrCodeData);
-                var qrCodeImage = qrCode.GetGraphic(20); // 20 pixels per module
-
-                // Convert byte array to Avalonia Bitmap
-                using var stream = new MemoryStream(qrCodeImage);
-                return new Bitmap(stream);
-            }
-            catch
-            {
-                return null;
-            }
+            LocalNetworkIp = info.LocalNetworkIp;
+            TailscaleIp = info.TailscaleIp;
+            IsLocalNetworkAvailable = info.IsLocalNetworkAvailable;
+            IsTailscaleAvailable = info.IsTailscaleAvailable;
+            LocalNetworkStatus = info.LocalNetworkStatus;
+            TailscaleStatus = info.TailscaleStatus;
+            LocalNetworkUrl = info.LocalNetworkUrl;
+            TailscaleUrl = info.TailscaleUrl;
+            LocalQrCodeBitmap = info.LocalQrCodeBitmap;
+            TailscaleQrCodeBitmap = info.TailscaleQrCodeBitmap;
+            LocalIpAddresses = info.LegacyLocalIpAddresses;
+            QrCodeBitmap = info.LegacyQrCodeBitmap;
         }
 
         [RelayCommand]

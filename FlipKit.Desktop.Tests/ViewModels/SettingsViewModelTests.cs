@@ -2,6 +2,7 @@ using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
 using FlipKit.Core.Services.Scanning;
+using FlipKit.Desktop.Services;
 using FlipKit.Desktop.ViewModels;
 using NSubstitute;
 
@@ -14,7 +15,8 @@ public class SettingsViewModelTests
         IBrowserService? browser = null,
         IServiceProvider? services = null,
         IServerManagementService? serverMgmt = null,
-        ServerStatus? initialStatus = null)
+        ServerStatus? initialStatus = null,
+        INetworkAddressProvider? networkAddresses = null)
     {
         if (settings == null)
         {
@@ -43,7 +45,19 @@ public class SettingsViewModelTests
         services ??= Substitute.For<IServiceProvider>();
         // Don't register IOpenRouterModelCatalog — VM tolerates it being absent.
 
-        return new SettingsViewModel(settings, browser ?? Substitute.For<IBrowserService>(), services, serverMgmt);
+        // Phase 5c — INetworkAddressProvider injected. Default mock returns an empty
+        // snapshot so VM construction's UpdateLocalIpAddresses doesn't blow up.
+        networkAddresses ??= Substitute.For<INetworkAddressProvider>().Tap(p =>
+            p.GetCurrent(Arg.Any<int>(), Arg.Any<bool>()).Returns(new NetworkAddressInfo(
+                LocalNetworkIp: null, TailscaleIp: null,
+                IsLocalNetworkAvailable: false, IsTailscaleAvailable: false,
+                LocalNetworkStatus: "No network", TailscaleStatus: "Not configured",
+                LocalNetworkUrl: string.Empty, TailscaleUrl: string.Empty,
+                LocalQrCodeBitmap: null, TailscaleQrCodeBitmap: null,
+                LegacyLocalIpAddresses: "No network connection", LegacyQrCodeBitmap: null)));
+
+        return new SettingsViewModel(
+            settings, browser ?? Substitute.For<IBrowserService>(), services, serverMgmt, networkAddresses);
     }
 
     // === LoadSettings populates fields from ISettingsService ===

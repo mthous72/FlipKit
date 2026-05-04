@@ -84,6 +84,9 @@ namespace FlipKit.Desktop
                 services.AddSingleton<ISettingsService, JsonSettingsService>();
                 services.AddSingleton<IBrowserService, SystemBrowserService>();
                 services.AddSingleton<IServerManagementService, ServerManagementService>();
+                // Phase 5c extraction — network/QR logic split out of SettingsViewModel.
+                services.AddSingleton<INetworkInfoProvider, NetworkInfoProvider>();
+                services.AddSingleton<INetworkAddressProvider, NetworkAddressProvider>();
 
                 // Smart mode detection - choose between local database or API
                 using var tempProvider = services.BuildServiceProvider();
