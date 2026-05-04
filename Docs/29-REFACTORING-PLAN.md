@@ -461,6 +461,28 @@ Do these one at a time, on separate branches, each followed by the full manual r
 
 This doc still references `MockScannerService` and `BoolToVisibilityConverter` as live files, and uses the old folder layout. Refresh it to match the cleaned tree. (Defer to Phase 6 if scope is tight.)
 
+### 7.8 OpenRouterScannerService retry filter fix (BUG, discovered in Phase 4b)
+
+While writing scanner tests, the fallback chain logic was found broken for everything except 404 errors. See [AUDIT-2026-05.md §5.9](AUDIT-2026-05.md) for the full diagnosis.
+
+**Summary:** `IsRetryableHttpError` checks `msg.Contains("500")` etc., but the exception message contains the enum name (`"InternalServerError"`) rather than the digit. So 5xx and 429 errors propagate immediately without triggering the fallback chain, defeating the whole retry design for those status codes.
+
+**Fix:** Either (preferred) include the integer status code in the exception message at the throw site (`OpenRouterScannerService.cs:333`), or extend `IsRetryableHttpError` to also check the enum names.
+
+**Risk note:** Phase 4b's tests were forced to use 404s to drive fallback behavior since 5xx doesn't actually trigger it. After this fix, the existing scanner tests should still pass (404 path unchanged) but additional 5xx/429 fallback tests should be added.
+
+### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b)
+
+While writing ChecklistLearningService tests, the "enrich existing checklist" code path was found to silently lose every mutation. See [AUDIT-2026-05.md §5.10](AUDIT-2026-05.md) for the full diagnosis.
+
+**Summary:** `SetChecklist.Cards` and `SetChecklist.KnownVariations` are JSON-converted via `HasConversion(serialize, deserialize)` at `FlipKitDbContext.cs:105-113` without a `ValueComparer`. EF Core's change tracker can't detect collection mutations on JSON-converted properties, so `checklist.Cards.Add(...)` followed by `SaveChangesAsync()` is a no-op.
+
+**Impact:** Affects `ChecklistLearningService.LearnFromCardAsync` enrichment path AND `ImportChecklistAsync` merge path (lines 235-274). Both silently fail in production.
+
+**Fix:** Add `ValueComparer<List<T>>` to both conversions (snapshot via JSON serialize/deserialize cycle).
+
+**Phase 4b skip note:** [`ChecklistLearningServiceTests.Should_AppendNewCardAndVariation_When_ChecklistAlreadyExists`] is `[Fact(Skip = ...)]` until this fix lands.
+
 ### 7.6 Optional: SchemaUpdater → real EF migrations
 
 `FlipKit.Core/Data/SchemaUpdater.cs` has 175 lines of raw `ALTER TABLE IF NOT EXISTS` SQL because the project uses `EnsureCreated()` instead of EF migrations. Every new column accretes here forever. Long-term this should become real migrations, but converting from `EnsureCreated` to migrations on a live SQLite database is a Phase 6+ project — not in scope for this refactor sweep.
