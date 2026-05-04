@@ -3,7 +3,9 @@
 **Target codebase:** FlipKit Hub v3.3.6 (`c:\Users\Matthew Houston\source\repos\FlipKit`)
 **Goal:** Heavy cleanup with zero behavioral regressions, preserving roadmap-aligned code, ending in a roadmap revisit.
 **Created:** 2026-05-04
-**Status:** Approved — open questions resolved (see §10 Decisions Logged)
+**Status:** In progress — Phases 1, 2, 3, 4a, 4b complete and merged to master. See [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for the live state snapshot.
+
+> **Resume here?** Skip to [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
 
 ---
 
@@ -50,19 +52,19 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 
 ## 2. Phasing Overview
 
-| # | Phase | Risk | Effort | Goal |
-|---|-------|------|--------|------|
-| 1 | Inventory & Discovery | None | 1 day | Catalog every cleanup target with proof-of-deadness |
-| 2 | Doc Archival & Root Tidy | Very Low | 0.5 day | Move historical docs, delete pure-rebrand artifacts |
-| 3 | Trivial Code Cleanup | Low | 1 day | Dead converters, dead seeders, dead scripts, file rename |
-| 4 | Full Test Coverage (5 sub-phases 4a–4e) | Medium | 3–4 weeks | xUnit + NSubstitute + Avalonia.Headless + real-SQLite-in-memory across Core / Desktop / Web; meets 80/70/90 targets |
-| 4a | — Core helpers + stateless services | Low | ~1 week | No DbContext, no mocks. Pure functions over fixture data. |
-| 4b | — Core repository + scanner services | Medium | ~1 week | First use of real-SQLite + NSubstitute HTTP mocks. |
-| 4c | — Desktop ViewModels | Medium | ~1 week | 12 VMs with mocked Core services. |
-| 4d | — Web controllers + Avalonia.Headless smoke | Medium | ~3-4 days | `WebApplicationFactory` + 4 UI smoke tests. |
-| 4e | — Coverage gap-fill + CI gate | Low | ~2-3 days | Coverlet wiring, build-script gate, `REGRESSION-CHECKLIST.md`. |
-| 5 | Targeted Code Refactors | High | 1–2 weeks | DI fixes, ViewModel splits, magic-string elimination |
-| 6 | Roadmap Revamp | None (docs) | 0.5 day | Rewrite 17/26/27/28 against the cleaned tree |
+| # | Phase | Risk | Effort | Status | Goal |
+|---|-------|------|--------|--------|------|
+| 1 | Inventory & Discovery | None | 1 day | ✓ Done | Catalog every cleanup target with proof-of-deadness |
+| 2 | Doc Archival & Root Tidy | Very Low | 0.5 day | ✓ Done | Move historical docs, delete pure-rebrand artifacts |
+| 3 | Trivial Code Cleanup | Low | 1 day | ✓ Done | Dead converters, dead seeders, dead scripts, file rename |
+| 4 | Full Test Coverage (5 sub-phases 4a–4e) | Medium | 3–4 weeks | In progress (4a/4b done) | xUnit + NSubstitute + Avalonia.Headless + real-SQLite-in-memory across Core / Desktop / Web; meets 80/70/90 targets |
+| 4a | — Core helpers + stateless services | Low | ~1 week | ✓ Done | No DbContext, no mocks. Pure functions over fixture data. |
+| 4b | — Core repository + scanner services | Medium | ~1 week | ✓ Done | First use of real-SQLite + NSubstitute HTTP mocks. |
+| 4c | — Desktop ViewModels | Medium | ~1 week | Pending | 12 VMs with mocked Core services. |
+| 4d | — Web controllers + Avalonia.Headless smoke | Medium | ~3-4 days | Pending | `WebApplicationFactory` + 4 UI smoke tests. |
+| 4e | — Coverage gap-fill + CI gate | Low | ~2-3 days | Pending | Coverlet wiring, build-script gate, `REGRESSION-CHECKLIST.md`. |
+| 5 | Targeted Code Refactors | High | 1–2 weeks | Pending (gated on Phase 4) | DI fixes, ViewModel splits, magic-string elimination, **+2 production-bug fixes discovered in Phase 4b** |
+| 6 | Roadmap Revamp | None (docs) | 0.5 day | Pending | Rewrite 17/26/27/28 against the cleaned tree |
 
 Earlier phases are intentionally lowest-risk and produce permanent artifacts (manual checklist, helper tests) that gate the riskier work in Phase 5.
 
