@@ -18,32 +18,11 @@ namespace FlipKit.Core.Services
     {
         private const string ApiUrl = "https://openrouter.ai/api/v1/chat/completions";
 
-        // Free vision models currently available on OpenRouter (verified Apr 2026)
-        // All support vision-language input with text output
-        public static readonly string[] FreeVisionModels = new[]
-        {
-            "google/gemma-4-31b-it:free",              // 31B, best free model
-            "google/gemma-4-26b-a4b-it:free",          // 26B, strong vision
-            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", // 30B, reasoning model
-            "nvidia/nemotron-nano-12b-v2-vl:free",     // 12B, optimized for video/documents
-            "google/gemma-3-27b-it:free"               // 27B, reliable fallback
-        };
-
-        // Premium vision models (paid, higher quality and more reliable)
-        public static readonly string[] PaidVisionModels = new[]
-        {
-            "anthropic/claude-3.5-sonnet",                    // Premium, excellent vision
-            "anthropic/claude-3-opus",                        // Best but expensive
-            "openai/gpt-4o",                                  // Very good vision
-            "openai/gpt-4o-mini",                             // Cheaper GPT-4o variant
-            "google/gemini-2.0-flash-lite-001",               // Gemini lite, good value
-            "meta-llama/llama-3.2-11b-vision-instruct",       // $0.049/M, good quality
-            "qwen/qwen2.5-vl-32b-instruct",                   // Qwen vision model
-            "google/gemma-3-27b-it"                           // Paid Gemma for reliability
-        };
-
-        // All vision models (free + paid)
-        public static readonly string[] AllVisionModels = FreeVisionModels.Concat(PaidVisionModels).ToArray();
+        // Phase 5b — model lists moved to OpenRouterModelDefaults so the scanner's
+        // local fallback chain and the live-fetch catalog's fallback path read from
+        // the same source. Use `OpenRouterModelDefaults.FallbackFreeModelIds` for
+        // chain construction, and `OpenRouterModelDefaults.DefaultFreeModelId` for
+        // the baseline default.
 
         private const string ScanPromptBody = @"
 Return ONLY a JSON object with these exact fields (use null for unknown values):
@@ -127,7 +106,7 @@ Return ONLY the JSON, no other text or markdown.";
         public async Task<ScanResult> ScanCardAsync(
             string imagePath,
             string? backImagePath = null,
-            string model = "nvidia/nemotron-nano-12b-v2-vl:free",
+            string model = OpenRouterModelDefaults.DefaultFreeModelId,
             XimilarScanMode ximilarMode = XimilarScanMode.Standard)
         {
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
@@ -224,7 +203,7 @@ Return ONLY the JSON, no other text or markdown.";
                 "Please try again later or check your network connection.", lastException);
         }
 
-        public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
+        public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = OpenRouterModelDefaults.DefaultFreeModelId)
         {
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
 
@@ -357,16 +336,15 @@ Return ONLY the JSON, no other text or markdown.";
 
         private static List<string> GetFallbackChain(string startModel)
         {
-            var index = Array.IndexOf(FreeVisionModels, startModel);
+            // Reads from the consolidated defaults (Phase 5b). Same shape as before:
+            // if startModel is a known free model, walk from it to the end of the list;
+            // otherwise (custom or paid model) try it alone, then walk all free models.
+            var index = Array.IndexOf(OpenRouterModelDefaults.FallbackFreeModelIds, startModel);
             if (index >= 0)
-            {
-                // Start from the selected model and continue through the rest
-                return FreeVisionModels.Skip(index).ToList();
-            }
+                return OpenRouterModelDefaults.FallbackFreeModelIds.Skip(index).ToList();
 
-            // Model not in the free list (e.g. a paid model) — try it alone, then fall back to all free models
             var chain = new List<string> { startModel };
-            chain.AddRange(FreeVisionModels);
+            chain.AddRange(OpenRouterModelDefaults.FallbackFreeModelIds);
             return chain;
         }
 

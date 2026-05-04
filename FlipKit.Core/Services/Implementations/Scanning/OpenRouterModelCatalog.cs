@@ -69,14 +69,14 @@ namespace FlipKit.Core.Services.Scanning
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "OpenRouter model fetch failed; returning empty catalog. Caller should fall back gracefully.");
-                return new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow);
+                _logger?.LogWarning(ex, "OpenRouter model fetch failed; returning hardcoded fallback catalog from OpenRouterModelDefaults. Auto-rotation continues with the static list.");
+                return BuildFallbackCatalog();
             }
 
             if (response?.Data == null)
             {
-                _logger?.LogWarning("OpenRouter /api/v1/models returned null or empty data field.");
-                return new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow);
+                _logger?.LogWarning("OpenRouter /api/v1/models returned null or empty data field; returning hardcoded fallback catalog.");
+                return BuildFallbackCatalog();
             }
 
             var visionModels = response.Data
@@ -97,7 +97,50 @@ namespace FlipKit.Core.Services.Scanning
                 "OpenRouter catalog: {Free} free vision models, {Paid} paid vision models (filtered from {Total} total).",
                 free.Count, paid.Count, response.Data.Count);
 
+            // If the live response somehow filtered down to zero, treat it like a fetch
+            // failure — the fallback list is more useful to the user than nothing.
+            if (free.Count == 0 && paid.Count == 0)
+            {
+                _logger?.LogWarning("OpenRouter /api/v1/models returned data but no vision-language models survived filtering; returning fallback catalog.");
+                return BuildFallbackCatalog();
+            }
+
             return new ModelCatalog(free, paid, DateTime.UtcNow);
+        }
+
+        /// <summary>
+        /// Builds a <see cref="ModelCatalog"/> from <see cref="OpenRouterModelDefaults"/>.
+        /// Pricing is unknown for fallback entries (we don't have the live data) — set to
+        /// 0 for free models and a sentinel positive value for paid (so the price-based
+        /// filtering in IsLikelyRealVisionLanguageModel still passes when the live fetch
+        /// later replaces this fallback). The caller can detect fallback via
+        /// <see cref="ModelCatalog.IsFallback"/>.
+        /// </summary>
+        private static ModelCatalog BuildFallbackCatalog()
+        {
+            var free = OpenRouterModelDefaults.FallbackFreeModelIds
+                .Select(id => new OpenRouterModel(
+                    Id: id,
+                    DisplayName: id,
+                    IsFree: true,
+                    PromptPricePerMillion: 0m,
+                    CompletionPricePerMillion: 0m,
+                    ImagePricePerImage: null,
+                    Description: "Fallback entry — live catalog unavailable."))
+                .ToList();
+
+            var paid = OpenRouterModelDefaults.FallbackPaidModelIds
+                .Select(id => new OpenRouterModel(
+                    Id: id,
+                    DisplayName: id,
+                    IsFree: false,
+                    PromptPricePerMillion: 1m,    // unknown actual price; sentinel positive
+                    CompletionPricePerMillion: 1m,
+                    ImagePricePerImage: null,
+                    Description: "Fallback entry — live catalog unavailable. Actual pricing unknown."))
+                .ToList();
+
+            return new ModelCatalog(free, paid, DateTime.UtcNow, IsFallback: true);
         }
 
         // === filtering / mapping ===

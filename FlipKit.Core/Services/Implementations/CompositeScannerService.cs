@@ -29,7 +29,7 @@ namespace FlipKit.Core.Services
         public async Task<ScanResult> ScanCardAsync(
             string imagePath,
             string? backImagePath = null,
-            string model = "nvidia/nemotron-nano-12b-v2-vl:free",
+            string model = OpenRouterModelDefaults.DefaultFreeModelId,
             XimilarScanMode ximilarMode = XimilarScanMode.Standard)
         {
             // Check if Ximilar should be used based on mode
@@ -89,7 +89,7 @@ namespace FlipKit.Core.Services
             return await _openRouterService.ScanCardAsync(imagePath, backImagePath, model);
         }
 
-        public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = "nvidia/nemotron-nano-12b-v2-vl:free")
+        public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = OpenRouterModelDefaults.DefaultFreeModelId)
         {
             // Custom prompts always go to OpenRouter (Ximilar doesn't support arbitrary prompts)
             return await _openRouterService.SendCustomPromptAsync(imagePath, prompt, backImagePath, model);

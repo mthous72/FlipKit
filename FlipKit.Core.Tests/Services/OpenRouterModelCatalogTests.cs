@@ -1,4 +1,5 @@
 using System.Net;
+using FlipKit.Core.Services;
 using FlipKit.Core.Services.Scanning;
 using FlipKit.Core.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -159,28 +160,64 @@ public class OpenRouterModelCatalogTests
     // === Failure path ===
 
     [Fact]
-    public async Task Should_ReturnEmptyCatalog_When_FetchFails()
+    public async Task Should_ReturnFallbackCatalog_When_FetchFails()
     {
-        // Phase 5.2 will change this to return the static fallback catalog instead;
-        // for now, the contract is "empty + warning logged + caller falls back gracefully".
+        // Phase 5b — fetch failure now returns the hardcoded fallback catalog from
+        // OpenRouterModelDefaults (was: empty arrays). IsFallback flags the result.
         var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException("network down"));
         var catalog = CreateCatalog(handler);
 
         var result = await catalog.GetAsync();
 
-        Assert.Empty(result.FreeVisionModels);
-        Assert.Empty(result.PaidVisionModels);
+        Assert.NotEmpty(result.FreeVisionModels);
+        Assert.NotEmpty(result.PaidVisionModels);
+        Assert.True(result.IsFallback);
+        Assert.False(result.IsEmpty);
+        Assert.Contains(result.FreeVisionModels, m => m.Id == OpenRouterModelDefaults.DefaultFreeModelId);
     }
 
     [Fact]
-    public async Task Should_ReturnEmptyCatalog_When_DataFieldIsMissing()
+    public async Task Should_ReturnFallbackCatalog_When_DataFieldIsMissing()
     {
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
         var catalog = CreateCatalog(handler);
 
         var result = await catalog.GetAsync();
 
-        Assert.Empty(result.FreeVisionModels);
-        Assert.Empty(result.PaidVisionModels);
+        Assert.NotEmpty(result.FreeVisionModels);
+        Assert.True(result.IsFallback);
+    }
+
+    [Fact]
+    public async Task Should_ReturnFallbackCatalog_When_LiveResponseFiltersToZeroModels()
+    {
+        // If the live response has data but no entries survive the vision-language /
+        // sentinel-pricing filters, treat that like a fetch failure too — fallback is
+        // more useful to the user than an empty catalog.
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, @"{
+            ""data"": [{
+                ""id"": ""text-only/x"",
+                ""name"": ""Text Only"",
+                ""architecture"": { ""input_modalities"": [""text""], ""output_modalities"": [""text""] },
+                ""pricing"": { ""prompt"": ""0"", ""completion"": ""0"" }
+            }]
+        }");
+        var catalog = CreateCatalog(handler);
+
+        var result = await catalog.GetAsync();
+
+        Assert.True(result.IsFallback);
+        Assert.NotEmpty(result.FreeVisionModels);
+    }
+
+    [Fact]
+    public async Task Should_NotMarkAsFallback_When_LiveFetchSucceeds()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, SampleModelsResponse);
+        var catalog = CreateCatalog(handler);
+
+        var result = await catalog.GetAsync();
+
+        Assert.False(result.IsFallback);
     }
 }
