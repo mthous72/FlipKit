@@ -93,32 +93,43 @@ FlipKit.Core/Services/
     IChecklistAuditService.cs          ← missing-checklists query + re-verify pass (Surface D)
     ISetIdentificationService.cs       ← typeahead over imported sets + KnownSetsCatalog (Surface C)
     IScanPromptAugmenter.cs            ← builds set-locked prompt prefix (Surface C)
+    IParallelFamilyService.cs          ← lookup parallels for (Year, Brand) (§8d)
   Implementations/
     ExcelChecklistImporter.cs          ← ClosedXML, subset-header parsing
     ChecklistFileMetadataExtractor.cs  ← guess year/brand/sport from filename + first rows
     ChecklistAuditService.cs           ← LEFT JOIN query, returns MissingChecklistRow list
-    ChecklistVerificationMatcher.cs    ← fuzzy match scanned card → ChecklistCard (Surface B)
+    ChecklistVerificationMatcher.cs    ← runs cascade, emits ChecklistMatchResult with Tier (§8d)
     SetIdentificationService.cs        ← merges imported sets with KnownSetsCatalog for wizard
     ScanPromptAugmenter.cs             ← consumes SetLockState, emits prompt prefix
+    ParallelFamilyService.cs           ← wraps the catalog; serves dropdown options
   Resources/
     KnownSetsCatalog.json              ← embedded JSON: common modern (Year × Sport × Mfr × Set)
+    ParallelFamilyCatalog.json         ← embedded JSON: parallels per (Year, Brand) with print runs
   ApiModels/
     ChecklistImportPreview.cs          ← DTO returned to UI before commit
     MissingChecklistRow.cs             ← (Year, Brand, SetName, CardCount, LastScanned)
     SetIdentifier.cs                   ← (Year, Sport, Manufacturer, Brand, SetName) value object
     SetLookupResult.cs                 ← outcome of wizard: SetIdentifier + state (A/B/C) + suggestions
     SetLockState.cs                    ← session model: SetIdentifier + ImportState + PendingRoundTrip
+    ChecklistMatchResult.cs            ← { Tier, ExactMatch, Candidates[], FieldConfidences } (§8d)
+    VerificationTier.cs                ← enum { Verified, BestGuess, NoMatch }
+    ParallelOption.cs                  ← { Name, Numbered, PrintRun? } — UI-bound
 
 FlipKit.Desktop/Views/
   ImportChecklistView.axaml            ← file picker + preview + commit (Surface A)
   MissingChecklistsView.axaml          ← audit table + per-row "Get Checklist" (Surface D)
   SetLookupWizardView.axaml            ← chips + wizard + three-state outcome (Surface C)
+  PickFromChecklistDialog.axaml        ← Tier-3 picker; reachable from any tier via "?" icon (§8d)
+  EditCardView.axaml (modified)        ← Card # typeahead, Subset filter, Parallel dropdown,
+                                          Serial # unlocking, autograph auto-check, tier badge (§8d)
 FlipKit.Desktop/ViewModels/
   ImportChecklistViewModel.cs          ← [ObservableProperty] state, [RelayCommand] actions
   MissingChecklistsViewModel.cs        ← audit query results, re-verify command
   SetLookupWizardViewModel.cs          ← drives the wizard, emits SetLockState (Surface C)
-  ScanViewModel.cs (modified)          ← consumes SetLockState; sticky lock chip (Surface C)
-  BulkScanViewModel.cs (modified)      ← shared set-lock; aggregate "missing" banner (Surface B/D)
+  PickFromChecklistViewModel.cs        ← search + candidate ranking for picker (§8d)
+  ScanViewModel.cs (modified)          ← consumes SetLockState + ChecklistMatchResult; sticky chip
+  BulkScanViewModel.cs (modified)      ← shared set-lock; tier-driven row collapsing (§8d)
+  EditCardViewModel.cs (modified)      ← exposes ParallelOptions, Subset filter, MatchTier
 
 FlipKit.Web/Controllers/
   ChecklistImportController.cs         ← multipart upload, calls Core service
@@ -129,9 +140,13 @@ FlipKit.Web/Views/Checklist/
   Missing.cshtml                       ← Razor table view (Surface D)
   _ChecklistHelpPanel.cshtml           ← shared partial — same help content as Desktop §3b
   _SetLookupWizard.cshtml              ← Bootstrap modal (PC) / bottom sheet (mobile) (Surface C)
+  _PickFromChecklist.cshtml            ← Tier-3 picker partial; modal/sheet (§8d)
+FlipKit.Web/Views/Inventory/
+  Edit.cshtml (modified)               ← same field enhancements as Desktop EditCardView (§8d)
 FlipKit.Web/wwwroot/js/
   set-lookup-wizard.js                 ← client-side typeahead + chip-pick logic
   checklist-roundtrip.js               ← localStorage stash + "Continue importing X" banner (§10a)
+  card-editor-typeahead.js             ← Card # autocomplete bound to locked checklist (§8d)
 ```
 
 ### Library choice
@@ -179,6 +194,28 @@ public class ChecklistCard
 ```csharp
 public string? DataSource { get; set; }   // "checklist-insider" | "manual" | "manufacturer-pdf"
 public DateTime? ImportedAt { get; set; }
+```
+
+`Card` gets two new fields to record what the verification cascade matched (§8d):
+
+```csharp
+public Guid? MatchedChecklistCardId { get; set; }            // FK to the ChecklistCard the user confirmed
+public VerificationStatus VerificationStatus { get; set; }   // enum, default NotChecked
+
+public enum VerificationStatus
+{
+    NotChecked = 0,    // never run against a checklist (e.g. no checklist for this set)
+    Verified,          // Tier 1: matcher returned exact match, user saved as-is
+    BestGuess,         // Tier 2: matcher returned match with low-confidence fields, user saved
+    UserCorrected,     // user picked a different ChecklistCard via the picker
+    NoMatchFound,      // Tier 3: no candidate accepted; saved with AI's guess only
+}
+```
+
+`AppSettings` gets one new toggle for the auto-accept behavior:
+
+```csharp
+public bool AutoAcceptTier1Matches { get; set; } = false;   // opt-in; off by default
 ```
 
 If `Cards` is still stored as a JSON blob (per current spec), no migration needed beyond seeding new fields with defaults. If we move to a relational `ChecklistCard` table during this work, that's a separate migration.
@@ -271,6 +308,101 @@ Surface B (the post-scan hint) is *especially* valuable in BulkScan: a single mi
 - **Per-card badge stays:** but the inline "Get Checklist" link is muted (link-style, not button) so it doesn't pull focus from cards that scanned cleanly.
 
 Surface C (set lock) is even more useful in BulkScan: typical use case is "I'm scanning a stack of one set" — locking once saves 30 prompts' worth of accuracy.
+
+### 8d. Post-scan verification cascade — what the user sees and does
+
+Once the AI has returned its structured result, FlipKit runs a verification cascade that produces one of three **tiers**, each driving different UI in the card editor. This section describes the workflow precisely — from "AI finished" to "card saved."
+
+#### Three-tier match result
+
+| Tier | Trigger | UI treatment |
+|---|---|---|
+| **1. Confident match** *(✓ green)* | Exact `CardNumber` + `Subset` match in the locked checklist, fuzzy-matched `PlayerName` (Levenshtein ≤ 2 + token overlap), AND every AI confidence field ≥ 0.85 | Green ✓ Verified badge; one-click `[Save]`; everything pre-filled |
+| **2. Best-guess match** *(⚠ yellow)* | Card # + player match, but at least one field is uncertain — typically Parallel or Subset | Yellow ⚠ badge; uncertain fields highlighted with a soft yellow ring + helper text (*"Looks like a Refractor — confirm or change"*); user adjusts dropdowns and saves |
+| **3. No match** *(❓ amber)* | Card # not in the locked set's checklist, OR card # exists but player wildly different from any candidate | Amber "Pick the right card" panel with fuzzy-matched candidate list (top 5–10 ChecklistCards from the locked set, ranked by player-name similarity + card-number distance), each tappable; "None of these — keep AI's guess" escape hatch |
+
+The matcher returns a `ChecklistMatchResult` DTO carrying the Tier, the exact match (if any), the candidate list (Tier 3), and per-field confidences for the editor to decorate.
+
+**Always require `[Save]`.** Even Tier 1 matches show the Save button — never auto-save in single-card scan mode by default. An opt-in **"Auto-accept Tier 1 matches"** toggle in Settings → Scan lets power users skip the per-card tap on confident scans only. Default off; affects single-card and BulkScan flows when enabled.
+
+#### Card editor with set lock active
+
+The set-locked scan result page is the existing `EditCardView` (Desktop) / `Edit.cshtml` (Web) with verification-driven additions:
+
+```
+┌─ 2026 Bowman Baseball [locked]  [×]            ┐
+│  Photo thumbnails (front / back)                │
+│                                                 │
+│  Player Name:   [Roman Anthony______________]   ✓ matches checklist
+│  Card Number:   [1________] ▾                   ← typeahead from locked checklist
+│  Subset:        [Base ▾]                        ← dropdown of subsets in locked set
+│  Parallel:      [Refractor ▾]                   ⚠ confidence 0.72
+│  Serial #:      [____ / 50]                     ← print run from ParallelFamilyCatalog
+│  Autograph:     [☐]                             ← inferred from matched subset name
+│                                                 │
+│  Verification:  ✓ Verified against checklist    │
+│                                                 │
+│  [Save]   [Save & next]   [Cancel]              │
+└─────────────────────────────────────────────────┘
+```
+
+Field behaviors:
+
+- **Card Number** is a typeahead bound to the locked set's `ChecklistCard` numbers — typing `"BC"` autocompletes to `BCP1, BCP2, BCPA-RA…`. Picking from the dropdown auto-fills Player + Subset.
+- **Subset** dropdown is populated from distinct `Subset` values in the locked checklist (BASE, CHROME PROSPECTS, AUTOGRAPH, etc.). Changing subset re-filters the Card Number typeahead.
+- **Parallel** dropdown is populated from `ParallelFamilyCatalog.json` keyed by `(Year, Brand)`. When the user picks a numbered parallel, the **Serial #** field unlocks with the print run as placeholder (`__ / 50`).
+- **Autograph** checkbox auto-checks when the matched ChecklistCard's subset name contains `"AUTOGRAPH"`; user can override.
+- A small **"?" icon** next to Card Number opens the Pick-from-checklist picker on any tier — lets users override the matcher when AI is wrong on Tier 1 or 2.
+
+#### Pick-from-checklist picker (Tier 3 default; available on any tier)
+
+Modal (Desktop) or full-screen sheet (Web mobile) reachable from the amber Tier 3 banner OR the "?" icon next to Card Number.
+
+```
+Searching 2026 Bowman Baseball · 1,285 cards across 24 subsets
+
+[🔍 Search by player or card #_______________]
+
+Best matches for "Anthony":
+  ◯ #1        Roman Anthony · Red Sox · Base
+  ◯ BCP1      Roman Anthony · Red Sox · Chrome Prospects
+  ◯ BCPA-RA   Roman Anthony · Red Sox · Chrome Prospect Autographs
+
+[Cancel]   [Use this card]
+```
+
+Selecting a row fills CardNumber + Player + Subset on the editor. Parallel and Serial # stay at AI's best guess (or empty if AI was wrong about the player too).
+
+#### Parallel families
+
+Phase 1 ships a bundled `ParallelFamilyCatalog.json` keyed by `(Year, Brand)`:
+
+```json
+{
+  "2026 Bowman Baseball": {
+    "parallels": [
+      { "name": "Base",         "numbered": false },
+      { "name": "Refractor",    "numbered": false },
+      { "name": "Gold",         "numbered": true, "printRun": 50 },
+      { "name": "Orange",       "numbered": true, "printRun": 25 },
+      { "name": "Red",          "numbered": true, "printRun": 5 },
+      { "name": "SuperFractor", "numbered": true, "printRun": 1 }
+    ]
+  }
+}
+```
+
+Same legal posture as `KnownSetsCatalog` — parallel names and print runs are factual published data, not Checklist Insider's content. Catalog ships with FlipKit and grows release by release. Sets not in the catalog show a free-text Parallel field with a `Base` default (no constraint, no validation). Phase 2's PDF importer (§13) eventually replaces bundled entries with user-imported manufacturer-confirmed data.
+
+#### BulkScan: tier-driven row collapsing
+
+In BulkScan the result grid uses Tier to control how much chrome each row gets:
+
+- **Tier 1** rows collapse to a one-line summary: `✓ Roman Anthony · #1 · Base` — no expansion needed unless the user taps to edit.
+- **Tier 2** rows expand to show only the uncertain field(s) with the dropdown — user can blast through 30 cards in 30 seconds.
+- **Tier 3** rows stay fully expanded with the picker visible. A **"Defer for later"** action moves them into a per-batch review queue so the user can skip and come back at the end of the stack.
+
+If the **"Auto-accept Tier 1 matches"** toggle is enabled, Tier 1 cards in BulkScan auto-save without confirmation while Tier 2/3 still require user action — typical power-user setting once they trust the verifier on a given set.
 
 ## 9. Settings → "Find missing checklists" audit (Surface D)
 
@@ -385,28 +517,33 @@ Phase the work so each phase is shippable on its own — stops half-done work fr
 5. **Desktop UI** — `ImportChecklistView` + `ImportChecklistViewModel` with shared help panel from §3b. File picker via existing `IFileDialogService`.
 6. **Web UI** — `ChecklistImportController` + Razor view, multipart upload, same help panel content. Mobile layout per §10c. iOS-specific help copy per §10b.
 
-**Phase 2 — Surface B (post-scan hint).** Adds the verification badge and import hint inside scan results. End of phase: users naturally discover the import feature as they hit gaps.
+**Phase 2 — Surface B (post-scan hint) + verification cascade.** Adds the import hint inside scan results AND the three-tier verification cascade that drives the card editor when a set lock is active. End of phase: users naturally discover the import feature as they hit gaps, and the editor surfaces confidence-aware dropdowns + the Pick-from-checklist picker.
 
-7. **Verification matcher** — fuzzy match scanned card → checklist children. Three-state badge (verified / not-found / mismatch).
-8. **Scan-result banner** — "No checklist imported for X" yellow banner with deeplinked import button. Stacked mobile layout per §10c.
-9. **Round-trip pickup** — `checklist-roundtrip.js` localStorage stash + "Continue importing X" banner per §10a.
-10. **BulkScan aggregate banner** — "3 of 30 cards belong to sets without checklists" link to Surface D.
+7. **Verification matcher** — `ChecklistVerificationMatcher` returns `ChecklistMatchResult` with Tier (Verified / BestGuess / NoMatch), candidate list (Tier 3), and per-field confidences. Player-name fuzzy match: Levenshtein ≤ 2 + token overlap.
+8. **`ParallelFamilyService` + `ParallelFamilyCatalog.json`** — bundled catalog of parallels per `(Year, Brand)`; service wraps catalog and serves dropdown options. Sets not in the catalog fall through to free-text Parallel.
+9. **Card schema migration** — `MatchedChecklistCardId` (nullable FK) + `VerificationStatus` enum on `Card`; `AutoAcceptTier1Matches` on `AppSettings`. `dotnet ef migrations add CardChecklistMatch`.
+10. **Card editor enhancements** — Desktop `EditCardView` and Web `Edit.cshtml`: Card # typeahead bound to locked checklist, Subset filter, Parallel dropdown, Serial # unlocking on numbered parallels, autograph auto-check from subset name, three-tier badge with field highlighting (§8d).
+11. **"Pick from checklist" picker** — Desktop `PickFromChecklistDialog`, Web `_PickFromChecklist.cshtml` partial; reachable from Tier 3 banner or "?" icon next to Card # on any tier.
+12. **Scan-result banner** (Surface B) — "No checklist imported for X" yellow banner with deeplinked import button. Stacked mobile layout per §10c.
+13. **Round-trip pickup** — `checklist-roundtrip.js` localStorage stash + "Continue importing X" banner per §10a.
+14. **BulkScan tier collapsing + aggregate banner** — Tier 1 collapses to one-liner, Tier 2 expands uncertain field(s) only, Tier 3 stays expanded with "Defer for later" action; aggregate "3 of 30 cards belong to sets without checklists" link to Surface D.
+15. **Settings → Scan → "Auto-accept Tier 1 matches" toggle** — default off; affects single-card and BulkScan flows when enabled.
 
 **Phase 3 — Surface C (pre-scan set lookup wizard).** The accuracy multiplier. End of phase: power users unlock the prompt-constraining accuracy boost; round-trip-aware import for known-but-not-imported sets.
 
-11. **`KnownSetsCatalog` + `ISetIdentificationService`** — bundled JSON catalog of common modern sets (Year × Sport × Mfr × SetName) as embedded `FlipKit.Core` resource; service wraps catalog + imported sets for typeahead and fuzzy match.
-12. **`SetLockState` + `IScanPromptAugmenter`** — sticky session model; prompt-prefix builder consumed by `OpenRouterScannerService` when a lock is active.
-13. **Set lookup wizard UI** — Desktop `SetLookupWizardView`; Web Bootstrap modal `_SetLookupWizard.cshtml`; mobile bottom-sheet variant per §10c.
-14. **Sticky lock chip + recently-scanned/imported quick-picks** above ScanView / BulkScanView.
-15. **Three-state outcome handling** — A (full lock), B (deeplink + round-trip pickup from Phase 2), C (freeform).
-16. **Optional checklist preview pane** in State A — collapsible "Show first 50 entries".
+16. **`KnownSetsCatalog` + `ISetIdentificationService`** — bundled JSON catalog of common modern sets (Year × Sport × Mfr × SetName) as embedded `FlipKit.Core` resource; service wraps catalog + imported sets for typeahead and fuzzy match.
+17. **`SetLockState` + `IScanPromptAugmenter`** — sticky session model; prompt-prefix builder consumed by `OpenRouterScannerService` when a lock is active.
+18. **Set lookup wizard UI** — Desktop `SetLookupWizardView`; Web Bootstrap modal `_SetLookupWizard.cshtml`; mobile bottom-sheet variant per §10c.
+19. **Sticky lock chip + recently-scanned/imported quick-picks** above ScanView / BulkScanView.
+20. **Three-state outcome handling** — A (full lock), B (deeplink + round-trip pickup from Phase 2), C (freeform).
+21. **Optional checklist preview pane** in State A — collapsible "Show first 50 entries".
 
 **Phase 4 — Surface D (missing-checklist audit).** Retroactive cleanup. End of phase: existing inventory can be brought up to date in one pass.
 
-17. `IChecklistAuditService` in `FlipKit.Core` with the §9b query.
-18. **Desktop:** Settings → Checklists → "Find missing checklists" view.
-19. **Web:** `/Settings/Checklists/Missing` view; card-per-row mobile layout per §10c.
-20. **"Re-verify all cards"** action — bulk matcher pass over the `Cards` table to refresh verification status.
+22. `IChecklistAuditService` in `FlipKit.Core` with the §9b query.
+23. **Desktop:** Settings → Checklists → "Find missing checklists" view.
+24. **Web:** `/Settings/Checklists/Missing` view; card-per-row mobile layout per §10c.
+25. **"Re-verify all cards"** action — bulk matcher pass over the `Cards` table to refresh `VerificationStatus` and `MatchedChecklistCardId`.
 
 ## 12. Risks & open questions
 
@@ -437,6 +574,7 @@ Phase the work so each phase is shippable on its own — stops half-done work fr
 
 **Decision log:**
 
+- 2026-05-02 (latest) — Designed the post-scan verification cascade in detail (§8d). Three-tier match (Verified / BestGuess / NoMatch) drives the editor UI: Tier 1 = green ✓ + one-click `[Save]`; Tier 2 = yellow ⚠ with uncertain fields highlighted; Tier 3 = amber Pick-from-checklist picker with fuzzy-ranked candidates. Card editor gets typeahead Card # bound to locked checklist, Subset filter, Parallel dropdown driven by new bundled `ParallelFamilyCatalog.json`, Serial # that unlocks for numbered parallels, and autograph auto-check from subset name. New `Card.MatchedChecklistCardId` (FK) + `Card.VerificationStatus` (enum) fields plus `AppSettings.AutoAcceptTier1Matches` toggle. **Always-require-`[Save]` default with opt-in "Auto-accept Tier 1" toggle in Settings → Scan.** BulkScan collapses rows by tier with a "Defer for later" action on Tier 3. User-confirmed: ship bundled `ParallelFamilyCatalog.json` in Phase 1 (factual data, same legal posture as `KnownSetsCatalog`); player-name fuzzy threshold stays at Levenshtein ≤ 2 + token overlap. Added 9 steps to Phase 2 build order; renumbered Phases 3–4 accordingly. Effort estimate unchanged (4-5 weeks) — the cascade fits within the Phase 2 envelope already allocated.
 - 2026-05-02 (later) — Expanded Surface C from a "pick from imported sets" dropdown to a full set-lookup wizard with chip-based quick picks (recently scanned, imported), a Year × Sport × Manufacturer × Set wizard, and three-state outcome handling (imported / known-but-not-imported / freeform). Adds `KnownSetsCatalog` (embedded JSON), `ISetIdentificationService`, `SetLockState`, and `IScanPromptAugmenter` to the architecture. Added §10 "Mobile / Web-specific considerations" covering round-trip state on mobile (localStorage stash), iOS file-handling friction, per-surface mobile layout (bottom sheets, card-per-row tables), touch targets, cross-device propagation via WAL, and Tailscale upload paths. Effort estimate revised from 3-4 weeks to 4-5 weeks. Renumbered §10–§13 to §11–§14.
 - 2026-05-02 — Expanded scope from a single Settings import view to four surfaces: (A) Settings home, (B) post-scan contextual hint with verification badge, (C) optional pre-scan set-lock that constrains the AI prompt, (D) Settings → "Find missing checklists" audit over existing inventory. Phased the build so each surface ships independently. Added a shared on-screen help panel (§3b) reachable from every surface — discoverability is half the value of this feature. Effort estimate revised from 2-3 weeks to 3-4 weeks.
 - 2026-05-01 — Researched Beckett (commercial scraping forbidden), TCDB (commercial scraping forbidden, no API), eBay Browse aspect refinements (viable but limited to active-listing aspects, not authoritative checklists), and Checklist Insider (xlsx files exist; user-driven import is the legally-clean path). Settled on user-driven Excel import as the v1 strategy.
