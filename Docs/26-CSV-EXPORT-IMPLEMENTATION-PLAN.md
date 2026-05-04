@@ -257,13 +257,16 @@ Whatnot ships first (lower risk, all-or-nothing rejection model), eBay second (h
 ## 12. Implementation summary — what shipped (`feature/csv-export-overhaul`)
 
 > **Status as of last commit on the branch:** code complete, manual smoke runs against real Whatnot / eBay accounts pending. 11 commits, foundation pieces individually smoke-tested via reflection against the compiled assembly.
+>
+> **2026-05-04 update (Phase 6):** `CardListerDbContext` was renamed to `FlipKitDbContext` in refactor Phase 3. The "what shipped" file paths below otherwise still match production. The Phase 4 test work added direct unit tests for `EbayExporter`, `WhatnotExporter`, `ExportValidator`, `SkuGenerator`, `ConditionMapper`, `ShippingProfileNormalizer`, and `WhatnotValuesProvider` — replacing the original "smoke tests via reflection" approach. See [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for the full test surface.
 
 ### Files that landed
 
 ```
 FlipKit.Core/
 ├── Data/
-│   ├── CardListerDbContext.cs          [edited]  HasIndex(Sku).IsUnique() added
+│   ├── FlipKitDbContext.cs             [edited]  HasIndex(Sku).IsUnique() added
+│   │                                    (was CardListerDbContext.cs, renamed in refactor Phase 3)
 │   └── SchemaUpdater.cs                [edited]  EnsureExportColumnsAsync — Sku, ImageUrl3..8, ImagePath3..8, partial unique idx
 ├── Models/
 │   ├── AppSettings.cs                  [edited]  SkuPrefix/SkuPadWidth + EbaySellerLocation/EbayDispatchTimeMax/EbayReturnsAccepted/EbayUseVerifyAdd

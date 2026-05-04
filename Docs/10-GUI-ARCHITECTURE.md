@@ -212,12 +212,13 @@ FlipKit.App/
 │   ├── AppStyles.axaml                # Brand colors, typography, spacing
 │   └── Controls.axaml                 # Custom control templates
 │
-├── Converters/
+├── Converters/                         # Authoritative list lives in
+│   │                                    # FlipKit.Desktop/Converters/; sample shown below
 │   ├── PriceAgeToColorConverter.cs    # Days since priced → 🟢🟡🔴 brush
 │   ├── StatusToBadgeConverter.cs      # CardStatus → display string/color
-│   ├── BoolToVisibilityConverter.cs   # bool → IsVisible
 │   ├── CurrencyFormatConverter.cs     # decimal → "$12.99"
 │   └── NullToVisibilityConverter.cs   # null check → show/hide
+│   # NOTE: BoolToVisibilityConverter was deleted in Phase 3 — no XAML reference found.
 │
 └── Assets/
     ├── logo.png

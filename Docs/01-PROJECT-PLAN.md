@@ -153,8 +153,11 @@ FlipKit/
 │   │   └── Converters/                    # Value converters for XAML bindings
 │   │       ├── PriceAgeToColorConverter.cs     # 🟢🟡🔴 logic
 │   │       ├── StatusToBadgeConverter.cs
-│   │       ├── BoolToVisibilityConverter.cs
 │   │       └── CurrencyFormatConverter.cs
+│   │   # NOTE: this is the original planning doc. The actual converter set
+│   │   # in FlipKit.Desktop/Converters/ has evolved — see that directory
+│   │   # for the current list. BoolToVisibilityConverter was deleted in
+│   │   # Phase 3 (no XAML reference found).
 │   │
 │   ├── FlipKit.Core/                   # ViewModels + business logic (no UI references)
 │   │   ├── ViewModels/
