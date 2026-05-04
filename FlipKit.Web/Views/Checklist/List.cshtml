@@ -1,0 +1,61 @@
+@model List<FlipKit.Core.Models.SetChecklist>
+@{
+    ViewData["Title"] = "Checklists";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="mb-0"><i class="bi bi-list-check"></i> Checklists</h2>
+                <a asp-action="Import" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Import from Excel
+                </a>
+            </div>
+            @if (TempData["StatusMessage"] is string status)
+            {
+                <div class="alert alert-success">@status</div>
+            }
+            @if (Model.Count == 0)
+            {
+                <div class="alert alert-info">
+                    No checklists yet. <a asp-action="Import">Import your first one</a> from a Checklist Insider .xlsx file.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Year</th>
+                                <th>Manufacturer</th>
+                                <th>Brand</th>
+                                <th>Sport</th>
+                                <th>Cards</th>
+                                <th>Variations</th>
+                                <th>Source</th>
+                                <th>Imported</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var c in Model)
+                        {
+                            <tr>
+                                <td>@c.Year</td>
+                                <td>@c.Manufacturer</td>
+                                <td>@c.Brand</td>
+                                <td>@c.Sport</td>
+                                <td>@(c.Cards?.Count ?? 0)</td>
+                                <td>@(c.KnownVariations?.Count ?? 0)</td>
+                                <td><span class="badge bg-secondary">@c.DataSource</span></td>
+                                <td>@(c.ImportedAt?.ToString("yyyy-MM-dd") ?? "—")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

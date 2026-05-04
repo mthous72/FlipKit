@@ -1,0 +1,129 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FlipKit.Desktop.ViewModels"
+        xmlns:models="using:FlipKit.Core.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="720" d:DesignHeight="640"
+        x:Class="FlipKit.Desktop.Views.ImportChecklistDialog"
+        x:DataType="vm:ImportChecklistViewModel"
+        Width="720" Height="640"
+        WindowStartupLocation="CenterOwner"
+        Title="Import Checklist from Excel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20,20,20,32">
+
+        <!-- Header / explainer -->
+        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,12">
+            <TextBlock Text="Import Checklist from Excel" FontSize="20" FontWeight="Bold"/>
+            <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12">
+                Review the parsed metadata below and edit anything we got wrong, then click Import.
+                Files come from checklistinsider.com under your personal-use download license — FlipKit only parses the file you supplied.
+            </TextBlock>
+            <Button Content="Browse Checklist Insider"
+                    Command="{Binding OpenChecklistInsiderCommand}"
+                    HorizontalAlignment="Left" Padding="10,6" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Metadata + summary -->
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                CornerRadius="6" Padding="14" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="14">
+                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="3">
+                    <TextBlock Text="Year" FontWeight="SemiBold" FontSize="12"/>
+                    <NumericUpDown Value="{Binding Year}" Minimum="1990" Maximum="2099" FormatString="0"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="1" Spacing="3">
+                    <TextBlock Text="Sport" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding Sport}" Watermark="e.g. Football"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="3">
+                    <TextBlock Text="Manufacturer" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding Manufacturer}" Watermark="e.g. Panini"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3">
+                    <TextBlock Text="Brand" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding Brand}" Watermark="e.g. Mosaic"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Spacing="3">
+                    <TextBlock Text="Set Name (display)" FontWeight="SemiBold" FontSize="12"/>
+                    <TextBox Text="{Binding SetName}" Watermark="Set display name (optional)"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="20" Margin="0,4,0,0">
+                    <TextBlock>
+                        <Run Text="Cards parsed: " FontWeight="SemiBold"/>
+                        <Run Text="{Binding CardCount}"/>
+                    </TextBlock>
+                    <TextBlock>
+                        <Run Text="Subsets: " FontWeight="SemiBold"/>
+                        <Run Text="{Binding SubsetCount}"/>
+                    </TextBlock>
+                    <TextBlock>
+                        <Run Text="Format: " FontWeight="SemiBold"/>
+                        <Run Text="{Binding DetectedFormat}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Preview rows + warnings -->
+        <Grid Grid.Row="2" RowDefinitions="*,Auto,Auto">
+            <Border Grid.Row="0"
+                    BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                    CornerRadius="6" Padding="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="First 20 rows" FontWeight="SemiBold"
+                               Margin="12,8" FontSize="12"/>
+                    <DataGrid ItemsSource="{Binding FirstRows}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserResizeColumns="True"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="#" Binding="{Binding CardNumber}" Width="60"/>
+                            <DataGridTextColumn Header="Player" Binding="{Binding PlayerName}" Width="*"/>
+                            <DataGridTextColumn Header="Team" Binding="{Binding Team}" Width="160"/>
+                            <DataGridTextColumn Header="Subset" Binding="{Binding Subset}" Width="200"/>
+                            <DataGridCheckBoxColumn Header="Auto" Binding="{Binding IsAutograph}" Width="50"/>
+                            <DataGridCheckBoxColumn Header="Par" Binding="{Binding IsParallel}" Width="50"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Row="1" Margin="0,8,0,0"
+                    Background="#FFF3E0"
+                    CornerRadius="6" Padding="12,8"
+                    IsVisible="{Binding Warnings.Count}">
+                <StackPanel>
+                    <TextBlock Text="Warnings" FontWeight="SemiBold" FontSize="12" Foreground="#212121"/>
+                    <ItemsControl ItemsSource="{Binding Warnings}" MaxHeight="80">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontSize="11" Opacity="0.85" Foreground="#212121"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Grid.Row="2" Margin="0,8,0,0"
+                       Text="{Binding StatusMessage}"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       FontSize="12" Opacity="0.8"/>
+        </Grid>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center" Opacity="0.5" FontSize="11"
+                       Text="{Binding FileName}"/>
+            <Button Grid.Column="1" Content="Cancel" Click="OnCancelClick" Padding="20,8" Margin="0,0,8,0"/>
+            <Button Grid.Column="2" Content="Import"
+                    Click="OnImportClick"
+                    Classes="accent"
+                    Padding="24,8"
+                    IsEnabled="{Binding !IsCommitting}"/>
+        </Grid>
+    </Grid>
+</Window>

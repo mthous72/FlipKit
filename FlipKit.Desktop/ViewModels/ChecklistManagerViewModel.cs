@@ -1,12 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using FlipKit.Core.Models;
 using FlipKit.Core.Services;
+using FlipKit.Desktop.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FlipKit.Desktop.ViewModels
@@ -15,6 +21,8 @@ namespace FlipKit.Desktop.ViewModels
     {
         private readonly IChecklistLearningService _checklistService;
         private readonly IFileDialogService _fileDialogService;
+        private readonly IChecklistImportService _excelImportService;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ChecklistManagerViewModel> _logger;
 
         [ObservableProperty] private ObservableCollection<SetChecklist> _checklists = new();
@@ -37,10 +45,14 @@ namespace FlipKit.Desktop.ViewModels
         public ChecklistManagerViewModel(
             IChecklistLearningService checklistService,
             IFileDialogService fileDialogService,
+            IChecklistImportService excelImportService,
+            IServiceProvider serviceProvider,
             ILogger<ChecklistManagerViewModel> logger)
         {
             _checklistService = checklistService;
             _fileDialogService = fileDialogService;
+            _excelImportService = excelImportService;
+            _serviceProvider = serviceProvider;
             _logger = logger;
         }
 
@@ -61,7 +73,10 @@ namespace FlipKit.Desktop.ViewModels
                 TotalCards = all.Sum(c => c.Cards?.Count ?? 0);
                 SeededCount = all.Count(c => c.DataSource == "seed");
                 LearnedCount = all.Count(c => c.DataSource == "learned");
-                ImportedCount = all.Count(c => c.DataSource == "imported" || c.DataSource == "mixed");
+                ImportedCount = all.Count(c =>
+                    c.DataSource == "imported"
+                    || c.DataSource == "mixed"
+                    || c.DataSource == "checklist-insider");
             }
             catch (Exception ex)
             {
@@ -142,6 +157,47 @@ namespace FlipKit.Desktop.ViewModels
             {
                 _logger.LogError(ex, "Export failed");
                 StatusMessage = "Export failed";
+            }
+        }
+
+        [RelayCommand]
+        private async Task ImportFromExcelAsync()
+        {
+            try
+            {
+                var filePath = await _fileDialogService.OpenFileAsync(
+                    "Import Checklist Insider Excel File",
+                    new[] { "xlsx" });
+                if (string.IsNullOrEmpty(filePath)) return;
+
+                ChecklistImportPreview preview;
+                using (var stream = File.OpenRead(filePath))
+                {
+                    preview = _excelImportService.Parse(stream, Path.GetFileName(filePath));
+                }
+
+                var dialogVm = _serviceProvider.GetRequiredService<ImportChecklistViewModel>();
+                dialogVm.LoadPreview(preview);
+
+                var dialog = new ImportChecklistDialog(dialogVm);
+                var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+
+                bool committed = false;
+                if (owner != null)
+                    committed = await dialog.ShowDialog<bool>(owner);
+                else
+                    dialog.Show();
+
+                if (committed)
+                {
+                    StatusMessage = $"Imported {dialogVm.CommitResult?.CardsImported ?? 0} cards from {dialogVm.FileName}.";
+                    await LoadAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Excel checklist import failed");
+                StatusMessage = $"Excel import failed: {ex.Message}";
             }
         }
 

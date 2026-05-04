@@ -391,3 +391,8 @@ appsettings.Development.json
 .idea/
 *.sln.iml
 /.claude/settings.local.json
+
+# Checklist Insider .xlsx files — never commit. Per ADR-004 / 28-CHECKLIST-INSIDER-IMPORT-PLAN.md §2,
+# user-downloaded files stay local; FlipKit ships parser code only.
+Docs/References/*.xlsx
+FlipKit.Core.Tests/Fixtures/Checklists/*.xlsx

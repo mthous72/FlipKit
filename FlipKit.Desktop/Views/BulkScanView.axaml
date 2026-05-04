@@ -12,7 +12,7 @@
         <conv:FilePathToBitmapConverter x:Key="FilePathToBitmapConverter"/>
     </UserControl.Resources>
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24,24,24,60">
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Margin="0,0,0,12">

@@ -19,6 +19,15 @@ namespace FlipKit.Core.Models
         [JsonPropertyName("subset")]
         public string? Subset { get; set; }
 
+        [JsonPropertyName("is_autograph")]
+        public bool IsAutograph { get; set; }
+
+        [JsonPropertyName("is_parallel")]
+        public bool IsParallel { get; set; }
+
+        [JsonPropertyName("is_insert")]
+        public bool IsInsert { get; set; }
+
         [JsonPropertyName("source")]
         public string Source { get; set; } = "seed";
     }

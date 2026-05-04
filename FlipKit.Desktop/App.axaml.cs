@@ -138,6 +138,13 @@ namespace FlipKit.Desktop
                 // process lifetime. See AUDIT-2026-05 §4 (D1) for the captive-dependency bug.
                 services.AddScoped<IVariationVerifier, VariationVerifierService>();
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
+                // Phase 1 of the Checklist Insider import work — parser + service that turns
+                // a user-supplied .xlsx into a SetChecklist row. Singletons because nothing
+                // here owns DbContext directly; the service resolves a scoped DbContext per
+                // commit via IServiceProvider.
+                services.AddSingleton<IChecklistFileMetadataExtractor, ChecklistFileMetadataExtractor>();
+                services.AddSingleton<IExcelChecklistImporter, ExcelChecklistImporter>();
+                services.AddSingleton<IChecklistImportService, ChecklistImportService>();
                 services.AddScoped<ISoldPriceService, Point130SoldPriceService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
 
@@ -153,6 +160,7 @@ namespace FlipKit.Desktop
                 services.AddTransient<SetupWizardViewModel>();
                 services.AddTransient<RepriceViewModel>();
                 services.AddTransient<ChecklistManagerViewModel>();
+                services.AddTransient<ImportChecklistViewModel>();
                 services.AddTransient<EditCardViewModel>();
 
                 // Navigation Service (must be after MainWindowViewModel)

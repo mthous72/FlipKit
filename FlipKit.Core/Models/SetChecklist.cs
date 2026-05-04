@@ -16,5 +16,6 @@ namespace FlipKit.Core.Models
         public DateTime CachedAt { get; set; } = DateTime.UtcNow;
         public string DataSource { get; set; } = "seed";
         public DateTime LastEnrichedAt { get; set; } = DateTime.MinValue;
+        public DateTime? ImportedAt { get; set; }
     }
 }

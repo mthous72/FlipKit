@@ -40,7 +40,10 @@
 
         <!-- Toolbar -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
-            <Button Content="Import" Command="{Binding ImportCommand}" Padding="16,8"/>
+            <Button Content="Import (JSON)" Command="{Binding ImportCommand}" Padding="16,8"/>
+            <Button Content="Import from Excel..." Command="{Binding ImportFromExcelCommand}"
+                    Padding="16,8"
+                    ToolTip.Tip="Import a Checklist Insider .xlsx (download it yourself from checklistinsider.com first)."/>
             <Button Content="Export" Command="{Binding ExportCommand}"
                     IsEnabled="{Binding SelectedChecklist, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Padding="16,8"/>

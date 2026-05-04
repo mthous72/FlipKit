@@ -12,7 +12,9 @@
         <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
     </UserControl.Resources>
 
-    <ScrollViewer Padding="24,24,24,60">
+    <ScrollViewer Padding="24,24,24,24"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
         <StackPanel Spacing="24" MaxWidth="700">
 
             <TextBlock Text="Settings" FontSize="24" FontWeight="Bold"/>
@@ -606,7 +608,8 @@
 
             <!-- Legal Disclaimer -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
-                    CornerRadius="8" Padding="20" Background="{DynamicResource SystemChromeLowColor}">
+                    CornerRadius="8" Padding="20"
+                    Background="{DynamicResource SystemChromeLowColor}">
                 <StackPanel Spacing="8">
                     <TextBlock Text="⚠️ Important Legal Notice" FontSize="16" FontWeight="SemiBold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
@@ -622,6 +625,12 @@
                     </TextBlock>
                 </StackPanel>
             </Border>
+
+            <!-- Bottom scroll spacer — keeps the disclaimer fully visible above the
+                 viewport edge regardless of window height. Avalonia's ScrollViewer
+                 doesn't always include trailing Margin in its measured content height,
+                 so an explicit zero-content Border is the most reliable buffer. -->
+            <Border Height="60" IsHitTestVisible="False"/>
 
         </StackPanel>
     </ScrollViewer>

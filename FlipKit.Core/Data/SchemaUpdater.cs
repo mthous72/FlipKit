@@ -128,6 +128,9 @@ namespace FlipKit.Core.Data
 
                 if (!columns.Contains("LastEnrichedAt"))
                     await db.Database.ExecuteSqlRawAsync("ALTER TABLE set_checklists ADD COLUMN LastEnrichedAt TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'");
+
+                if (!columns.Contains("ImportedAt"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE set_checklists ADD COLUMN ImportedAt TEXT");
             }
             finally
             {

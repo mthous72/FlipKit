@@ -79,6 +79,12 @@ builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on Db
 builder.Services.AddSingleton<IImageUploadService, ImgBBUploadService>();
 builder.Services.AddScoped<IVariationVerifier, VariationVerifierService>(); // Depends on DbContext
 builder.Services.AddSingleton<IChecklistLearningService, ChecklistLearningService>(); // Uses IServiceProvider to create scopes
+// Phase 1 of the Checklist Insider import work — parser + service that turn user-supplied
+// .xlsx files into SetChecklist rows. Singleton because nothing here owns DbContext directly;
+// the service resolves a scoped DbContext per commit via IServiceProvider.
+builder.Services.AddSingleton<IChecklistFileMetadataExtractor, ChecklistFileMetadataExtractor>();
+builder.Services.AddSingleton<IExcelChecklistImporter, ExcelChecklistImporter>();
+builder.Services.AddSingleton<IChecklistImportService, ChecklistImportService>();
 builder.Services.AddScoped<ISoldPriceService, Point130SoldPriceService>(); // Depends on DbContext
 // Note: IEbayBrowseService not yet implemented, will add when ebay-browse-api feature merges
 

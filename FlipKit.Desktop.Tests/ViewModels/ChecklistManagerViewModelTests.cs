@@ -1,6 +1,7 @@
 using FlipKit.Core.Models;
 using FlipKit.Core.Services;
 using FlipKit.Desktop.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -10,9 +11,13 @@ public class ChecklistManagerViewModelTests
 {
     private static ChecklistManagerViewModel Create(
         IChecklistLearningService? svc = null,
-        IFileDialogService? dialog = null) =>
+        IFileDialogService? dialog = null,
+        IChecklistImportService? excel = null,
+        IServiceProvider? provider = null) =>
         new(svc ?? Substitute.For<IChecklistLearningService>(),
             dialog ?? Substitute.For<IFileDialogService>(),
+            excel ?? Substitute.For<IChecklistImportService>(),
+            provider ?? new ServiceCollection().BuildServiceProvider(),
             NullLogger<ChecklistManagerViewModel>.Instance);
 
     private static List<SetChecklist> SampleChecklists() => new()

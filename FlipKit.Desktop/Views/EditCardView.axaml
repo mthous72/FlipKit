@@ -249,7 +249,7 @@
 
         <!-- Bottom Button Row -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8"
-                    Margin="24,8,24,24" HorizontalAlignment="Left">
+                    Margin="24,8,24,60" HorizontalAlignment="Left">
             <Button Content="Save Changes" Command="{Binding SaveCommand}"
                     IsEnabled="{Binding CardDetail, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Classes="accent" Padding="20,10"/>

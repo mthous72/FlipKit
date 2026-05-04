@@ -1,0 +1,171 @@
+@model FlipKit.Web.Models.ChecklistImportViewModel
+@{
+    ViewData["Title"] = "Import Checklist";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-9 mx-auto">
+            <h2 class="mb-3"><i class="bi bi-file-earmark-spreadsheet"></i> Import Checklist from Excel</h2>
+            <p class="text-muted mb-4">
+                Import a Checklist Insider <code>.xlsx</code> to verify scans against the real set list and
+                unlock parallel/insert detection. FlipKit only parses the file you supply — we don't pull
+                anything from checklistinsider.com directly.
+            </p>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <a href="https://www.checklistinsider.com/" target="_blank" class="btn btn-outline-primary">
+                        <i class="bi bi-box-arrow-up-right"></i> Browse Checklist Insider
+                    </a>
+                    <button class="btn btn-link" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#howItWorks" aria-expanded="false">
+                        How does this work?
+                    </button>
+                    <div id="howItWorks" class="collapse mt-3">
+                        <ol class="mb-2">
+                            <li>Open <a href="https://www.checklistinsider.com/" target="_blank">checklistinsider.com</a> and sign in (free, personal-use download).</li>
+                            <li>Search for the set you want, click the Excel download link.</li>
+                            @if (Model.IsIosClient)
+                            {
+                                <li>
+                                    On iPhone/iPad: long-press the link → <strong>Save to Files</strong> →
+                                    pick <em>Downloads</em> (or anywhere you'll find it again).
+                                </li>
+                                <li>
+                                    Come back to this page, tap <strong>Choose File</strong> → <strong>Browse</strong>
+                                    → <em>Files</em> → <em>Downloads</em>, and select the .xlsx.
+                                </li>
+                            }
+                            else
+                            {
+                                <li>Save the file somewhere you can find it.</li>
+                                <li>Come back here, click <strong>Choose File</strong>, and pick the .xlsx.</li>
+                            }
+                            <li>Review the metadata FlipKit detected, fix anything wrong, then click <strong>Import</strong>.</li>
+                        </ol>
+                        <p class="text-muted small mb-0">
+                            Imported checklists are saved locally and shared across all your FlipKit devices on
+                            the same database. Your imports stay private — nothing is uploaded to a third party.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.CommitResult is { Success: true })
+            {
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i> @Model.StatusMessage
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+            {
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i> @Model.StatusMessage
+                </div>
+            }
+
+            <form method="post" enctype="multipart/form-data" asp-action="Import">
+                @Html.AntiForgeryToken()
+
+                <div class="card mb-3">
+                    <div class="card-header"><strong>Step 1 — Choose your file</strong></div>
+                    <div class="card-body">
+                        <input asp-for="UploadedFile" type="file" accept=".xlsx" class="form-control" required />
+                        <small class="text-muted">Only .xlsx files are supported. Max 10 MB.</small>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header"><strong>Step 2 — Override metadata (optional)</strong></div>
+                    <div class="card-body">
+                        <p class="text-muted small">
+                            Leave these blank to let FlipKit guess from the filename. Fill them in if you've
+                            renamed the file, or if the preview shows something wrong.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-sm-3">
+                                <label asp-for="Year" class="form-label">Year</label>
+                                <input asp-for="Year" type="number" min="1990" max="2099" class="form-control" placeholder="e.g. 2025" />
+                            </div>
+                            <div class="col-sm-3">
+                                <label asp-for="Sport" class="form-label">Sport</label>
+                                <input asp-for="Sport" type="text" class="form-control" placeholder="e.g. Football" />
+                            </div>
+                            <div class="col-sm-3">
+                                <label asp-for="Manufacturer" class="form-label">Manufacturer</label>
+                                <input asp-for="Manufacturer" type="text" class="form-control" placeholder="e.g. Panini" />
+                            </div>
+                            <div class="col-sm-3">
+                                <label asp-for="Brand" class="form-label">Brand</label>
+                                <input asp-for="Brand" type="text" class="form-control" placeholder="e.g. Mosaic" />
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="SetName" class="form-label">Set Name (display)</label>
+                                <input asp-for="SetName" type="text" class="form-control" placeholder="e.g. 2025 Panini Mosaic Football" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-upload"></i> Import
+                </button>
+                <a asp-action="List" class="btn btn-outline-secondary btn-lg">View imported checklists</a>
+            </form>
+
+            @if (Model.Preview != null)
+            {
+                <hr class="my-4" />
+                <h4>Preview</h4>
+                <p class="text-muted mb-2">
+                    Detected format: <code>@Model.Preview.DetectedFormat</code> ·
+                    @Model.Preview.CardCount cards · @Model.Preview.SubsetCount subsets
+                </p>
+                @if (Model.Preview.Warnings.Any())
+                {
+                    <div class="alert alert-warning">
+                        <strong>Warnings (@Model.Preview.Warnings.Count):</strong>
+                        <ul class="mb-0">
+                            @foreach (var warning in Model.Preview.Warnings.Take(20))
+                            {
+                                <li>@warning</li>
+                            }
+                            @if (Model.Preview.Warnings.Count > 20)
+                            {
+                                <li>… and @(Model.Preview.Warnings.Count - 20) more.</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>Team</th>
+                                <th>Subset</th>
+                                <th>Auto</th>
+                                <th>Parallel</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var card in Model.Preview.Cards.Take(20))
+                            {
+                                <tr>
+                                    <td>@card.CardNumber</td>
+                                    <td>@card.PlayerName</td>
+                                    <td>@card.Team</td>
+                                    <td>@card.Subset</td>
+                                    <td>@(card.IsAutograph ? "✓" : "")</td>
+                                    <td>@(card.IsParallel ? "✓" : "")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

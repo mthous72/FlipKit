@@ -452,7 +452,7 @@
 
         <!-- Bottom Button Row -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8"
-                    Margin="24,8,24,24" HorizontalAlignment="Left">
+                    Margin="24,8,24,60" HorizontalAlignment="Left">
             <Button Content="Scan Card" Command="{Binding ScanCardCommand}"
                     IsEnabled="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                     Classes="accent" Padding="20,10"/>
