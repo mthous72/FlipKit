@@ -105,7 +105,7 @@ public class ChecklistLearningServiceTests
 
     // === LearnFromCardAsync — enrich existing ===
 
-    [Fact(Skip = "Blocked on production bug — see AUDIT-2026-05 §5.10. SetChecklist.Cards and KnownVariations are JSON-converted without a ValueComparer, so EF Core can't detect collection mutations. Add() calls are silently lost. Enable this test once Phase 5 fixes the conversion config.")]
+    [Fact]
     public async Task Should_AppendNewCardAndVariation_When_ChecklistAlreadyExists()
     {
         // Test the enrichment code path by learning two distinct cards from the same set.

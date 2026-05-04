@@ -1,7 +1,7 @@
 # FlipKit Refactor — Status Checkpoint
 
-**Snapshot date:** 2026-05-04
-**Master HEAD:** `790687e` (Merge refactor/phase-4b-core-data-tests)
+**Snapshot date:** 2026-05-04 (updated post-Phase 4.5)
+**Master HEAD:** `938cd75` (CHANGELOG history pointer); push pipeline now linear (origin master rebased to drop merge commits per branch protection rule)
 **Plan:** [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md)
 **Audit:** [AUDIT-2026-05.md](AUDIT-2026-05.md)
 
@@ -20,16 +20,17 @@ This is a **breakpoint snapshot** — a single doc to read when picking the work
 | 3 | Trivial Code Cleanup | `refactor/phase-3-trivial-code` | ✓ | 1 | Renamed DbContext file; deleted 5 dead-code targets + 925 lines; 0 errors / 0 warnings (was 6) |
 | 4a | Core Tests — helpers + stateless services | `refactor/phase-4a-core-tests` | ✓ | 1 | xUnit + NSubstitute scaffolded; 128 tests, all helpers ≥90%, all stateless services ≥70% |
 | 4b | Core Tests — data + scanner services | `refactor/phase-4b-core-data-tests` | ✓ | 1 | +117 tests (245 total); SQLite-in-memory + HTTP-mock patterns validated; 2 production bugs surfaced |
+| 4.5 | Bug-fix interlude (D3 ValueComparer) | `refactor/phase-4.5-checklist-bug-fix` | ✓ | 1 | Out-of-band fix for SetChecklist mutation bug; un-skipped the blocked test; suite now 246/246 |
 
-**Master is 11 commits ahead of `origin/master` and has NOT been pushed.** Push timing is a separate decision — likely after Phase 4 (full test coverage) is complete.
+**Master is in sync with `origin/master`.** Branch protection on origin rejects merge commits, so the original 13-commit merge-heavy local history was rebased to a linear 9-commit chain before pushing. Going forward, every phase merge to local master gets `git push origin master` after a clean rebase if needed.
 
 ### Test suite snapshot
 
 ```
 FlipKit.Core.Tests
   Total:    246 tests
-  Passing:  245
-  Skipped:    1   (blocked on production bug — SetChecklist ValueComparer)
+  Passing:  246
+  Skipped:    0   (the prior skip was un-blocked by Phase 4.5)
   Failing:    0
   Runtime: ~1 second
   Build:    0 errors, 0 warnings
@@ -58,7 +59,7 @@ These are real production issues uncovered by Phase 1 audit + Phase 4 test work.
 |---|---|---|---|---|
 | D1 | **High** | `ISoldPriceService` registered as `Singleton` in Desktop with a `Scoped` DbContext dep — captive-dependency bug. Web is correct. | §4 | §7.1 |
 | D2 | **High** | `OpenRouterScannerService.IsRetryableHttpError` checks for digit substrings (`"500"`) but `HttpStatusCode.ToString()` produces enum names (`"InternalServerError"`). Fallback chain never triggers for 5xx/429 — only 404 actually works. | §5.9 | §7.8 |
-| D3 | **High** | `SetChecklist.Cards` and `KnownVariations` are JSON-converted via `HasConversion(serialize, deserialize)` without a `ValueComparer`. EF Core can't detect collection mutations on JSON-converted properties. `ChecklistLearningService`'s "enrich existing checklist" path silently fails in production — directly blocks Roadmap #1 Checklist Insider feature. | §5.10 | §7.9 |
+| D3 | **High — FIXED** | `SetChecklist.Cards` and `KnownVariations` are JSON-converted via `HasConversion(serialize, deserialize)` without a `ValueComparer`. EF Core can't detect collection mutations on JSON-converted properties. `ChecklistLearningService`'s "enrich existing checklist" path silently fails in production — directly blocks Roadmap #1 Checklist Insider feature. **Fixed in Phase 4.5.** | §5.10 | §7.9 |
 | D4 | Medium | `OpenRouterModelCatalog.GetAsync` returns an empty `ModelCatalog` on fetch failure with a "caller should fall back gracefully" warning, but no caller has a fallback. `OpenRouterScannerService` has the static fallback catalog but in the wrong place. | §5.5 | §7.2 |
 | D5 | Medium | `Docs/25-DISTRIBUTION-PACKAGING.md` referenced `build-web-package.{bat,sh}` and the standalone Web zip distribution path — both deleted in Phase 2. Doc archived whole. | Q1 | Phase 2 §4.1 |
 | D6 | Low | `installer/Linux/`, `installer/Mac/`, `installer/Windows/` were the active installer dirs but the `installer/README.md` documented `flipkit-setup.iss` (v3.0.0, deleted). | §1 | Phase 2 §4.2 |
@@ -122,8 +123,10 @@ When picking back up:
    - Jump to Phase 5.9 (SetChecklist ValueComparer fix) since it unblocks Roadmap #1; this would deviate from the "tests before refactors" sequencing rule but is defensible if Checklist Insider work is queued
 4. **If continuing Phase 4c**: branch `refactor/phase-4c-desktop-tests`. New `FlipKit.Desktop.Tests` project. Different scaffolding from 4a/4b — needs Avalonia test runner config and CommunityToolkit.Mvvm understanding. Per the cadence pattern, validate with one VM (probably `MainWindowViewModel` — smallest and pure navigation) before batching.
 
-### Open questions worth raising at resume
+### Open questions — all resolved
 
-- Does the Phase 5.9 ValueComparer bug (D3) warrant an out-of-band fix *before* Phase 4c? Roadmap #1 is the #1 priority feature and is currently broken in a way users won't notice until it stops working. If yes, this becomes a tiny "Phase 4.5" between 4b and 4c.
-- Should we push the 11 unpushed commits to `origin/master` now, or wait until end of Phase 4? The pattern so far has been "merge per phase, push never" — fine for solo work but risky if the local repo dies.
-- The CHANGELOG.md backfill noted in Phase 2 §4.2 was deliberately punted because we didn't have authoritative version data. Worth a git-log archaeology session before Phase 6, or accept the gap?
+The three open questions raised at the original status checkpoint have been answered and acted on:
+
+- **D3 fix queue** — Yes, jumped via Phase 4.5. Roadmap #1 unblocked. Suite now 246/246 with no skips.
+- **Push to origin** — Yes, pushed. Branch protection rejected merge commits; rebased to linear history (9 commits ahead of original origin) and pushed cleanly. Going forward: rebase + push after every phase.
+- **CHANGELOG backfill** — Skipped per recommendation. Replaced the punch-list note with a git-archaeology pointer (commit `b540c67^` recovers the original `release-notes-v3.x.md` files).

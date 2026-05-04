@@ -60,6 +60,7 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 4 | Full Test Coverage (5 sub-phases 4a–4e) | Medium | 3–4 weeks | In progress (4a/4b done) | xUnit + NSubstitute + Avalonia.Headless + real-SQLite-in-memory across Core / Desktop / Web; meets 80/70/90 targets |
 | 4a | — Core helpers + stateless services | Low | ~1 week | ✓ Done | No DbContext, no mocks. Pure functions over fixture data. |
 | 4b | — Core repository + scanner services | Medium | ~1 week | ✓ Done | First use of real-SQLite + NSubstitute HTTP mocks. |
+| 4.5 | — Bug-fix interlude (D3 ValueComparer) | Low | 30 min | ✓ Done | Out-of-band fix for SetChecklist mutation bug; precondition for Roadmap #1. |
 | 4c | — Desktop ViewModels | Medium | ~1 week | Pending | 12 VMs with mocked Core services. |
 | 4d | — Web controllers + Avalonia.Headless smoke | Medium | ~3-4 days | Pending | `WebApplicationFactory` + 4 UI smoke tests. |
 | 4e | — Coverage gap-fill + CI gate | Low | ~2-3 days | Pending | Coverlet wiring, build-script gate, `REGRESSION-CHECKLIST.md`. |
@@ -473,7 +474,7 @@ While writing scanner tests, the fallback chain logic was found broken for every
 
 **Risk note:** Phase 4b's tests were forced to use 404s to drive fallback behavior since 5xx doesn't actually trigger it. After this fix, the existing scanner tests should still pass (404 path unchanged) but additional 5xx/429 fallback tests should be added.
 
-### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b)
+### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b — **DONE in Phase 4.5**)
 
 While writing ChecklistLearningService tests, the "enrich existing checklist" code path was found to silently lose every mutation. See [AUDIT-2026-05.md §5.10](AUDIT-2026-05.md) for the full diagnosis.
 
@@ -484,6 +485,8 @@ While writing ChecklistLearningService tests, the "enrich existing checklist" co
 **Fix:** Add `ValueComparer<List<T>>` to both conversions (snapshot via JSON serialize/deserialize cycle).
 
 **Phase 4b skip note:** [`ChecklistLearningServiceTests.Should_AppendNewCardAndVariation_When_ChecklistAlreadyExists`] is `[Fact(Skip = ...)]` until this fix lands.
+
+**Resolution:** Fixed out-of-band as Phase 4.5 (bug-fix interlude between 4b and 4c) since this was a precondition for Roadmap #1. Test un-skipped. Plan §7.9 retained for posterity but no work remains here.
 
 ### 7.6 Optional: SchemaUpdater → real EF migrations
 

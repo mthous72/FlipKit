@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace FlipKit.Core.Data
 {
@@ -102,15 +104,28 @@ namespace FlipKit.Core.Data
             setChecklist.HasIndex(s => new { s.Manufacturer, s.Brand, s.Year, s.Sport })
                 .IsUnique();
 
+            // ValueComparer required on JSON-converted collection properties — without it,
+            // EF's change tracker compares by reference and silently misses Add/Remove
+            // mutations to the underlying list. Snapshot via JSON round-trip so the
+            // comparer's "current vs original" check sees the difference. See
+            // AUDIT-2026-05 §5.10 for the bug history.
             setChecklist.Property(s => s.Cards)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => JsonSerializer.Deserialize<List<ChecklistCard>>(v, (JsonSerializerOptions?)null) ?? new List<ChecklistCard>());
+                    v => JsonSerializer.Deserialize<List<ChecklistCard>>(v, (JsonSerializerOptions?)null) ?? new List<ChecklistCard>(),
+                    new ValueComparer<List<ChecklistCard>>(
+                        (l, r) => JsonSerializer.Serialize(l, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(r, (JsonSerializerOptions?)null),
+                        l => l == null ? 0 : JsonSerializer.Serialize(l, (JsonSerializerOptions?)null).GetHashCode(),
+                        l => JsonSerializer.Deserialize<List<ChecklistCard>>(JsonSerializer.Serialize(l, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null) ?? new List<ChecklistCard>()));
 
             setChecklist.Property(s => s.KnownVariations)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>());
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    new ValueComparer<List<string>>(
+                        (l, r) => l != null && r != null && l.SequenceEqual(r),
+                        l => l == null ? 0 : l.Aggregate(0, (h, s) => HashCode.Combine(h, s)),
+                        l => l.ToList()));
 
             // MissingChecklist configuration
             var missingChecklist = modelBuilder.Entity<MissingChecklist>();
