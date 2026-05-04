@@ -26,6 +26,7 @@ This is a **breakpoint snapshot** — a single doc to read when picking the work
 | 4e | Coverage gap-fill + CI gate + regression checklist | `refactor/phase-4e-coverage-gate` | ✓ | 1 | +23 fill-in tests (481 total); XimilarService 51%→79.5%; CI gate wired into build scripts; REGRESSION-CHECKLIST.md committed; **Phase 4 complete** |
 | 5a | Mechanical fixes bundle (DI lifetimes + HttpClient timeout + OpenRouter retry + Settings race) | `refactor/phase-5a-fixes-cleanup` | ✓ | 1 | Closes D1 + D2 + §7.10 Race 1 + §7.3 timeout config. +1 test (482 total). |
 | 5b | OpenRouter catalog consolidation | `refactor/phase-5b-openrouter-catalog` | ✓ | 1 | Closes D4. Static arrays moved to OpenRouterModelDefaults, fallback catalog returned (with IsFallback flag) on fetch failure. +2 tests (484 total). |
+| 5c.1 | NetworkAddressProvider extraction (SettingsViewModel slim-down, Option A) | `refactor/phase-5c-settings-vm-split` | unmerged | 1 | Extracts `INetworkInfoProvider` (Core) + `NetworkAddressProvider` (Desktop) from `SettingsViewModel.UpdateLocalIpAddresses` (~95 lines → ~17). +6 tests (490 total). XAML/existing 169 tests untouched. |
 
 **Master is in sync with `origin/master`.** Branch protection on origin rejects merge commits, so the original 13-commit merge-heavy local history was rebased to a linear 9-commit chain before pushing. Going forward, every phase merge to local master gets `git push origin master` after a clean rebase if needed.
 
@@ -33,15 +34,15 @@ This is a **breakpoint snapshot** — a single doc to read when picking the work
 
 ```
 Combined solution suite (Core + Desktop + Web)
-  Total:    481 tests
-  Passing:  481
+  Total:    490 tests   (+9 since Phase 4e: 5a +1, 5b +2, 5c.1 +6)
+  Passing:  490
   Skipped:    0
   Failing:    0
   Runtime: ~7 seconds
   Build:    0 errors, 0 warnings
 
-  FlipKit.Core.Tests:    264 tests
-  FlipKit.Desktop.Tests: 169 tests
+  FlipKit.Core.Tests:    267 tests
+  FlipKit.Desktop.Tests: 175 tests
   FlipKit.Web.Tests:      48 tests
 
   CI gate: build-installers.ps1 + build-release.ps1 abort if dotnet test fails.
@@ -64,7 +65,7 @@ Below-target carryovers (deferred to Phase 5 work since the surfaces are explici
 | `ChecklistLearningService` | 29.62% | `TryLoadFromSeedData` reads embedded resources (not testable without test fixtures); other gap is in low-traffic export paths. Phase 5 may extract `ISeedDataLoader` as part of Roadmap #1 work. |
 | `VariationVerifierService` | 56.09% | Confirmation-pass paths now covered (43%→56%); remainder is in `ValidateVisualCues` cross-reference logic with many short branches. Acceptable; Phase 5.4 may split out a `VerificationFieldEvaluator` helper. |
 | `ScanViewModel` | 71.17% | Fill-in tests didn't move the needle — gap is in error-handling branches of `LoadModelsAsync` / `SaveCardAsync` and 6+ branches of `AcceptSuggestion`. Phase 5.4 splits this VM. |
-| `SettingsViewModel` | 78.70% | Gap is in `UpdateLocalIpAddresses` (calls `NetworkHelper.GetNetworkInfo()` static — real network IO) and the QR-code generation path. Phase 5.4 splits this VM. |
+| `SettingsViewModel` | 78.70% | Gap is in `UpdateLocalIpAddresses` (calls `NetworkHelper.GetNetworkInfo()` static — real network IO) and the QR-code generation path. Phase 5.4 splits this VM. **Phase 5c.1 update:** the IP/QR/URL logic has been extracted to `NetworkAddressProvider` (separately at ~95% coverage via 6 tests); `UpdateLocalIpAddresses` is now a 17-line pass-through and the historical gap is no longer load-bearing. VM coverage % unchanged because the extracted lines moved out of the VM rather than being newly tested. |
 
 Below-target services from Phase 4b (deferred to Phase 4e gap-fill):
 - `VariationVerifierService` — 43.55% (RunConfirmationPassAsync path untested)
@@ -116,7 +117,7 @@ Phase 4 is now complete (§coverage targets met or carryovers documented). Phase
 |---|---|---|---|
 | 5a | `refactor/phase-5a-fixes-cleanup` | §7.1 DI fixes (2 services) + §7.3 HttpClient timeouts + §7.8 OpenRouter retry filter + §7.10 SettingsViewModel races | 1-2 days |
 | 5b | `refactor/phase-5b-openrouter-catalog` | §7.2 OpenRouter catalog consolidation (closes D4 latent bug) | 1-2 days |
-| 5c | `refactor/phase-5c-settings-vm-split` | §7.4a Split SettingsViewModel (803 lines) | 3-4 days |
+| 5c | `refactor/phase-5c-settings-vm-split` | §7.4a Settings VM slim-down — **scoped to Option A** in execution: extract `NetworkAddressProvider` only (5c.1 ✓ unmerged). Server-coordinator split deferred to keep XAML + 169 existing VM tests untouched. | 1 day actual (vs 3-4 originally estimated for the full split) |
 | 5d | `refactor/phase-5d-bulkscan-vm-split` | §7.4b Split BulkScanViewModel (585 lines) | 2-3 days |
 
 **Dropped from Phase 5** (re-evaluated in Phase 6): InventoryViewModel / ScanViewModel / ExportViewModel splits. All three are testable as-is (Phase 4c coverage), and decomposition opportunities are less obvious without a fresh read. Phase 6 roadmap revamp decides if they're worth it.

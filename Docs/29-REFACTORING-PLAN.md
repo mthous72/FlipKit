@@ -67,7 +67,7 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 5 | Targeted Code Refactors (4 sub-phases 5a–5d) | High | 7–11 days | Pending (Phase 4 done) | DI fixes, OpenRouter catalog, ViewModel splits (Settings + BulkScan only), **+2 prod bugs** |
 | 5a | — Mechanical fixes bundle | Low | 1–2 days | Pending | §7.1 DI lifetime + §7.3 HttpClient timeouts + §7.8 OpenRouter retry + §7.10 Settings VM races |
 | 5b | — OpenRouter catalog consolidation | Medium | 1–2 days | Pending | §7.2 — closes D4 latent empty-catalog bug as side effect |
-| 5c | — SettingsViewModel split (803 lines) | High | 3–4 days | Pending | §7.4a — biggest VM, helper-service extraction |
+| 5c | — SettingsViewModel split (803 lines) | High | 3–4 days est. → 1 day actual | 5c.1 ✓ unmerged (Option A: NetworkAddressProvider only) | §7.4a — full split deferred; only the IP/QR/URL extraction landed to keep XAML + 169 existing VM tests untouched |
 | 5d | — BulkScanViewModel split (585 lines) | High | 2–3 days | Pending | §7.4b — second biggest, queue + rate-limit extraction |
 | 6 | Roadmap Revamp + deferred doc work | None (docs) | 1 day | Pending | Rewrite 17/26/27/28 + §7.5 Doc 07 refresh + InventoryVM/ScanVM/ExportVM split decision |
 
@@ -473,6 +473,34 @@ Note: `SettingsViewModel` was *not* on the user's flagged list but is the worst 
 - `SettingsViewModel` → extract `SettingsValidationService`, `XimilarConnectionTester`, `OpenRouterConnectionTester`, `ImgBBConnectionTester` — most of the bulk is connection-test helpers that don't belong in a ViewModel.
 
 Do these one at a time, on separate branches, each followed by the full manual regression checklist + the new helper unit tests.
+
+#### 7.4a SettingsViewModel — Phase 5c execution log (Option A only)
+
+**Decision:** Of the four extractions originally suggested for SettingsViewModel, only one was executed in Phase 5c. The full split was scoped down to **Option A — `NetworkAddressProvider` extraction only** because:
+
+1. The 169 existing SettingsViewModel tests (Phase 4c) and the bound XAML are stable, and the audit-flagged untestable code (`UpdateLocalIpAddresses` → `NetworkHelper.GetNetworkInfo()` static + Avalonia.Bitmap QR generation) was the single highest-value gap.
+2. Connection-tester extractions would require touching XAML command bindings + rewriting tests — high churn for a marginal readability win.
+3. Phase 6 roadmap revamp will decide whether the connection-tester split is still worth it after the codebase has settled.
+
+**What landed (commit `575bb88`, branch `refactor/phase-5c-settings-vm-split`):**
+- `FlipKit.Core/Services/Interfaces/INetworkInfoProvider.cs` — testable wrapper over the `NetworkHelper.GetNetworkInfo()` static.
+- `FlipKit.Desktop/Services/NetworkAddressProvider.cs` — owns URL building + QR bitmap generation; returns an immutable `NetworkAddressInfo` snapshot.
+- `SettingsViewModel.UpdateLocalIpAddresses` reduced from ~95 lines to ~17 lines (a single `_networkAddresses.GetCurrent(...)` call followed by field application).
+- `SettingsViewModel.GenerateQrCodeBitmap` private method removed entirely.
+- `App.axaml.cs` registers `INetworkInfoProvider` + `INetworkAddressProvider` as singletons.
+- `SettingsViewModelTests` constructor helper takes the new dep with a default empty-snapshot stub — none of the 169 existing tests changed semantics.
+- New `NetworkAddressProviderTests` (6 tests) cover URL build, no-network handling, Tailscale-preferred legacy text, single-network case, and the provider-throws error path.
+
+**What was deliberately not done:**
+- Server-management coordinator extraction (would have required reworking the start/stop commands + the §7.10 race-fix code that already lives in the VM).
+- Connection tester extractions (Ximilar/OpenRouter/ImgBB).
+- Settings validation service.
+
+These are still valid work items but are deferred to Phase 6 re-cost.
+
+**Test count delta:** +6 (484 → 490). All 490 still passing.
+
+**QR bitmap test gap:** `Avalonia.Bitmap` requires `AppBuilder` initialization, which test runs don't have. The provider's `GenerateQrCodeBitmap` swallows that exception and returns null, so all 6 NetworkAddressProvider tests assert `null` for bitmap fields. If a richer headless-Avalonia test layer ever lands, the bitmap-presence assertions can be added then.
 
 ### 7.5 Stale `Docs/07-CLAUDE-CODE-GUIDE.md` — **DEFERRED to Phase 6**
 
