@@ -29,7 +29,7 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 ### 1. User-Driven Checklist Excel Import (Checklist Insider)
 
 **Status:** 📋 Planned
-**Effort:** Medium (2-3 weeks)
+**Effort:** High (4-5 weeks for full surface set + mobile parity + lookup wizard)
 **Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
 
 Let users populate `SetChecklist` by downloading per-set Excel files from [checklistinsider.com](https://www.checklistinsider.com/) themselves and importing the .xlsx into FlipKit via a file picker. Closes the gap where most modern releases aren't pre-seeded.
