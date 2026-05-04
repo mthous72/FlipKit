@@ -480,7 +480,7 @@ This doc still references `MockScannerService` and `BoolToVisibilityConverter` a
 
 **Status:** Deferred from Phase 5 to Phase 6 in the post-Phase 4 regroup. Phase 6 is already doc-heavy (roadmap revamp, ADRs); folding this in keeps Phase 5 focused on code work.
 
-### 7.8 OpenRouterScannerService retry filter fix (BUG, discovered in Phase 4b)
+### 7.8 OpenRouterScannerService retry filter fix (BUG, discovered in Phase 4b — **DONE in Phase 5a**)
 
 While writing scanner tests, the fallback chain logic was found broken for everything except 404 errors. See [AUDIT-2026-05.md §5.9](AUDIT-2026-05.md) for the full diagnosis.
 
@@ -490,15 +490,21 @@ While writing scanner tests, the fallback chain logic was found broken for every
 
 **Risk note:** Phase 4b's tests were forced to use 404s to drive fallback behavior since 5xx doesn't actually trigger it. After this fix, the existing scanner tests should still pass (404 path unchanged) but additional 5xx/429 fallback tests should be added.
 
-### 7.10 SettingsViewModel race conditions (DISCOVERED in Phase 4c)
+**Resolution:** Picked the throw-site fix in Phase 5a. Existing 404 test still passes; new positive test `Should_FallBackOn5xx_When_FirstModelReturnsServerError` confirms 500 → fallback → success.
 
-Two production races surfaced while writing SettingsViewModel tests in Phase 4c — both are explicit Phase 5a fix targets.
+### 7.10 SettingsViewModel race conditions (DISCOVERED in Phase 4c — **PARTIALLY DONE in Phase 5a**)
+
+Two production races surfaced while writing SettingsViewModel tests in Phase 4c.
 
 **Race 1: `UpdateServerStatus` overwrites Start/Stop messages.** A 2-second `Timer` polls `_serverManagement.GetServerStatus()` and refreshes `WebServerStatus` / `ApiServerStatus`. When the user clicks "Start Web Server", the command sets `WebServerStatus = "Running on port 5000"` after a successful start — but if the Timer's poll runs immediately after (before the server's IsWebRunning flag updates), `UpdateServerStatus` sees IsWebRunning=false and overwrites the message back to "Stopped". Visible to the user as the success message vanishing within ~2 seconds. Same shape for failure messages and stop flow.
 
 **Race 2: `OnSelectedDefaultModelChanged` fires during `LoadModelsAsync`.** When `LoadModelsAsync` sets `SelectedDefaultModel = ...`, the partial method handler immediately writes `DefaultModel = value.Value`. Any caller who set `DefaultModel` separately before/during `LoadModelsAsync` gets clobbered. Phase 4c's test helper had to add a null-check to `Substitute.For<ISettingsService>()` to work around this.
 
 **Fix (Phase 5a, before §7.4 split):** Either gate the Timer on a `_serverManagementInProgress` flag, or extract the server-management coordinator to its own object that owns the status state. Either fix should land before Phase 5c's full SettingsViewModel split — splits should refactor *correct* behavior, not codify races.
+
+**Resolution:**
+- **Race 1 — FIXED.** Added `_explicitOperationInProgress` volatile flag set true during Start/Stop commands and gated `UpdateServerStatus`'s message-overwrite branch on it. Logs and IsWebRunning/IsApiRunning continue to update; only the message clobber is gated.
+- **Race 2 — DOCUMENTED, no code change.** On re-examination this is by-design behavior — partial method keeps `DefaultModel` string in sync with `SelectedDefaultModel` ModelOption. Added comment block explaining the binding contract.
 
 ### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b — **DONE in Phase 4.5**)
 
