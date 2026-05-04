@@ -1,0 +1,116 @@
+{
+  "$schema": "ParallelFamilyCatalog v1 — bundled, non-proprietary parallel list per (Year, Brand). Year and Brand match the keys we store on Card and SetChecklist. PrintRun is null for unnumbered. Catalog is best-effort and editable inline; sets not listed fall through to free-text Parallel.",
+  "families": [
+    {
+      "year": 2025,
+      "brand": "Mosaic",
+      "sport": "Football",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Mosaic", "numbered": false },
+        { "name": "Mosaic Black", "numbered": true, "printRun": 1 },
+        { "name": "Mosaic Gold", "numbered": true, "printRun": 10 },
+        { "name": "Mosaic Orange", "numbered": false },
+        { "name": "Mosaic Purple", "numbered": false },
+        { "name": "Mosaic Red", "numbered": true, "printRun": 50 },
+        { "name": "Mosaic Blue", "numbered": false },
+        { "name": "Mosaic Green", "numbered": true, "printRun": 25 },
+        { "name": "Mosaic White", "numbered": true, "printRun": 35 },
+        { "name": "Mosaic Pink Fluorescent", "numbered": true, "printRun": 15 },
+        { "name": "Mosaic Reactive Blue", "numbered": false },
+        { "name": "Mosaic Reactive Yellow", "numbered": false },
+        { "name": "Mosaic Genesis", "numbered": true, "printRun": 1 },
+        { "name": "Mosaic Tessellation", "numbered": true, "printRun": 5 }
+      ]
+    },
+    {
+      "year": 2025,
+      "brand": "Donruss",
+      "sport": "Football",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Press Proof Silver", "numbered": false },
+        { "name": "Press Proof Gold", "numbered": true, "printRun": 99 },
+        { "name": "Press Proof Red", "numbered": true, "printRun": 25 },
+        { "name": "Press Proof Black", "numbered": true, "printRun": 1 },
+        { "name": "Optic Preview", "numbered": false },
+        { "name": "Holo Pink", "numbered": true, "printRun": 50 }
+      ]
+    },
+    {
+      "year": 2025,
+      "brand": "Donruss Optic",
+      "sport": "Football",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Holo", "numbered": false },
+        { "name": "Silver", "numbered": false },
+        { "name": "Blue Velocity", "numbered": false },
+        { "name": "Pink", "numbered": true, "printRun": 99 },
+        { "name": "Purple Stars", "numbered": true, "printRun": 75 },
+        { "name": "Orange", "numbered": true, "printRun": 50 },
+        { "name": "Red", "numbered": true, "printRun": 25 },
+        { "name": "Gold", "numbered": true, "printRun": 10 },
+        { "name": "Gold Vinyl", "numbered": true, "printRun": 1 },
+        { "name": "Black", "numbered": true, "printRun": 1 }
+      ]
+    },
+    {
+      "year": 2025,
+      "brand": "Donruss Elite",
+      "sport": "Football",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Aspirations", "numbered": true, "printRun": 99 },
+        { "name": "Aspirations Die-Cut", "numbered": true, "printRun": 50 },
+        { "name": "Status", "numbered": true, "printRun": 25 },
+        { "name": "Status Die-Cut", "numbered": true, "printRun": 5 },
+        { "name": "Black", "numbered": true, "printRun": 1 }
+      ]
+    },
+    {
+      "year": 2025,
+      "brand": "Phoenix",
+      "sport": "Football",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Blue", "numbered": false },
+        { "name": "Pink", "numbered": false },
+        { "name": "Yellow", "numbered": true, "printRun": 199 },
+        { "name": "Orange", "numbered": true, "printRun": 99 },
+        { "name": "Red", "numbered": true, "printRun": 25 },
+        { "name": "Gold", "numbered": true, "printRun": 10 },
+        { "name": "Black", "numbered": true, "printRun": 1 }
+      ]
+    },
+    {
+      "year": 2025,
+      "brand": "Absolute",
+      "sport": "Football",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Spectrum Blue", "numbered": false },
+        { "name": "Spectrum Green", "numbered": true, "printRun": 99 },
+        { "name": "Spectrum Red", "numbered": true, "printRun": 25 },
+        { "name": "Spectrum Gold", "numbered": true, "printRun": 10 },
+        { "name": "Spectrum Black", "numbered": true, "printRun": 1 }
+      ]
+    },
+    {
+      "year": 2026,
+      "brand": "Bowman",
+      "sport": "Baseball",
+      "parallels": [
+        { "name": "Base", "numbered": false },
+        { "name": "Refractor", "numbered": false },
+        { "name": "X-Fractor", "numbered": false },
+        { "name": "Aqua", "numbered": true, "printRun": 250 },
+        { "name": "Green", "numbered": true, "printRun": 99 },
+        { "name": "Gold", "numbered": true, "printRun": 50 },
+        { "name": "Orange", "numbered": true, "printRun": 25 },
+        { "name": "Red", "numbered": true, "printRun": 5 },
+        { "name": "SuperFractor", "numbered": true, "printRun": 1 }
+      ]
+    }
+  ]
+}

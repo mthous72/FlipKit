@@ -24,6 +24,12 @@ namespace FlipKit.Core.Models
         public bool AutoApplyHighConfidenceSuggestions { get; set; } = true;
         public bool RunConfirmationPass { get; set; } = true;
         public bool EnableChecklistLearning { get; set; } = true;
+
+        // When true, single-card and BulkScan flows save Tier 1 (Verified) matches
+        // automatically without requiring the user to confirm. Off by default —
+        // power-user shortcut once they've built trust on a given set. Tier 2/3
+        // matches always require manual review regardless. (Roadmap 1 Phase 2 §8d.)
+        public bool AutoAcceptTier1Matches { get; set; } = false;
         public List<string> CustomGradingCompanies { get; set; } = new();
 
         // Title Templates - SEO-optimized for each platform

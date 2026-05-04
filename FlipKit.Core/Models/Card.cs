@@ -95,6 +95,17 @@ namespace FlipKit.Core.Models
         public string WhatnotCategory { get; set; } = "Sports Cards";
         public string? WhatnotSubcategory { get; set; }
 
+        // === CHECKLIST VERIFICATION (Phase 2 — Checklist Insider) ===
+        // Tier outcome the user accepted on save. Drives the badge in the editor and
+        // can be re-evaluated by the missing-checklists audit when a new checklist
+        // is later imported.
+        public VerificationStatus VerificationStatus { get; set; } = VerificationStatus.NotChecked;
+        // Composite re-find key: "{setChecklistId}:{normalizedCardNumber}:{subsetLower}".
+        // ChecklistCard rows live inside a JSON blob on SetChecklist, so a true FK isn't
+        // possible without a relational migration. This string is enough to look the
+        // matched row back up from the editor or re-verify pass.
+        public string? MatchedChecklistKey { get; set; }
+
         // === STATUS / METADATA ===
         public CardStatus Status { get; set; } = CardStatus.Draft;
         public string? Notes { get; set; }

@@ -62,6 +62,11 @@ namespace FlipKit.Core.Data
             card.Property(c => c.Sport)
                 .HasConversion<string?>();
 
+            // Checklist verification tier (Phase 2 of Checklist Insider import work).
+            card.Property(c => c.VerificationStatus)
+                .HasConversion<string>()
+                .HasDefaultValue(VerificationStatus.NotChecked);
+
             card.Property(c => c.CostSource)
                 .HasConversion<string?>();
 

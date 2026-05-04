@@ -23,6 +23,10 @@
          (Desktop, Web, Api) get the same source of truth without ship-time path lookups. -->
     <EmbeddedResource Include="Resources\Export\whatnot_values.json" />
     <EmbeddedResource Include="Resources\Export\ebay_template_header.csv" />
+    <!-- Bundled parallel families per (Year, Brand, Sport) — factual published data,
+         same legal posture as KnownSetsCatalog. Drives the Parallel dropdown in the
+         Phase 2 tier-aware editor. Sets not in the catalog show free-text Parallel. -->
+    <EmbeddedResource Include="Resources\ParallelFamilyCatalog.json" />
   </ItemGroup>
 
 </Project>

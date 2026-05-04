@@ -145,6 +145,12 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IChecklistFileMetadataExtractor, ChecklistFileMetadataExtractor>();
                 services.AddSingleton<IExcelChecklistImporter, ExcelChecklistImporter>();
                 services.AddSingleton<IChecklistImportService, ChecklistImportService>();
+                // Phase 2 of Checklist Insider — tier-aware verification matcher and
+                // bundled parallel-family catalog. Matcher is singleton (uses
+                // IServiceProvider for scoped DbContext); parallel service caches the
+                // embedded JSON at construction so only one instance is needed.
+                services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
+                services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
                 services.AddScoped<ISoldPriceService, Point130SoldPriceService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
 

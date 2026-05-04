@@ -45,6 +45,37 @@ namespace FlipKit.Core.Data
             await EnsureChecklistLearningColumnsAsync(db);
             await EnsureSoldPriceRecordsTableAsync(db);
             await EnsureExportColumnsAsync(db);
+            await EnsureCardVerificationColumnsAsync(db);
+        }
+
+        // Phase 2 of the Checklist Insider import work — Card carries the tier outcome
+        // and a re-find key pointing back at the matched ChecklistCard inside its
+        // SetChecklist's JSON blob.
+        public static async Task EnsureCardVerificationColumnsAsync(FlipKitDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(cards)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+
+                if (!columns.Contains("VerificationStatus"))
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE cards ADD COLUMN VerificationStatus TEXT NOT NULL DEFAULT 'NotChecked'");
+
+                if (!columns.Contains("MatchedChecklistKey"))
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE cards ADD COLUMN MatchedChecklistKey TEXT");
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
         }
 
         private static async Task EnsureExportColumnsAsync(FlipKitDbContext db)

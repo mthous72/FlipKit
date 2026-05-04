@@ -85,6 +85,10 @@ builder.Services.AddSingleton<IChecklistLearningService, ChecklistLearningServic
 builder.Services.AddSingleton<IChecklistFileMetadataExtractor, ChecklistFileMetadataExtractor>();
 builder.Services.AddSingleton<IExcelChecklistImporter, ExcelChecklistImporter>();
 builder.Services.AddSingleton<IChecklistImportService, ChecklistImportService>();
+// Phase 2 of Checklist Insider — tier-aware verification matcher and bundled
+// parallel-family catalog. Matcher uses IServiceProvider for scoped DbContext.
+builder.Services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
+builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
 builder.Services.AddScoped<ISoldPriceService, Point130SoldPriceService>(); // Depends on DbContext
 // Note: IEbayBrowseService not yet implemented, will add when ebay-browse-api feature merges
 
