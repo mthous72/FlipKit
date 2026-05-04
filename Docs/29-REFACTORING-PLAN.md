@@ -3,7 +3,7 @@
 **Target codebase:** FlipKit Hub v3.3.6 (`c:\Users\Matthew Houston\source\repos\FlipKit`)
 **Goal:** Heavy cleanup with zero behavioral regressions, preserving roadmap-aligned code, ending in a roadmap revisit.
 **Created:** 2026-05-04
-**Status:** In progress — Phases 1, 2, 3, 4a, 4b complete and merged to master. See [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for the live state snapshot.
+**Status:** ✓ Complete — All 6 phases executed and merged to master. See [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for the final snapshot. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md). This plan is now historical.
 
 > **Resume here?** Skip to [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
 
@@ -69,7 +69,7 @@ All ten flows must pass at the end of each phase before the next phase starts. I
 | 5b | — OpenRouter catalog consolidation | Medium | 1 day | ✓ Done | §7.2 — closes D4 latent empty-catalog bug as side effect |
 | 5c | — SettingsViewModel split (Option A only) | Medium | 1 day | ✓ Done | §7.4a — only NetworkAddressProvider extraction landed; full connection-tester split deferred to Phase 6 re-cost |
 | 5d | — BulkScanViewModel split | — | — | ✗ Skipped (Phase 5 close-out, 2026-05-04) | §7.4b dropped: file is 506 lines (not 585), the named extractions (`BulkScanQueueService`, `RateLimitTracker`) don't correspond to real code shapes — queue is `Items.Where(Pending).ToList()` + a `SemaphoreSlim`, rate-limiting is one `Task.Delay(4000)`. Splitting would be ceremony, not abstraction. |
-| 6 | Roadmap Revamp + deferred doc work | None (docs) | 1–2 days | In progress | Rewrite/refresh roadmap + Doc 07 + ADRs + decide remaining VM split fate |
+| 6 | Roadmap Revamp + deferred doc work | None (docs) | 1 day actual | ✓ Done | Roadmap re-baselined, Doc 07 rewritten, stale-reference sweep across older docs, 5 ADRs added under `Docs/ADR/` |
 
 Earlier phases are intentionally lowest-risk and produce permanent artifacts (manual checklist, helper tests) that gate the riskier work in Phase 5.
 

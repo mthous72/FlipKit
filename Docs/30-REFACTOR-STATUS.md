@@ -1,9 +1,10 @@
 # FlipKit Refactor — Status Checkpoint
 
-**Snapshot date:** 2026-05-04 (updated at Phase 5 close-out / Phase 6 kick-off)
-**Master HEAD:** `993d0b3` (Status doc bump post-5c.1 merge); push pipeline now linear (origin master rebased to drop merge commits per branch protection rule)
+**Snapshot date:** 2026-05-04 (updated at Phase 6 close-out — refactor complete)
+**Master HEAD:** about to bump to the Phase 6 head once the merge lands (currently `993d0b3` pre-merge); push pipeline linear (origin master rebased to drop merge commits per branch protection rule)
 **Phase 5:** Closed at 5c.1. **Phase 5d (BulkScanViewModel split) skipped** after re-read showed the plan's named extractions don't survive contact with the code — see plan §7.4b for the full reasoning.
-**Phase 6:** In progress on `refactor/phase-6-roadmap-revamp`.
+**Phase 6:** ✓ Done. Roadmap re-baselined, Doc 07 rewritten, stale doc references swept, 5 ADRs added under `Docs/ADR/`.
+**Refactor status:** complete. No further phases planned. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md).
 **Plan:** [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md)
 **Audit:** [AUDIT-2026-05.md](AUDIT-2026-05.md)
 
@@ -140,16 +141,18 @@ Subsections from plan §7 (full reference):
 
 After Phase 5: re-run the full test suite + manual regression checklist. Anything that doesn't pass becomes a Phase 5 follow-up before Phase 6.
 
-### Phase 6 — Roadmap Revamp (in progress)
+### Phase 6 — Roadmap Revamp (✓ Done)
 
-Branch: `refactor/phase-6-roadmap-revamp`. With the codebase clean and tested, re-cost every roadmap item against the new reality. The Phase 4.5 D3 fix is the bigger lever here than it looks — Roadmap #1 (Checklist Insider) was estimated at 4-5 weeks assuming `ChecklistLearningService` actually worked; it does not on master prior to that fix, and the fix was a precondition for the work to even start.
+Branch: `refactor/phase-6-roadmap-revamp`.
 
-Phase 6 deliverables:
-- Refresh `Docs/17-FUTURE-ROADMAP.md` against current code reality (re-cost each item, mark which Phase 5 work moved the needle).
-- Refresh `Docs/07-CLAUDE-CODE-GUIDE.md` (§7.5 carry-over — references dead `MockScannerService` + `BoolToVisibilityConverter` files).
-- Sweep other Docs/ files (e.g. 26/27/28) for stale references created by the Phase 2 doc archival + Phase 3 cleanup.
-- Decide fate of the 3 deferred VM splits (Inventory/Scan/Export) — keep, defer further, or schedule.
-- Write the 5 ADRs from plan §8.3.
+Delivered:
+- `Docs/17-FUTURE-ROADMAP.md` re-baselined against post-Phase-5 code. Roadmap #4 (Tests) marked DONE — delivered by Phase 4. Roadmap #1 (Checklist Insider) effort cut 4-5wk → 3-4wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering the shelved `Point130SoldPriceService`. Roadmap #5 (COMC) flagged for downgrade or drop pending demand signal.
+- `Docs/07-CLAUDE-CODE-GUIDE.md` rewritten from a single-project guide to a 4-project orientation + LLM-agent contributor guide. Closes plan §7.5.
+- Stale-reference sweep across `Docs/01-PROJECT-PLAN.md`, `Docs/10-GUI-ARCHITECTURE.md`, `Docs/26-CSV-EXPORT-IMPLEMENTATION-PLAN.md` — removed/annotated dead converter and `CardListerDbContext` references. Forward-looking plans (27/28) needed no edits.
+- VM split fate recorded in roadmap: `BulkScanViewModel` 5d skipped permanently; `Inventory/Scan/Export` deferred indefinitely (all ≥80% covered, no concrete decomposition opportunity).
+- 5 ADRs added under `Docs/ADR/`: Hub architecture, net8/net9 mix, EnsureCreated+SchemaUpdater, user-driven Checklist Insider, Avalonia choice.
+
+**Refactor wrap-up:** the original 6-phase plan is fully executed. The codebase is cleaner, has 490 tests with a CI gate, and every architectural decision worth capturing is now documented. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md); this status doc stops being a living doc once the Phase 6 merge lands.
 
 ---
 
