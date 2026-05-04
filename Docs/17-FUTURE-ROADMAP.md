@@ -45,7 +45,14 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 
 **Phase 2 follow-ups:** PDF odds-sheet importer (PdfPig) for parallels/print-runs/signers, batch folder import, manufacturer dealer-kit PDF support.
 
-### 2. Automated Price Scraping
+### 2. Webcam Capture for Scanning
+
+**Status:** 📋 Planned
+**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md)
+
+Allow scanning directly from a connected webcam instead of requiring file uploads, enabling a true "stream of cards" workflow on Desktop.
+
+### 3. Automated Price Scraping
 
 **Status:** 📋 Planned
 **Effort:** High (4-6 weeks)
@@ -88,7 +95,7 @@ public class PriceDataResult
 
 **Configuration:** Settings → eBay API key, toggle auto-price vs manual.
 
-### 3. Unit and Integration Tests
+### 4. Unit and Integration Tests
 
 **Status:** 📋 Planned
 **Effort:** Medium (3-4 weeks)
@@ -115,13 +122,6 @@ FlipKit.Core.Tests/
 ---
 
 ## Medium Priority (6-12 Months)
-
-### 4. Webcam Capture for Scanning
-
-**Status:** 📋 Planned
-**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md)
-
-Allow scanning directly from a connected webcam instead of requiring file uploads, enabling a true "stream of cards" workflow on Desktop.
 
 ### 5. Finish COMC Exporter
 
@@ -162,9 +162,9 @@ The Web app is already mobile-responsive and accessible via Tailscale, which cov
 
 **Status:** 💭 Considering
 **Effort:** Medium (2-3 weeks)
-**Depends on:** Item 2 (Automated Price Scraping)
+**Depends on:** Item 3 (Automated Price Scraping)
 
-Once we have automated pricing, alerting on significant value changes or stale prices becomes useful. Not worth building until #2 ships.
+Once we have automated pricing, alerting on significant value changes or stale prices becomes useful. Not worth building until #3 ships.
 
 ---
 
@@ -206,5 +206,6 @@ When deciding what to build next:
 **Next Review:** August 2026
 
 **Recent changes:**
-- 2026-05-02 — Audit pass: removed completed items (Bulk Scan, Architecture Refactor, eBay Bulk CSV) and dropped items no longer in scope (Cloud Sync/Backup, MySlabs, TCGPlayer, Barcode/QR Scanning, Multi-User/Team). Renumbered. Added Webcam Capture as item 4.
+- 2026-05-02 — Promoted Webcam Capture from Medium #4 to High #2; pushed Price Scraping → #3, Tests → #4.
+- 2026-05-02 — Audit pass: removed completed items (Bulk Scan, Architecture Refactor, eBay Bulk CSV) and dropped items no longer in scope (Cloud Sync/Backup, MySlabs, TCGPlayer, Barcode/QR Scanning, Multi-User/Team). Renumbered.
 - 2026-05-01 — Added "User-Driven Checklist Excel Import" — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
