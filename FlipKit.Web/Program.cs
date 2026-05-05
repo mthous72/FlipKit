@@ -89,9 +89,12 @@ builder.Services.AddSingleton<IChecklistImportService, ChecklistImportService>()
 // parallel-family catalog. Matcher uses IServiceProvider for scoped DbContext.
 builder.Services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
 builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
-// eBay Browse API replaced 130point on 2026-05-05 (PR A.1 corrected from
-// Finding API, which was decommissioned 2025-02-05). Scoped because the
-// service holds a DbContext-derived ICardRepository / FlipKitDbContext.
+// eBay Browse API: OAuth client (singleton for token cache) + service (scoped for DbContext).
+builder.Services.AddSingleton<IEbayBrowseApiClient>(sp =>
+    new FlipKit.Core.Services.Implementations.EbayBrowseApiClient(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient("EbayBrowse"),
+        sp.GetRequiredService<ISettingsService>(),
+        sp.GetRequiredService<ILogger<FlipKit.Core.Services.Implementations.EbayBrowseApiClient>>()));
 builder.Services.AddScoped<ISoldPriceService, FlipKit.Core.Services.Implementations.EbayBrowseApiActiveListingService>();
 
 // eBay Seller Hub CSV import (Roadmap #3). Enricher uses OpenRouter for the LLM

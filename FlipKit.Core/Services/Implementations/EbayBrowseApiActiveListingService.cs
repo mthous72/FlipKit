@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using FlipKit.Core.Data;
 using FlipKit.Core.Helpers;
@@ -14,31 +15,40 @@ namespace FlipKit.Core.Services.Implementations;
 /// <summary>
 /// Implementation of <see cref="ISoldPriceService"/> backed by the eBay Browse API
 /// (<c>/buy/browse/v1/item_summary/search</c>). Returns active-listing asking prices
-/// as competitive-pricing comps; these are not confirmed sold prices.
+/// as competitive-pricing comps — these are not confirmed sold prices.
 ///
-/// The local-DB methods (<see cref="FindMatchingRecordsAsync"/>,
-/// <see cref="HasRecentDataAsync"/>, <see cref="CalculateMarketValue"/>)
-/// were ported from the prior Point130 implementation — provider-agnostic logic
-/// that reads from <c>ListingRecords</c> and runs fuzzy match + outlier-trimmed median.
-///
-/// <see cref="FetchSoldPricesAsync"/> currently returns
-/// <see cref="FetchSoldPricesResult.ConfigurationMissing"/> = true when
-/// <see cref="AppSettings.EbayClientId"/> or <see cref="AppSettings.EbayClientSecret"/>
-/// are empty. The Browse API OAuth client lands in PR B.
+/// <see cref="FetchSoldPricesAsync"/> calls <see cref="IEbayBrowseApiClient"/>,
+/// maps results to <see cref="ListingRecord"/>, purges stale cached records for
+/// the card, then saves the fresh batch. Subsequent calls to
+/// <see cref="FindMatchingRecordsAsync"/> and <see cref="CalculateMarketValue"/>
+/// read from the local cache without hitting the network.
 /// </summary>
 public class EbayBrowseApiActiveListingService : ISoldPriceService
 {
+    // Sport enum name → eBay category ID (Sports Trading Cards = 212).
+    private static readonly Dictionary<string, string> SportToCategory = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Baseball"]   = "213",
+        ["Basketball"] = "214",
+        ["Football"]   = "215",
+        ["Hockey"]     = "217",
+        ["Soccer"]     = "216",
+    };
+
     private readonly FlipKitDbContext _dbContext;
     private readonly ISettingsService _settingsService;
+    private readonly IEbayBrowseApiClient _browseClient;
     private readonly ILogger<EbayBrowseApiActiveListingService> _logger;
 
     public EbayBrowseApiActiveListingService(
         FlipKitDbContext dbContext,
         ISettingsService settingsService,
+        IEbayBrowseApiClient browseClient,
         ILogger<EbayBrowseApiActiveListingService> logger)
     {
         _dbContext = dbContext;
         _settingsService = settingsService;
+        _browseClient = browseClient;
         _logger = logger;
     }
 
@@ -112,31 +122,84 @@ public class EbayBrowseApiActiveListingService : ISoldPriceService
     }
 
     /// <inheritdoc />
-    public Task<FetchSoldPricesResult> FetchSoldPricesAsync(Card card, int maxResults = 20)
+    public async Task<FetchSoldPricesResult> FetchSoldPricesAsync(Card card, int maxResults = 20)
     {
-        // PR A — eBay Browse API OAuth client lands in PR B. Stubbed return
-        // surfaces as "Configure your eBay credentials" in the UI rather than a
-        // confusing zero-results-but-success state.
         var settings = _settingsService.Load();
         if (string.IsNullOrWhiteSpace(settings.EbayClientId) ||
             string.IsNullOrWhiteSpace(settings.EbayClientSecret))
         {
             _logger.LogDebug("FetchSoldPricesAsync called but eBay Client ID/Secret not configured");
-            return Task.FromResult(new FetchSoldPricesResult
+            return new FetchSoldPricesResult
             {
                 Success = false,
                 ConfigurationMissing = true,
                 ErrorMessage = "Configure your eBay Browse API Client ID and Secret in Settings to enable competitive pricing lookups.",
+            };
+        }
+
+        var query = BuildSearchQuery(card);
+        var categoryId = card.Sport != null
+            ? SportToCategory.GetValueOrDefault(card.Sport.ToString()!, "212")
+            : "212";
+
+        _logger.LogInformation(
+            "Fetching eBay active listings for {Player} ({Year} {Brand}), query: {Query}",
+            card.PlayerName, card.Year, card.Brand, query);
+
+        IReadOnlyList<EbayListingSummary> listings;
+        try
+        {
+            listings = await _browseClient.SearchAsync(query, categoryId, maxResults);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "eBay Browse API call failed for {Player}", card.PlayerName);
+            return new FetchSoldPricesResult
+            {
+                Success = false,
+                ErrorMessage = $"eBay Browse API error: {ex.Message}",
+            };
+        }
+
+        if (listings.Count == 0)
+        {
+            _logger.LogInformation("No active eBay listings found for query: {Query}", query);
+            return new FetchSoldPricesResult { Success = true, RecordsFound = 0 };
+        }
+
+        // Purge stale records for this card, then save fresh batch.
+        var stale = await _dbContext.ListingRecords
+            .Where(r => r.PlayerName == card.PlayerName && r.Year == card.Year)
+            .ToListAsync();
+        _dbContext.ListingRecords.RemoveRange(stale);
+
+        var now = DateTime.UtcNow;
+        var sport = card.Sport?.ToString();
+        foreach (var listing in listings)
+        {
+            _dbContext.ListingRecords.Add(new ListingRecord
+            {
+                PlayerName = card.PlayerName ?? string.Empty,
+                Year       = card.Year,
+                Brand      = card.Brand,
+                ParallelName = card.ParallelName,
+                Sport      = sport,
+                SoldPrice  = listing.Price,
+                SoldDate   = now,
+                Platform   = "eBay",
+                SaleType   = listing.BuyingOption,
+                ListingTitle = listing.Title,
+                SourceUrl  = listing.ItemUrl,
+                ScrapedAt  = now,
             });
         }
 
-        // The HTTP client + response mapping lands in PR B.
-        return Task.FromResult(new FetchSoldPricesResult
-        {
-            Success = false,
-            ConfigurationMissing = false,
-            ErrorMessage = "eBay Browse API client not yet implemented (PR B).",
-        });
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Saved {Count} active eBay listings for {Player}", listings.Count, card.PlayerName);
+
+        return new FetchSoldPricesResult { Success = true, RecordsFound = listings.Count };
     }
 
     /// <inheritdoc />
@@ -198,7 +261,6 @@ public class EbayBrowseApiActiveListingService : ISoldPriceService
         var confidence = baseConfidence;
         if (card.IsGraded && isMixedGraders && exactMatches == 0)
         {
-            // Knock confidence down a tier when we couldn't get exact-grade comps.
             if (confidence == PriceConfidence.High) confidence = PriceConfidence.Medium;
             else if (confidence == PriceConfidence.Medium) confidence = PriceConfidence.Low;
         }
@@ -241,19 +303,34 @@ public class EbayBrowseApiActiveListingService : ISoldPriceService
         return hasRecent;
     }
 
-    /// <summary>
-    /// Parse "10" → 10.0, "9.5" → 9.5. Returns 0 on unrecognised input.
-    /// </summary>
-    internal static double ParseGradeValue(string? gradeValue)
+    // --- Query helpers ---
+
+    public static string BuildSearchQuery(Card card)
+    {
+        var parts = new StringBuilder();
+
+        if (card.Year.HasValue)
+            parts.Append(card.Year).Append(' ');
+        if (!string.IsNullOrWhiteSpace(card.Brand))
+            parts.Append(card.Brand).Append(' ');
+        if (!string.IsNullOrWhiteSpace(card.PlayerName))
+            parts.Append(card.PlayerName).Append(' ');
+
+        // Only append parallel when it's non-trivial.
+        if (!string.IsNullOrWhiteSpace(card.ParallelName) &&
+            !card.ParallelName.Equals("Base", StringComparison.OrdinalIgnoreCase))
+            parts.Append(card.ParallelName);
+
+        return parts.ToString().Trim();
+    }
+
+    public static double ParseGradeValue(string? gradeValue)
     {
         if (string.IsNullOrEmpty(gradeValue)) return 0;
         return double.TryParse(gradeValue, NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0;
     }
 
-    /// <summary>
-    /// Cross-grader equivalence with ±0.5 tolerance: PSA 10 ≈ BGS 9.5/10/CGC 10.
-    /// </summary>
-    internal static bool IsGradeEquivalent(double a, double b)
+    public static bool IsGradeEquivalent(double a, double b)
     {
         if (a == 0 || b == 0) return false;
         return Math.Abs(a - b) <= 0.5;

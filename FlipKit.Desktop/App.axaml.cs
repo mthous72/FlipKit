@@ -157,10 +157,12 @@ namespace FlipKit.Desktop
                 // embedded JSON at construction so only one instance is needed.
                 services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
                 services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
-                // eBay Browse API replaced 130point HTML scraping on 2026-05-05.
-                // PR A.1 corrects the scaffold name (was Finding API which was
-                // decommissioned 2025-02-05); PR B fills in the OAuth HTTP client;
-                // PR C lights up the PricingView "Get Competitive Pricing" button.
+                // eBay Browse API: OAuth client (singleton for token cache) + service (scoped for DbContext).
+                services.AddSingleton<IEbayBrowseApiClient>(sp =>
+                    new FlipKit.Core.Services.Implementations.EbayBrowseApiClient(
+                        sp.GetRequiredService<IHttpClientFactory>().CreateClient("EbayBrowse"),
+                        sp.GetRequiredService<ISettingsService>(),
+                        sp.GetRequiredService<ILogger<FlipKit.Core.Services.Implementations.EbayBrowseApiClient>>()));
                 services.AddScoped<ISoldPriceService, FlipKit.Core.Services.Implementations.EbayBrowseApiActiveListingService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
                 // eBay Seller Hub CSV import (Roadmap #3 — see Docs/17-FUTURE-ROADMAP.md item
