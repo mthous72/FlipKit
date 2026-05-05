@@ -88,8 +88,8 @@ Import an eBay Seller Hub "All active listings" CSV export into the inventory. E
 **Deferred follow-ups:**
 - 2-step preview-then-commit Web flow (would require session-keyed preview cache).
 - Bulk-edit on the Desktop preview grid (currently only Skip is editable; user has to commit then Edit individual rows).
-- Add `/api/cards/by-ebay-item-id/{id}` to the API server so remote-mode `ApiCardRepository.GetCardByEbayItemIdAsync` doesn't have to fetch the full list.
-- Map eBay title → `Sport` enum (currently leaves Sport=null on imported rows; user fills it in via Edit).
+- ~~Add `/api/cards/by-ebay-item-id/{id}` to the API server~~ — shipped 2026-05-05 in `31936b2`.
+- ~~Map eBay title → `Sport` enum~~ — shipped 2026-05-05 in `31936b2` (regex over league acronyms + brand fallbacks; leaves null on genuinely ambiguous titles).
 
 ### 3. Automated Price Scraping
 
@@ -215,7 +215,7 @@ ViewModel sizes after Phase 5c.1 (was 803 → 662 for Settings):
 Standing cleanup items:
 - Magic strings for OpenRouter model IDs are now consolidated in `OpenRouterModelDefaults` (Phase 5b). What remains: any leftover hardcoded model IDs in tests or ViewModels — sweep when convenient.
 - Hardcoded HttpClient timeouts: `ServerManagementService.cs:42` is now wired through a typed setting (Phase 5a). New code should use the same pattern.
-- The two `#pragma warning disable` blocks in `BulkScanViewModel.ProcessItemAsync` (`CS8602` around `_scanCts`, `MVVMTK0034` around `Interlocked.Increment(ref _scanProgress)`) could be cleaned up in a 30-minute targeted edit if they ever bother future-us.
+- ~~The two `#pragma warning disable` blocks in `BulkScanViewModel.ProcessItemAsync`~~ — cleaned up 2026-05-05 in `31936b2`. CS8602 by passing the CTS as a method parameter; MVVMTK0034 by introducing a separate `_completedCount` int field for `Interlocked.Increment` and publishing through the source-generator-managed `ScanProgress` setter.
 
 ### Documentation
 
