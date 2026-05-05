@@ -158,6 +158,11 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
                 services.AddScoped<ISoldPriceService, Point130SoldPriceService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
+                // eBay Seller Hub CSV import (Roadmap #3 — see Docs/17-FUTURE-ROADMAP.md item
+                // "eBay Listings Import"). Enricher uses OpenRouter for the title LLM pass;
+                // import service composes the rule parser + enricher + repo upsert.
+                services.AddTransient<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
+                services.AddTransient<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();

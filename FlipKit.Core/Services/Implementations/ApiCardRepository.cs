@@ -74,6 +74,26 @@ namespace FlipKit.Core.Services
             }
         }
 
+        public async Task<Card?> GetCardByEbayItemIdAsync(string ebayItemId)
+        {
+            // Remote-mode upsert lookup. The Api server doesn't expose a
+            // by-ebay-item-id endpoint yet, so fall back to scanning the full
+            // list. Acceptable for the import flow's one-shot use; if remote
+            // imports become hot, add /api/cards/by-ebay-item-id/{id}.
+            if (string.IsNullOrWhiteSpace(ebayItemId)) return null;
+
+            try
+            {
+                var all = await _httpClient.GetFromJsonAsync<List<Card>>($"{_baseUrl}/api/cards");
+                return all?.FirstOrDefault(c => c.EbayItemId == ebayItemId);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to look up card by EbayItemId via API");
+                throw;
+            }
+        }
+
         public async Task<List<Card>> GetAllCardsAsync(CardStatus? status = null, Sport? sport = null)
         {
             try

@@ -10,6 +10,7 @@ namespace FlipKit.Core.Services
         Task<int> InsertCardAsync(Card card);
         Task UpdateCardAsync(Card card);
         Task<Card?> GetCardAsync(int id);
+        Task<Card?> GetCardByEbayItemIdAsync(string ebayItemId);
         Task<List<Card>> GetAllCardsAsync(CardStatus? status = null, Sport? sport = null);
         Task DeleteCardAsync(int id);
         Task<List<Card>> SearchCardsAsync(string query);

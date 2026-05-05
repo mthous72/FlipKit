@@ -51,6 +51,13 @@ namespace FlipKit.Core.Services
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<Card?> GetCardByEbayItemIdAsync(string ebayItemId)
+        {
+            if (string.IsNullOrWhiteSpace(ebayItemId)) return null;
+            return await _db.Cards
+                .FirstOrDefaultAsync(c => c.EbayItemId == ebayItemId);
+        }
+
         public async Task<List<Card>> GetAllCardsAsync(CardStatus? status = null, Sport? sport = null)
         {
             var query = _db.Cards.AsQueryable();

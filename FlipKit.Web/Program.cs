@@ -92,6 +92,12 @@ builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
 builder.Services.AddScoped<ISoldPriceService, Point130SoldPriceService>(); // Depends on DbContext
 // Note: IEbayBrowseService not yet implemented, will add when ebay-browse-api feature merges
 
+// eBay Seller Hub CSV import (Roadmap #3). Enricher uses OpenRouter for the LLM
+// title pass; import service composes the rule parser + enricher + repo upsert.
+// Scoped because the import service holds an ICardRepository.
+builder.Services.AddScoped<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
+builder.Services.AddScoped<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
+
 // Register web-specific services
 builder.Services.AddSingleton<IFileDialogService, WebFileUploadService>();
 builder.Services.AddSingleton<IBrowserService, JavaScriptBrowserService>();
