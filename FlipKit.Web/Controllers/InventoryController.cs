@@ -344,10 +344,22 @@ namespace FlipKit.Web.Controllers
                                           existingCard.ImagePath6, existingCard.ImagePath7, existingCard.ImagePath8 };
             var urls  = new string?[6] { existingCard.ImageUrl3, existingCard.ImageUrl4, existingCard.ImageUrl5,
                                           existingCard.ImageUrl6, existingCard.ImageUrl7, existingCard.ImageUrl8 };
+            // Webcam-captured paths come back via the same hidden ImagePath{slot}
+            // inputs the controller already binds. We compare against existingCard
+            // to detect "the form sent a fresher path than the DB has."
+            var formPaths = new string?[6] { viewModel.ImagePath3, viewModel.ImagePath4, viewModel.ImagePath5,
+                                              viewModel.ImagePath6, viewModel.ImagePath7, viewModel.ImagePath8 };
             var files = new[] { viewModel.ImageFile3, viewModel.ImageFile4, viewModel.ImageFile5,
                                 viewModel.ImageFile6, viewModel.ImageFile7, viewModel.ImageFile8 };
             var removals = new[] { viewModel.RemoveImage3, viewModel.RemoveImage4, viewModel.RemoveImage5,
                                    viewModel.RemoveImage6, viewModel.RemoveImage7, viewModel.RemoveImage8 };
+
+            // Restrict webcam-captured paths to the wwwroot/uploads dir. Without this
+            // a malicious form submission could point ImagePath{n} at any file the
+            // server can read (e.g. /etc/passwd) and have the export upload it later.
+            var uploadsDir = Path.Combine(_env.WebRootPath ?? "wwwroot", "uploads");
+            string? uploadsAbsolute = null;
+            try { uploadsAbsolute = Path.GetFullPath(uploadsDir); } catch { uploadsAbsolute = null; }
 
             for (int i = 0; i < 6; i++)
             {
@@ -366,6 +378,14 @@ namespace FlipKit.Web.Controllers
                     paths[i] = savedPath;
                     // New file → previous hosted URL is now stale, so it gets cleared.
                     // The Export "Upload Images" step will re-upload the new file.
+                    urls[i] = null;
+                }
+                else if (IsFreshWebcamPath(formPaths[i], paths[i], uploadsAbsolute))
+                {
+                    // Webcam captured a still and stuffed the path into the hidden
+                    // ImagePath{slot} input. Treat it the same as a file upload —
+                    // adopt the new path, drop the old hosted URL.
+                    paths[i] = formPaths[i];
                     urls[i] = null;
                 }
             }
@@ -412,6 +432,31 @@ namespace FlipKit.Web.Controllers
             {
                 _logger.LogWarning(ex, "ImgBB upload during save failed for card {Id}.", card.Id);
             }
+        }
+
+        /// <summary>
+        /// True when <paramref name="formPath"/> is a webcam-captured upload path
+        /// the user just got back from <c>/api/cards/upload-image</c>: non-empty,
+        /// different from the existing DB-stored path, and physically inside
+        /// <c>wwwroot/uploads</c>. The path-rooted check guards against a
+        /// malicious form pointing the server at an arbitrary file.
+        /// </summary>
+        private static bool IsFreshWebcamPath(string? formPath, string? existingPath, string? uploadsAbsolute)
+        {
+            if (string.IsNullOrWhiteSpace(formPath)) return false;
+            if (string.Equals(formPath, existingPath, System.StringComparison.OrdinalIgnoreCase)) return false;
+            if (string.IsNullOrEmpty(uploadsAbsolute)) return false;
+
+            string fullForm;
+            try { fullForm = Path.GetFullPath(formPath); }
+            catch { return false; }
+
+            // Path.GetFullPath collapses ".." traversal, so a startsWith check on
+            // the canonicalised path is sufficient. Add the directory separator so
+            // "uploads2" doesn't match "uploads".
+            var prefix = uploadsAbsolute.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return fullForm.StartsWith(prefix, System.StringComparison.OrdinalIgnoreCase)
+                && System.IO.File.Exists(fullForm);
         }
 
         private async Task<string> SaveUploadedFileAsync(Microsoft.AspNetCore.Http.IFormFile file)

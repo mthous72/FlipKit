@@ -3,6 +3,10 @@
     ViewData["Title"] = "Edit Card";
 }
 
+@* Webcam capture modal — see wwwroot/js/webcam-capture.js + the Scan view's
+   wiring example. Slots 3-8 below get 📷 buttons that open this modal. *@
+@await Html.PartialAsync("_WebcamCaptureModal")
+
 <div class="container mt-4">
     <h1 class="display-5 mb-4">Edit Card</h1>
 
@@ -400,8 +404,17 @@
                         <div class="row g-2">
                             <div class="col-md-8">
                                 <label class="form-label small">@(hasContent ? "Replace photo" : "Upload photo")</label>
-                                <input type="file" name="@fileField" class="form-control"
-                                       accept="image/*" capture="environment" />
+                                <div class="input-group">
+                                    <input type="file" name="@fileField" id="@fileField" class="form-control"
+                                           accept="image/*" capture="environment" />
+                                    <button type="button" class="btn btn-outline-primary"
+                                            data-webcam-slot="@slot" data-webcam-required>
+                                        <i class="bi bi-camera-fill"></i> Webcam
+                                    </button>
+                                </div>
+                                <small class="text-muted webcam-source-label" data-webcam-source-label="@slot" style="display:none;">
+                                    <i class="bi bi-camera-fill"></i> Captured from webcam — saves on submit
+                                </small>
                             </div>
                             @if (hasContent)
                             {
@@ -438,4 +451,36 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script src="~/js/webcam-capture.js" asp-append-version="true"></script>
+    <script>
+        // Webcam → additional photo slot wiring on the Edit view.
+        // The 📷 button next to each slot's file input opens the shared modal;
+        // on capture, we POST the blob to /api/cards/upload-image (handled by
+        // webcam-capture.js), receive { path, url }, then write the path into
+        // the slot's existing hidden ImagePath{slot} input so the controller
+        // picks it up on submit. Also clears any uploaded File on the same
+        // input so the controller takes the path branch rather than re-saving
+        // a stale file.
+        function applyCapturedToSlot(slot, result) {
+            const pathInput = document.querySelector('input[type="hidden"][name="ImagePath' + slot + '"]');
+            const fileInput = document.getElementById('ImageFile' + slot);
+            const sourceLabel = document.querySelector('[data-webcam-source-label="' + slot + '"]');
+
+            if (pathInput) pathInput.value = result.path;
+            if (fileInput) fileInput.value = '';  // drop any previously selected file
+            if (sourceLabel) sourceLabel.style.display = '';
+        }
+
+        FlipKitWebcam.attach('[data-webcam-slot]', {
+            onCapture: (result, btn) => {
+                const slot = btn.getAttribute('data-webcam-slot');
+                applyCapturedToSlot(slot, result);
+            }
+        });
+
+        // Hide trigger buttons on origins that can't access the camera (HTTP
+        // over Tailscale per the webcam plan §6).
+        FlipKitWebcam.gate('[data-webcam-required]');
+    </script>
 }

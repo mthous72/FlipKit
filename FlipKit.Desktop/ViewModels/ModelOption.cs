@@ -10,7 +10,10 @@ namespace FlipKit.Desktop.ViewModels
     /// </summary>
     public sealed class ModelOption
     {
-        public const string AutoValue = "auto";
+        // Aliased to the Core-layer constant so all three layers (Core enricher,
+        // Desktop dropdown, Web form) point at the same string. const-aliasing a
+        // const is fine — the compiler folds it into the same literal.
+        public const string AutoValue = OpenRouterModelDefaults.AutoModelValue;
 
         public string Label { get; }
         public string Value { get; }

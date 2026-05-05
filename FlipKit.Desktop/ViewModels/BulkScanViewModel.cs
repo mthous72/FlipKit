@@ -410,7 +410,7 @@ namespace FlipKit.Desktop.ViewModels
                         }
                     }
 
-                    item.DisplayName = !string.IsNullOrEmpty(item.CardDetail.PlayerName)
+                    item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
                         ? item.CardDetail.PlayerName
                         : $"Card {item.Index}";
                     item.Status = BulkScanStatus.Scanned;

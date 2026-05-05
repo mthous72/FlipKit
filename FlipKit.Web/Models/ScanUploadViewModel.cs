@@ -41,7 +41,9 @@ namespace FlipKit.Web.Models
     /// </summary>
     public static class WebModelOption
     {
-        public const string AutoValue = "auto";
+        // Aliased to the Core-layer constant so the Auto sentinel matches the
+        // Desktop ModelOption.AutoValue and the OpenRouter enricher's check.
+        public const string AutoValue = OpenRouterModelDefaults.AutoModelValue;
         public const string AutoLabel = "Auto: try free models first, fall back to error if all fail";
     }
 }

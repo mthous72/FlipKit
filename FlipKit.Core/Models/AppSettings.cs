@@ -19,7 +19,7 @@ namespace FlipKit.Core.Models
         public decimal DefaultShippingCostPwe { get; set; } = 1.00m;
         public decimal DefaultShippingCostBmwt { get; set; } = 4.50m;
         public int PriceStalenessThresholdDays { get; set; } = 30;
-        public string DefaultModel { get; set; } = "nvidia/nemotron-nano-12b-v2-vl:free";
+        public string DefaultModel { get; set; } = OpenRouterModelDefaults.DefaultFreeModelId;
         public bool EnableVariationVerification { get; set; } = true;
         public bool AutoApplyHighConfidenceSuggestions { get; set; } = true;
         public bool RunConfirmationPass { get; set; } = true;

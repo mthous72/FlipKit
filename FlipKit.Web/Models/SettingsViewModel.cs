@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services;
 
 namespace FlipKit.Web.Models
 {
@@ -35,7 +36,7 @@ namespace FlipKit.Web.Models
 
         // AI Settings
         [Display(Name = "Default AI Model")]
-        public string DefaultModel { get; set; } = "nvidia/nemotron-nano-12b-v2-vl:free";
+        public string DefaultModel { get; set; } = OpenRouterModelDefaults.DefaultFreeModelId;
 
         // Verification Settings
         [Display(Name = "Enable Variation Verification")]

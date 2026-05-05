@@ -62,6 +62,13 @@ namespace FlipKit.Core.Services
         public const string DefaultFreeModelId = "nvidia/nemotron-nano-12b-v2-vl:free";
 
         /// <summary>
+        /// Sentinel string the UI uses to mean "auto-rotate through models" instead of
+        /// pinning a specific id. The Desktop and Web layers have their own
+        /// <c>AutoValue</c> constants that reference this so all three stay in sync.
+        /// </summary>
+        public const string AutoModelValue = "auto";
+
+        /// <summary>
         /// Hardcoded snapshot of free vision-language model ids — used by the scanner's
         /// retry chain and as the catalog fallback when the live endpoint is down.
         /// Verified Apr 2026.

@@ -217,7 +217,7 @@ namespace FlipKit.Core.Services.Implementations
 
         private static string ResolveModel(string? defaultModel)
         {
-            if (string.IsNullOrWhiteSpace(defaultModel) || defaultModel == "auto")
+            if (string.IsNullOrWhiteSpace(defaultModel) || defaultModel == OpenRouterModelDefaults.AutoModelValue)
                 return OpenRouterModelDefaults.DefaultFreeModelId;
             return defaultModel;
         }
