@@ -114,14 +114,17 @@
                         Optional: Card recognition via Ximilar database (checked before AI). Saves tokens when cards are in their database. Get key at: https://www.ximilar.com/
                     </TextBlock>
 
-                    <!-- eBay Finding API (Optional) — replaced 130point HTML scraping
-                         on 2026-05-05. PR A surfaces the field; HTTP client lands in PR B. -->
-                    <TextBlock Text="eBay Finding API App ID (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
-                    <TextBox Text="{Binding EbayFindingApiAppId}"
-                             PasswordChar="*" Watermark="Your eBay developer App ID (legacy AppID, not OAuth)"/>
-                    <TextBlock Text="{Binding EbayFindingApiStatus}" FontSize="12" Opacity="0.7"/>
+                    <!-- eBay Browse API (Optional) — active-listing competitive comps.
+                         OAuth client_credentials grant: Client ID + Client Secret.
+                         HTTP client lands in PR B. -->
+                    <TextBlock Text="eBay Browse API Credentials (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <TextBox Text="{Binding EbayClientId}"
+                             PasswordChar="*" Watermark="Client ID (OAuth App ID)"/>
+                    <TextBox Text="{Binding EbayClientSecret}"
+                             PasswordChar="*" Watermark="Client Secret (OAuth Client Secret)" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding EbayBrowseApiStatus}" FontSize="12" Opacity="0.7"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Optional: enables automated market-price lookup on the Pricing page (median sold-listing price + confidence). Free developer account at https://developer.ebay.com/ — sign up, create a Production App, copy the App ID. The "Get Market Price" button stays disabled until this is set.
+                        Optional: enables competitive pricing lookup (active asking prices, not sold prices). Free developer account at https://developer.ebay.com/ — create a Production App, copy the Client ID and Client Secret. The "Get Competitive Pricing" button stays disabled until both fields are set.
                     </TextBlock>
 
                     <!-- Model Selection -->

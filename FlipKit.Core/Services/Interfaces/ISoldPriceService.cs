@@ -7,8 +7,8 @@ namespace FlipKit.Core.Services;
 
 /// <summary>
 /// Service for managing sold price data and automated market value lookups.
-/// Implementations may source records from the eBay Finding API
-/// (<see cref="Implementations.EbayFindingApiSoldPriceService"/>) or any
+/// Implementations may source records from the eBay Browse API
+/// (<see cref="Implementations.EbayBrowseApiActiveListingService"/>) or any
 /// future provider — the interface is provider-agnostic.
 /// </summary>
 public interface ISoldPriceService
@@ -17,11 +17,11 @@ public interface ISoldPriceService
     /// Search local database for sold price records matching a card.
     /// Uses fuzzy matching on player name, brand, and parallel.
     /// </summary>
-    Task<List<SoldPriceRecord>> FindMatchingRecordsAsync(Card card);
+    Task<List<ListingRecord>> FindMatchingRecordsAsync(Card card);
 
     /// <summary>
     /// Fetch sold listings for a card from the configured upstream provider
-    /// and upsert them into the local <c>SoldPriceRecords</c> table.
+    /// and upsert them into the local <c>ListingRecords</c> table.
     /// </summary>
     Task<FetchSoldPricesResult> FetchSoldPricesAsync(Card card, int maxResults = 20);
 
@@ -29,7 +29,7 @@ public interface ISoldPriceService
     /// Calculate market value from a collection of sold price records.
     /// Uses statistical analysis (median, outlier removal, confidence scoring).
     /// </summary>
-    PriceLookupResult CalculateMarketValue(List<SoldPriceRecord> records, Card card);
+    PriceLookupResult CalculateMarketValue(List<ListingRecord> records, Card card);
 
     /// <summary>
     /// Check if recent local data exists for a card (avoid unnecessary upstream calls).

@@ -12,32 +12,30 @@ using Microsoft.Extensions.Logging;
 namespace FlipKit.Core.Services.Implementations;
 
 /// <summary>
-/// Implementation of <see cref="ISoldPriceService"/> backed by the eBay
-/// Finding API's <c>findCompletedItems</c> operation. Replaced the prior
-/// <c>Point130SoldPriceService</c> on 2026-05-05 (HTML-scraping posture
-/// was legal-gray and fragile to upstream layout changes).
+/// Implementation of <see cref="ISoldPriceService"/> backed by the eBay Browse API
+/// (<c>/buy/browse/v1/item_summary/search</c>). Returns active-listing asking prices
+/// as competitive-pricing comps; these are not confirmed sold prices.
 ///
 /// The local-DB methods (<see cref="FindMatchingRecordsAsync"/>,
 /// <see cref="HasRecentDataAsync"/>, <see cref="CalculateMarketValue"/>)
-/// were ported verbatim from the Point130 implementation since they're
-/// provider-agnostic — they read from <c>SoldPriceRecords</c> and run the
-/// same fuzzy match + outlier-trimmed median.
+/// were ported from the prior Point130 implementation — provider-agnostic logic
+/// that reads from <c>ListingRecords</c> and runs fuzzy match + outlier-trimmed median.
 ///
 /// <see cref="FetchSoldPricesAsync"/> currently returns
-/// <see cref="FetchSoldPricesResult.ConfigurationMissing"/> = true regardless
-/// of settings — the eBay HTTP client lands in PR B. Once it ships, the
-/// guard becomes "App ID not configured."
+/// <see cref="FetchSoldPricesResult.ConfigurationMissing"/> = true when
+/// <see cref="AppSettings.EbayClientId"/> or <see cref="AppSettings.EbayClientSecret"/>
+/// are empty. The Browse API OAuth client lands in PR B.
 /// </summary>
-public class EbayFindingApiSoldPriceService : ISoldPriceService
+public class EbayBrowseApiActiveListingService : ISoldPriceService
 {
     private readonly FlipKitDbContext _dbContext;
     private readonly ISettingsService _settingsService;
-    private readonly ILogger<EbayFindingApiSoldPriceService> _logger;
+    private readonly ILogger<EbayBrowseApiActiveListingService> _logger;
 
-    public EbayFindingApiSoldPriceService(
+    public EbayBrowseApiActiveListingService(
         FlipKitDbContext dbContext,
         ISettingsService settingsService,
-        ILogger<EbayFindingApiSoldPriceService> logger)
+        ILogger<EbayBrowseApiActiveListingService> logger)
     {
         _dbContext = dbContext;
         _settingsService = settingsService;
@@ -45,9 +43,9 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
     }
 
     /// <inheritdoc />
-    public async Task<List<SoldPriceRecord>> FindMatchingRecordsAsync(Card card)
+    public async Task<List<ListingRecord>> FindMatchingRecordsAsync(Card card)
     {
-        var query = await _dbContext.SoldPriceRecords
+        var query = await _dbContext.ListingRecords
             .Where(r => r.Sport == card.Sport.ToString())
             .Where(r => r.Year == card.Year)
             .ToListAsync();
@@ -116,18 +114,19 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
     /// <inheritdoc />
     public Task<FetchSoldPricesResult> FetchSoldPricesAsync(Card card, int maxResults = 20)
     {
-        // PR A — eBay Finding API HTTP impl lands in PR B. Stubbed return
-        // surfaces as "Configure your eBay App ID" in the UI rather than a
+        // PR A — eBay Browse API OAuth client lands in PR B. Stubbed return
+        // surfaces as "Configure your eBay credentials" in the UI rather than a
         // confusing zero-results-but-success state.
         var settings = _settingsService.Load();
-        if (string.IsNullOrWhiteSpace(settings.EbayFindingApiAppId))
+        if (string.IsNullOrWhiteSpace(settings.EbayClientId) ||
+            string.IsNullOrWhiteSpace(settings.EbayClientSecret))
         {
-            _logger.LogDebug("FetchSoldPricesAsync called but EbayFindingApiAppId is empty");
+            _logger.LogDebug("FetchSoldPricesAsync called but eBay Client ID/Secret not configured");
             return Task.FromResult(new FetchSoldPricesResult
             {
                 Success = false,
                 ConfigurationMissing = true,
-                ErrorMessage = "Configure your eBay Finding API App ID in Settings to enable automated price lookups.",
+                ErrorMessage = "Configure your eBay Browse API Client ID and Secret in Settings to enable competitive pricing lookups.",
             });
         }
 
@@ -136,12 +135,12 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
         {
             Success = false,
             ConfigurationMissing = false,
-            ErrorMessage = "eBay Finding API client not yet implemented (PR B).",
+            ErrorMessage = "eBay Browse API client not yet implemented (PR B).",
         });
     }
 
     /// <inheritdoc />
-    public PriceLookupResult CalculateMarketValue(List<SoldPriceRecord> records, Card card)
+    public PriceLookupResult CalculateMarketValue(List<ListingRecord> records, Card card)
     {
         if (!records.Any())
         {
@@ -149,7 +148,7 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
             {
                 Success = false,
                 Confidence = PriceConfidence.None,
-                Source = "eBay Finding API (no matches)",
+                Source = "eBay Browse API (no matches)",
             };
         }
 
@@ -205,7 +204,7 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
         }
 
         _logger.LogInformation(
-            "Calculated market value for {Player}: Median=${Median:F2}, {Count} sales, {Confidence} confidence{Detail}",
+            "Calculated market value for {Player}: Median=${Median:F2}, {Count} active listings, {Confidence} confidence{Detail}",
             card.PlayerName, median, filtered.Count, confidence, sourceDetail);
 
         return new PriceLookupResult
@@ -218,7 +217,7 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
             SampleSize = filtered.Count,
             MostRecentSale = mostRecent,
             Confidence = confidence,
-            Source = $"eBay Finding API ({filtered.Count} sales{sourceDetail})",
+            Source = $"eBay Browse API ({filtered.Count} active listings{sourceDetail})",
         };
     }
 
@@ -228,7 +227,7 @@ public class EbayFindingApiSoldPriceService : ISoldPriceService
         if (string.IsNullOrEmpty(card.PlayerName)) return false;
 
         var cutoff = DateTime.UtcNow.AddDays(-daysOld);
-        var hasRecent = await _dbContext.SoldPriceRecords
+        var hasRecent = await _dbContext.ListingRecords
             .Where(r => r.Sport == card.Sport.ToString())
             .Where(r => r.Year == card.Year)
             .Where(r => r.PlayerName == card.PlayerName)
