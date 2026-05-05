@@ -30,9 +30,23 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 
 ### 1. User-Driven Checklist Excel Import (Checklist Insider)
 
-**Status:** 📋 Planned — **now actually buildable** (D3 fix landed in Phase 4.5)
-**Effort:** High (3-4 weeks for full surface set + mobile parity + lookup wizard) — *was 4-5 weeks; cut after Phase 4.5*
-**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
+**Status:** 🟡 Partially shipped — Phase 1 + Phase 2 vertical slice done. Remaining Phase 2 items + Phases 3-4 indefinitely deferred (2026-05-04). Re-evaluate on real user friction.
+**Effort:** Shipped portion ≈ 1.5 weeks of work. Deferred remainder estimated at 2-3 weeks if revived.
+**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md) (decision log entry 2026-05-04)
+
+**What's live (master):**
+- Surface A — Settings → Checklists → Import from Excel on both Desktop and Web; ClosedXML parser handles both Mosaic-style (column-A-subset) and Bowman-style (inline-header) layouts.
+- Foundation: tier-aware `ChecklistVerificationMatcher`, bundled `ParallelFamilyCatalog.json` covering common modern releases, `Card.VerificationStatus` + `Card.MatchedChecklistKey` schema fields, `AppSettings.AutoAcceptTier1Matches`.
+- First Phase 2 UI slice on Desktop: post-scan tier badge on `ScanView`, Surface B "no checklist imported" banner, tier badge on `EditCardView` for saved cards, Settings toggle for auto-accept Tier 1.
+
+**Indefinitely deferred** (kept as cold backlog — schema is in place if any get revived):
+- Card # typeahead, Parallel dropdown, Serial unlock, autograph auto-check inside `EditCardView`/`Edit.cshtml`
+- `PickFromChecklistDialog` (Tier 3 picker)
+- Web parity for the post-scan banner + tier-aware editor enhancements
+- BulkScan tier-driven row collapsing + aggregate banner
+- `checklist-roundtrip.js` localStorage stash for mobile import round-trips
+- Phase 3 (Surface C: pre-scan set-lookup wizard + prompt augmentation)
+- Phase 4 (Surface D: missing-checklists audit + re-verify pass)
 
 Let users populate `SetChecklist` by downloading per-set Excel files from [checklistinsider.com](https://www.checklistinsider.com/) themselves and importing the .xlsx into FlipKit via a file picker. Closes the gap where most modern releases aren't pre-seeded.
 
@@ -210,10 +224,11 @@ When deciding what to build next:
 
 ---
 
-**Last Updated:** 2026-05-04 (Phase 6 re-baseline against cleaned codebase)
+**Last Updated:** 2026-05-04 (Roadmap 1 partial-ship + deferral)
 **Next Review:** August 2026
 
 **Recent changes:**
+- 2026-05-04 — **Roadmap 1 partial ship.** Phase 1 (Surface A) + Phase 2 foundation + first Phase 2 UI slice landed (commits `1053f11`, `4b9009f`, `d036bfd`). Remaining Phase 2 polish items (typeahead, parallel dropdown, picker, BulkScan tier collapsing, Web parity, round-trip JS) and Phases 3-4 deferred indefinitely; re-evaluate on real friction or when an adjacent feature needs them. Schema fields kept regardless of UI state.
 - 2026-05-04 — **Phase 6 re-baseline.** Roadmap #4 (Tests) marked Done, delivered by refactor Phase 4. Roadmap #1 effort cut from 4-5 wk → 3-4 wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering the shelved `Point130SoldPriceService`. Roadmap #5 (COMC) re-read found more wiring than previously implied — flagged for downgrade or drop pending demand signal. Tech-debt section rewritten against actual post-Phase-5 ViewModel sizes. Pointer added to new `Docs/ADR/` directory.
 - 2026-05-02 — Promoted Webcam Capture from Medium #4 to High #2; pushed Price Scraping → #3, Tests → #4.
 - 2026-05-02 — Audit pass: removed completed items (Bulk Scan, Architecture Refactor, eBay Bulk CSV) and dropped items no longer in scope (Cloud Sync/Backup, MySlabs, TCGPlayer, Barcode/QR Scanning, Multi-User/Team). Renumbered.
