@@ -18,7 +18,7 @@
         <StackPanel Grid.Row="0" Spacing="4">
             <TextBlock Text="Import eBay Listings" FontSize="18" FontWeight="Bold"/>
             <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
-                Pick the "All active listings" CSV from eBay Seller Hub. Each row maps to one card; matches by eBay item number update existing rows so re-imports stay clean.
+                Pick the "All active listings" CSV from eBay Seller Hub. Each row maps to one card; matches by eBay item number update existing rows so re-imports stay clean. Edit any cell below to fix LLM mistakes — your changes save with the row when you click Import.
             </TextBlock>
         </StackPanel>
 
@@ -50,20 +50,27 @@
                 BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                 CornerRadius="6">
             <Grid>
+                <!-- Bulk-edit pre-commit: Player/Year/Brand/Parallel/#/Price are
+                     editable in-place so the user can fix LLM mistakes (or fill in
+                     blanks the rule pass left) before clicking Import. Edits write
+                     directly into ProposedCard.* via two-way binding, so CommitAsync
+                     persists exactly what the user sees. Item # and Update? stay
+                     read-only — those identify the eBay row and the upsert decision. -->
                 <DataGrid ItemsSource="{Binding Rows}"
                           AutoGenerateColumns="False"
                           IsReadOnly="False"
+                          CanUserResizeColumns="True"
                           GridLinesVisibility="Horizontal"
                           IsVisible="{Binding HasPreview}">
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Header="Skip" Binding="{Binding Skip}" Width="50"/>
                         <DataGridTextColumn Header="Item #" Binding="{Binding CsvRow.EbayItemId}" Width="120" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Player" Binding="{Binding ProposedCard.PlayerName}" Width="160" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Year" Binding="{Binding ProposedCard.Year}" Width="60" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Brand" Binding="{Binding ProposedCard.Brand}" Width="100" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Parallel" Binding="{Binding ProposedCard.ParallelName}" Width="100" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="#" Binding="{Binding ProposedCard.CardNumber}" Width="60" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Price" Binding="{Binding ProposedCard.ListingPrice, StringFormat='${0:0.00}'}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Player" Binding="{Binding ProposedCard.PlayerName}" Width="160"/>
+                        <DataGridTextColumn Header="Year" Binding="{Binding ProposedCard.Year}" Width="60"/>
+                        <DataGridTextColumn Header="Brand" Binding="{Binding ProposedCard.Brand}" Width="100"/>
+                        <DataGridTextColumn Header="Parallel" Binding="{Binding ProposedCard.ParallelName}" Width="100"/>
+                        <DataGridTextColumn Header="#" Binding="{Binding ProposedCard.CardNumber}" Width="60"/>
+                        <DataGridTextColumn Header="Price" Binding="{Binding ProposedCard.ListingPrice, StringFormat='0.00'}" Width="80"/>
                         <DataGridCheckBoxColumn Header="Update?" Binding="{Binding IsExistingMatch}" Width="70" IsReadOnly="True"/>
                     </DataGrid.Columns>
                 </DataGrid>
