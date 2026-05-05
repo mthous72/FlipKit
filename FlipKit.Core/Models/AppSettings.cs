@@ -11,6 +11,12 @@ namespace FlipKit.Core.Models
         public string? OpenRouterApiKey { get; set; }
         public string? ImgBBApiKey { get; set; }
         public string? XimilarApiKey { get; set; }
+
+        // eBay Finding API App ID (the legacy "AppID" credential — not OAuth).
+        // Replaces the prior 130point HTML scraping path on 2026-05-05; users
+        // get one for free at developer.ebay.com. Empty = automated pricing
+        // disabled, fall back to manual Terapeak/eBay deeplinks.
+        public string? EbayFindingApiAppId { get; set; }
         public bool IsEbaySeller { get; set; }
         public string DefaultShippingProfile { get; set; } = "4 oz";
         public string DefaultCondition { get; set; } = "Near Mint";

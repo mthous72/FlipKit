@@ -7,6 +7,9 @@ namespace FlipKit.Core.Services;
 
 /// <summary>
 /// Service for managing sold price data and automated market value lookups.
+/// Implementations may source records from the eBay Finding API
+/// (<see cref="Implementations.EbayFindingApiSoldPriceService"/>) or any
+/// future provider — the interface is provider-agnostic.
 /// </summary>
 public interface ISoldPriceService
 {
@@ -17,10 +20,10 @@ public interface ISoldPriceService
     Task<List<SoldPriceRecord>> FindMatchingRecordsAsync(Card card);
 
     /// <summary>
-    /// Scrape 130point.com for sold listings and store locally.
-    /// Rate-limited to 1 request per 10 seconds.
+    /// Fetch sold listings for a card from the configured upstream provider
+    /// and upsert them into the local <c>SoldPriceRecords</c> table.
     /// </summary>
-    Task<ScrapedResult> ScrapeSoldPricesAsync(Card card, int maxResults = 20);
+    Task<FetchSoldPricesResult> FetchSoldPricesAsync(Card card, int maxResults = 20);
 
     /// <summary>
     /// Calculate market value from a collection of sold price records.
@@ -29,19 +32,23 @@ public interface ISoldPriceService
     PriceLookupResult CalculateMarketValue(List<SoldPriceRecord> records, Card card);
 
     /// <summary>
-    /// Check if recent local data exists for a card (avoid unnecessary scraping).
+    /// Check if recent local data exists for a card (avoid unnecessary upstream calls).
     /// </summary>
     Task<bool> HasRecentDataAsync(Card card, int daysOld = 30);
 }
 
 /// <summary>
-/// Result of a web scraping operation.
+/// Result of a sold-prices fetch from an upstream provider.
 /// </summary>
-public class ScrapedResult
+public class FetchSoldPricesResult
 {
     public bool Success { get; set; }
     public int RecordsFound { get; set; }
     public string? ErrorMessage { get; set; }
+    /// <summary>True when the failure was due to missing/invalid configuration
+    /// (e.g. no eBay App ID set) rather than a transient network issue. Lets
+    /// the UI deflect to "configure your API key" instead of "try again."</summary>
+    public bool ConfigurationMissing { get; set; }
 }
 
 /// <summary>

@@ -138,9 +138,10 @@ namespace FlipKit.Desktop
                 services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
-                // VariationVerifier and Point130SoldPriceService both take FlipKitDbContext;
-                // must be Scoped so they don't capture the first-resolved DbContext for the
-                // process lifetime. See AUDIT-2026-05 §4 (D1) for the captive-dependency bug.
+                // VariationVerifier and EbayFindingApiSoldPriceService both take
+                // FlipKitDbContext; must be Scoped so they don't capture the
+                // first-resolved DbContext for the process lifetime. See
+                // AUDIT-2026-05 §4 (D1) for the captive-dependency bug.
                 services.AddScoped<IVariationVerifier, VariationVerifierService>();
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
                 // Phase 1 of the Checklist Insider import work — parser + service that turns
@@ -156,7 +157,11 @@ namespace FlipKit.Desktop
                 // embedded JSON at construction so only one instance is needed.
                 services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
                 services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
-                services.AddScoped<ISoldPriceService, Point130SoldPriceService>();
+                // eBay Finding API replaced 130point HTML scraping on 2026-05-05.
+                // PR A wires the service + Settings UI for the App ID; PR B fills
+                // in the HTTP client; PR C lights up the PricingView "Get Market
+                // Price" button.
+                services.AddScoped<ISoldPriceService, FlipKit.Core.Services.Implementations.EbayFindingApiSoldPriceService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
                 // eBay Seller Hub CSV import (Roadmap #3 — see Docs/17-FUTURE-ROADMAP.md item
                 // "eBay Listings Import"). Enricher uses OpenRouter for the title LLM pass;

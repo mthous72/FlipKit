@@ -89,7 +89,9 @@ builder.Services.AddSingleton<IChecklistImportService, ChecklistImportService>()
 // parallel-family catalog. Matcher uses IServiceProvider for scoped DbContext.
 builder.Services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
 builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
-builder.Services.AddScoped<ISoldPriceService, Point130SoldPriceService>(); // Depends on DbContext
+// eBay Finding API replaced 130point on 2026-05-05. Scoped because the
+// service holds a DbContext-derived ICardRepository / FlipKitDbContext.
+builder.Services.AddScoped<ISoldPriceService, FlipKit.Core.Services.Implementations.EbayFindingApiSoldPriceService>();
 // Note: IEbayBrowseService not yet implemented, will add when ebay-browse-api feature merges
 
 // eBay Seller Hub CSV import (Roadmap #3). Enricher uses OpenRouter for the LLM
