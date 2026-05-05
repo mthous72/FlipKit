@@ -75,7 +75,7 @@ jobs:
               --self-contained true \
               -o publish/osx-$ARCH/api-temp
 
-            cp -Rn publish/osx-$ARCH/api-temp/. publish/osx-$ARCH/servers/
+            cp -R publish/osx-$ARCH/api-temp/. publish/osx-$ARCH/servers/
             rm -rf publish/osx-$ARCH/api-temp
           done
 
