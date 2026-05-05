@@ -125,7 +125,7 @@ The [Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html) i
 - ~~PR A.1 — rename service + AppSettings field + Settings UI to match the Browse API path. Pure mechanical rename, no functional change.~~ ✅ Done (`56dee3b`, 2026-05-05)
 - PR B — `EbayBrowseApiClient` (OAuth token cache + GET /item_summary/search), response mapping to `ListingRecord`, outlier-trimmed median. Tests with mocked HTTP.
 - PR C — `PricingView` "Get Competitive Pricing" button, ASKING-prices disclaimer, 24-hour cache, error states (no listings found / quota exceeded / OAuth failed).
-- **User documentation (needed before shipping PR C):** end-user guide covering how to sign up for an eBay developer account, create a Production app, enable Browse API access, and copy the Client ID + Client Secret into FlipKit Settings. Must explain what the feature does (active asking prices, not sold prices) and why the two OAuth fields are needed. Ship as an in-app help page and/or the `M:\Software Development\Releases\Help\` doc per Motz SOP.
+- **User documentation (needed before shipping PR C):** end-user guide covering how to sign up for an eBay developer account, create a Production app, enable Browse API access, and copy the Client ID + Client Secret into FlipKit Settings. Must explain what the feature does (active asking prices, not sold prices) and why the two OAuth fields are needed.
 
 ### ~~4. Unit and Integration Tests~~ — ✅ DELIVERED in Phase 4
 
