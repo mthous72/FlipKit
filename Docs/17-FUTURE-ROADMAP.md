@@ -70,7 +70,7 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 
 📷 Webcam buttons on Scan + Edit (Desktop, OpenCvSharp4) and Scan (Web, `getUserMedia`+canvas). Settings → Webcam Capture exposes a master toggle, device picker with max-resolution labels, and a Test capture button. Browser capture requires HTTPS or `localhost`; on HTTP-via-Tailscale the trigger buttons hide and a banner explains why.
 
-**Deferred follow-ups:** Inventory edit-card webcam wiring on Web; Mac/Linux smoke pass and OpenCvSharp4 osx-arm64 verification — **blocked**, the maintainer has no Mac on hand to test against. Open issue for an external contributor or accept "Windows-only verified" until a Mac is available.
+**Deferred follow-ups:** ~~Inventory edit-card webcam wiring on Web~~ — shipped 2026-05-05 in `f3804db` (slots 3-8 only; front/back deferred to avoid the URL-clearing flow). Mac/Linux smoke pass and OpenCvSharp4 osx-arm64 verification — **blocked**, the maintainer has no Mac on hand to test against. Open issue for an external contributor or accept "Windows-only verified" until a Mac is available.
 
 ### 2.5 eBay Seller Hub Listings Import
 
@@ -213,7 +213,7 @@ ViewModel sizes after Phase 5c.1 (was 803 → 662 for Settings):
 | `ExportViewModel` | 256 | Untouched; under threshold |
 
 Standing cleanup items:
-- Magic strings for OpenRouter model IDs are now consolidated in `OpenRouterModelDefaults` (Phase 5b). What remains: any leftover hardcoded model IDs in tests or ViewModels — sweep when convenient.
+- ~~Magic strings for OpenRouter model IDs~~ — swept 2026-05-05 in `f3804db`. `AppSettings.DefaultModel` and Web `SettingsViewModel.DefaultModel` now reference `OpenRouterModelDefaults.DefaultFreeModelId`; new `OpenRouterModelDefaults.AutoModelValue` const aliases the "auto" sentinel from both `ModelOption.AutoValue` and `WebModelOption.AutoValue`. Test fixtures with specific model IDs intentionally left alone (they exercise the catalog parser).
 - Hardcoded HttpClient timeouts: `ServerManagementService.cs:42` is now wired through a typed setting (Phase 5a). New code should use the same pattern.
 - ~~The two `#pragma warning disable` blocks in `BulkScanViewModel.ProcessItemAsync`~~ — cleaned up 2026-05-05 in `31936b2`. CS8602 by passing the CTS as a method parameter; MVVMTK0034 by introducing a separate `_completedCount` int field for `Interlocked.Increment` and publishing through the source-generator-managed `ScanProgress` setter.
 
