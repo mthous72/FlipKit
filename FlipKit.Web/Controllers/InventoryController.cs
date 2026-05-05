@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
 using FlipKit.Core.Models;
@@ -14,10 +15,14 @@ namespace FlipKit.Web.Controllers
     /// </summary>
     public class InventoryController : Controller
     {
+        private const string EbayPreviewCachePrefix = "ebay-import:";
+        private static readonly TimeSpan EbayPreviewTtl = TimeSpan.FromMinutes(30);
+
         private readonly ICardRepository _cardRepository;
         private readonly IWebHostEnvironment _env;
         private readonly IImageUploadService _imageUploadService;
         private readonly IEbayListingImportService _ebayImportService;
+        private readonly IMemoryCache _previewCache;
         private readonly ILogger<InventoryController> _logger;
 
         public InventoryController(
@@ -25,12 +30,14 @@ namespace FlipKit.Web.Controllers
             IWebHostEnvironment env,
             IImageUploadService imageUploadService,
             IEbayListingImportService ebayImportService,
+            IMemoryCache previewCache,
             ILogger<InventoryController> logger)
         {
             _cardRepository = cardRepository;
             _env = env;
             _imageUploadService = imageUploadService;
             _ebayImportService = ebayImportService;
+            _previewCache = previewCache;
             _logger = logger;
         }
 
@@ -507,11 +514,13 @@ namespace FlipKit.Web.Controllers
         [HttpGet]
         public IActionResult ImportEbay() => View();
 
-        // POST: Inventory/ImportEbay — parse + commit in one shot. The Desktop
-        // dialog has a separate review step; the Web flow skips that to avoid
-        // either round-tripping a 200-row JSON preview through TempData or
-        // re-running the LLM enrichment on commit (would double cost).
-        // Future enhancement: session-keyed preview cache for a 2-step flow.
+        // POST: Inventory/ImportEbay — parse the CSV + run the LLM enrichment,
+        // stash the resulting preview in IMemoryCache keyed by a fresh GUID
+        // token, then redirect to the review page. The user picks which rows
+        // to import on the review page and posts the token back to
+        // ImportEbayCommit, which reads from the cache (no second LLM call).
+        // Cache TTL is 30 minutes sliding — long enough for a careful review
+        // without hoarding RAM forever.
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequestSizeLimit(20 * 1024 * 1024)] // 20 MB cap; 200 rows × 1 KB each leaves plenty of headroom
@@ -538,9 +547,69 @@ namespace FlipKit.Web.Controllers
                     return RedirectToAction(nameof(ImportEbay));
                 }
 
-                var result = await _ebayImportService.CommitAsync(preview);
+                var token = Guid.NewGuid().ToString("N");
+                _previewCache.Set(EbayPreviewCachePrefix + token, preview, new MemoryCacheEntryOptions
+                {
+                    SlidingExpiration = EbayPreviewTtl,
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2),
+                });
 
-                var summary = $"Imported {result.Inserted} new + {result.Updated} updated from {csvFile.FileName}.";
+                return RedirectToAction(nameof(ImportEbayReview), new { token });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "eBay listings import failed for {File}", csvFile.FileName);
+                TempData["ErrorMessage"] = $"Import failed: {ex.Message}";
+                return RedirectToAction(nameof(ImportEbay));
+            }
+        }
+
+        // GET: Inventory/ImportEbayReview?token=... — renders the cached preview
+        // with Skip checkboxes per row. Token expiry sends the user back to the
+        // upload page with a clear message.
+        [HttpGet]
+        public IActionResult ImportEbayReview(string? token)
+        {
+            if (string.IsNullOrEmpty(token) ||
+                !_previewCache.TryGetValue<EbayListingImportPreview>(EbayPreviewCachePrefix + token, out var preview)
+                || preview is null)
+            {
+                TempData["ErrorMessage"] = "Preview expired or not found — please re-upload the CSV.";
+                return RedirectToAction(nameof(ImportEbay));
+            }
+
+            ViewData["PreviewToken"] = token;
+            return View(preview);
+        }
+
+        // POST: Inventory/ImportEbayCommit — load preview from cache by token,
+        // mark rows the user unticked as Skip, then commit. The form posts an
+        // array of ebay item-ids to keep ("commitItemIds[]"); rows whose item
+        // id isn't in that list are skipped.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ImportEbayCommit(string token, string[]? commitItemIds)
+        {
+            if (string.IsNullOrEmpty(token) ||
+                !_previewCache.TryGetValue<EbayListingImportPreview>(EbayPreviewCachePrefix + token, out var preview)
+                || preview is null)
+            {
+                TempData["ErrorMessage"] = "Preview expired or not found — please re-upload the CSV.";
+                return RedirectToAction(nameof(ImportEbay));
+            }
+
+            var keep = new HashSet<string>(commitItemIds ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            foreach (var row in preview.Rows)
+            {
+                row.Skip = string.IsNullOrEmpty(row.CsvRow.EbayItemId) || !keep.Contains(row.CsvRow.EbayItemId);
+            }
+
+            try
+            {
+                var result = await _ebayImportService.CommitAsync(preview);
+                _previewCache.Remove(EbayPreviewCachePrefix + token);
+
+                var summary = $"Imported {result.Inserted} new + {result.Updated} updated, {result.Skipped} skipped (from {preview.SourceFileName}).";
                 if (result.Errors.Count > 0)
                 {
                     TempData["ErrorMessage"] = $"{summary} ({result.Errors.Count} errors — first: {result.Errors[0]})";
@@ -553,9 +622,9 @@ namespace FlipKit.Web.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "eBay listings import failed for {File}", csvFile.FileName);
-                TempData["ErrorMessage"] = $"Import failed: {ex.Message}";
-                return RedirectToAction(nameof(ImportEbay));
+                _logger.LogError(ex, "eBay listings commit failed for token {Token}", token);
+                TempData["ErrorMessage"] = $"Commit failed: {ex.Message}";
+                return RedirectToAction(nameof(ImportEbayReview), new { token });
             }
         }
     }

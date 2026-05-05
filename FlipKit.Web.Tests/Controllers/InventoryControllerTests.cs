@@ -16,15 +16,19 @@ public class InventoryControllerTests
     private static InventoryController Create(
         ICardRepository? repo = null,
         IImageUploadService? upload = null,
-        IEbayListingImportService? ebayImport = null)
+        IEbayListingImportService? ebayImport = null,
+        Microsoft.Extensions.Caching.Memory.IMemoryCache? cache = null)
     {
         var env = Substitute.For<IWebHostEnvironment>();
         env.WebRootPath.Returns(Path.Combine(Path.GetTempPath(), "flipkit-test-www"));
+        cache ??= new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
         var controller = new InventoryController(
             repo ?? Substitute.For<ICardRepository>(),
             env,
             upload ?? Substitute.For<IImageUploadService>(),
             ebayImport ?? Substitute.For<IEbayListingImportService>(),
+            cache,
             NullLogger<InventoryController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;

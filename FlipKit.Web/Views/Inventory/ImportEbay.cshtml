@@ -42,13 +42,13 @@
                                 <li>Year, manufacturer, card #, serial /N, and the Auto/Relic/Rookie/SP/SSP flags come from a regex pass over the title.</li>
                                 <li>Player name, brand, set, parallel, and team come from an LLM second pass via OpenRouter (uses your default model from Settings).</li>
                                 <li>New rows save as <strong>Listed</strong>; updates preserve user-edited values.</li>
-                                <li>Unlike the Desktop app, the Web flow imports immediately — there's no review step before commit.</li>
+                                <li>After parsing you'll see a review page where you can untick rows you don't want before committing.</li>
                             </ul>
                         </div>
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-                                <i class="bi bi-upload"></i> Parse and Import
+                                <i class="bi bi-upload"></i> Parse and Review
                             </button>
                             <a asp-action="Index" class="btn btn-link">Cancel</a>
                         </div>
@@ -64,7 +64,7 @@
         document.getElementById('importForm').addEventListener('submit', function () {
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Parsing CSV and enriching titles via OpenRouter… this can take 30-60 seconds for a typical inventory.';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Parsing CSV and enriching titles via OpenRouter… 30-60 seconds for a typical inventory. You\'ll get a review page next.';
         });
     </script>
 }

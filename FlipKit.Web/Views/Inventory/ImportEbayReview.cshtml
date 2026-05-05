@@ -1,0 +1,118 @@
+@model FlipKit.Core.Models.EbayListingImportPreview
+@{
+    ViewData["Title"] = "Review eBay Import";
+    var token = ViewData["PreviewToken"] as string ?? string.Empty;
+}
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="display-5"><i class="bi bi-list-check"></i> Review eBay Import</h1>
+        <div>
+            <span class="badge bg-success fs-6 me-2">@Model.InsertCount new</span>
+            <span class="badge bg-warning text-dark fs-6">@Model.UpdateCount updates</span>
+        </div>
+    </div>
+
+    <p class="text-muted">
+        From <code>@Model.SourceFileName</code>. Untick any rows you don't want to import. Existing rows
+        (matched by eBay item number) will update in place; new rows save as <strong>Listed</strong>.
+    </p>
+
+    @if (Model.Warnings.Count > 0)
+    {
+        <div class="alert alert-warning small">
+            <strong>Warnings from parsing:</strong>
+            <ul class="mb-0 mt-2">
+                @foreach (var w in Model.Warnings)
+                {
+                    <li>@w</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <form asp-action="ImportEbayCommit" method="post" id="commitForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="token" value="@token" />
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>@Model.Rows.Count rows parsed</strong>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllBtn">Select all</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllBtn">Deselect all</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:60px;" class="text-center">Import?</th>
+                            <th>Item #</th>
+                            <th>Player</th>
+                            <th>Year</th>
+                            <th>Brand</th>
+                            <th>Parallel</th>
+                            <th>#</th>
+                            <th>Price</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" name="commitItemIds" value="@row.CsvRow.EbayItemId"
+                                           class="form-check-input row-pick" checked="checked" />
+                                </td>
+                                <td><small class="text-muted">@row.CsvRow.EbayItemId</small></td>
+                                <td>@row.ProposedCard.PlayerName</td>
+                                <td>@row.ProposedCard.Year</td>
+                                <td>@row.ProposedCard.Brand</td>
+                                <td>@row.ProposedCard.ParallelName</td>
+                                <td>@row.ProposedCard.CardNumber</td>
+                                <td>@(row.ProposedCard.ListingPrice?.ToString("0.00") ?? "")</td>
+                                <td>
+                                    @if (row.IsExistingMatch)
+                                    {
+                                        <span class="badge bg-warning text-dark">Update</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">New</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mb-4">
+            <a asp-action="ImportEbay" class="btn btn-link">
+                <i class="bi bi-arrow-left"></i> Back to upload
+            </a>
+            <div>
+                <button type="submit" class="btn btn-primary btn-lg" id="commitBtn">
+                    <i class="bi bi-check-lg"></i> Import selected rows
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        const checks = document.querySelectorAll('.row-pick');
+        document.getElementById('selectAllBtn').addEventListener('click', () => checks.forEach(c => c.checked = true));
+        document.getElementById('deselectAllBtn').addEventListener('click', () => checks.forEach(c => c.checked = false));
+
+        document.getElementById('commitForm').addEventListener('submit', () => {
+            const btn = document.getElementById('commitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing…';
+        });
+    </script>
+}

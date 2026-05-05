@@ -97,6 +97,10 @@ builder.Services.AddScoped<ISoldPriceService, Point130SoldPriceService>(); // De
 // Scoped because the import service holds an ICardRepository.
 builder.Services.AddScoped<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
 builder.Services.AddScoped<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
+// IMemoryCache backs the 2-step Web import preview — parse + LLM enrich on
+// upload, stash by GUID token, render the review page, commit reads back by
+// token. Avoids re-running the LLM on every commit.
+builder.Services.AddMemoryCache();
 
 // Register web-specific services
 builder.Services.AddSingleton<IFileDialogService, WebFileUploadService>();
