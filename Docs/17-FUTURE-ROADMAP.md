@@ -86,8 +86,8 @@ Import an eBay Seller Hub "All active listings" CSV export into the inventory. E
 **Tests:** 25 in `FlipKit.Core.Tests` covering CSV reader, import service orchestration, and OpenRouter response parsing. Plus the original 37 from PR 1 over the parser regex against real eBay title fixtures.
 
 **Deferred follow-ups:**
-- 2-step preview-then-commit Web flow (would require session-keyed preview cache).
-- Bulk-edit on the Desktop preview grid (currently only Skip is editable; user has to commit then Edit individual rows).
+- ~~2-step preview-then-commit Web flow~~ — shipped 2026-05-05 in `689d64e`. IMemoryCache stashes the parsed preview by GUID token (30 min sliding TTL); review page lets users untick rows before commit. Avoids the second LLM call.
+- ~~Bulk-edit on the Desktop preview grid~~ — shipped 2026-05-05 in `dc64fc5`. Player/Year/Brand/Parallel/#/Price are now editable in-place via two-way DataGrid binding.
 - ~~Add `/api/cards/by-ebay-item-id/{id}` to the API server~~ — shipped 2026-05-05 in `31936b2`.
 - ~~Map eBay title → `Sport` enum~~ — shipped 2026-05-05 in `31936b2` (regex over league acronyms + brand fallbacks; leaves null on genuinely ambiguous titles).
 
