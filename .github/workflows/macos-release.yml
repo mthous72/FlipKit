@@ -46,7 +46,12 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Run test suite
-        run: dotnet test FlipKit.sln --nologo --verbosity minimal
+        run: |
+          dotnet test FlipKit.Core.Tests/FlipKit.Core.Tests.csproj --nologo --verbosity minimal
+          dotnet test FlipKit.Web.Tests/FlipKit.Web.Tests.csproj --nologo --verbosity minimal
+
+      - name: Patch Desktop csproj (remove delisted macOS OpenCV runtime)
+        run: sed -i '' '/OpenCvSharp4\.runtime\.osx/d' FlipKit.Desktop/FlipKit.Desktop.csproj
 
       - name: Publish Desktop, Web, and API
         run: |
