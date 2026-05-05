@@ -72,6 +72,25 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 
 **Deferred follow-ups:** Inventory edit-card webcam wiring on Web; Mac/Linux smoke pass and OpenCvSharp4 osx-arm64 verification — **blocked**, the maintainer has no Mac on hand to test against. Open issue for an external contributor or accept "Windows-only verified" until a Mac is available.
 
+### 2.5 eBay Seller Hub Listings Import
+
+**Status:** ✅ Shipped 2026-05-05 (4 PRs on `master`)
+**Plan Doc:** None — designed inline; see PR commit messages on `master` (`5b46141` PR 1, `3d6411d` PR 2, `a2fe088` PR 3, `111198e` PR 4) for the per-PR scope.
+
+Import an eBay Seller Hub "All active listings" CSV export into the inventory. EbayItemId is the upsert key, so re-importing updates existing rows instead of duplicating them.
+
+**Pipeline:** `EbayListingsCsvReader` (CsvHelper, tolerant of BOM + Apr-29-26 dates + CD:* grading columns) → `EbayTitleParser` rule pass (regex for year/manufacturer/card #/serial/auto/relic/rookie/SP/SSP) → `OpenRouterEbayTitleEnricher` LLM pass (batches of 10 titles per request, JSON-array prompt for player/brand/set/parallel/team) → `EbayListingImportService` mapper with field-preservation rules (LLM nulls don't overwrite existing values, boolean flags only flip true) → `ICardRepository` upsert.
+
+**UI:** Desktop "Import eBay…" toolbar button on Inventory → `ImportEbayListingsDialog` (file picker → preview DataGrid with Skip checkbox → Import). Web "Import eBay…" button on Inventory header → `/Inventory/ImportEbay` form (parses + commits in one shot — no review step on Web to avoid doubling LLM cost).
+
+**Tests:** 25 in `FlipKit.Core.Tests` covering CSV reader, import service orchestration, and OpenRouter response parsing. Plus the original 37 from PR 1 over the parser regex against real eBay title fixtures.
+
+**Deferred follow-ups:**
+- 2-step preview-then-commit Web flow (would require session-keyed preview cache).
+- Bulk-edit on the Desktop preview grid (currently only Skip is editable; user has to commit then Edit individual rows).
+- Add `/api/cards/by-ebay-item-id/{id}` to the API server so remote-mode `ApiCardRepository.GetCardByEbayItemIdAsync` doesn't have to fetch the full list.
+- Map eBay title → `Sport` enum (currently leaves Sport=null on imported rows; user fills it in via Edit).
+
 ### 3. Automated Price Scraping
 
 **Status:** 📋 Planned — see also "Decision required" below

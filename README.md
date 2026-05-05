@@ -20,6 +20,7 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 - **Variation Verification** - Cross-references scans against bundled checklists; user-driven Excel import for additional sets is on the roadmap
 - **Pricing Research** - Smart Terapeak/eBay search URLs with customizable templates
 - **CSV Export** - Spec-compliant Whatnot and eBay Bulk Upload exports with template-based validation, ImgBB image hosting, and re-export support
+- **eBay Listings Import** - Import an eBay Seller Hub "All active listings" CSV export into the inventory; deterministic regex pass + LLM second pass enrich each title, eBay item number is the upsert key so re-imports stay clean
 - **Sales Tracking** - Record sales, calculate profit, generate reports
 - **Mobile Scanning** - Camera integration for phone browsers via the Web app
 - **Webcam Capture** - Capture card images directly from a laptop webcam in both the Desktop app (OpenCvSharp4) and Web browser (`getUserMedia`); see [Docs/27-WEBCAM-CAPTURE-PLAN.md](Docs/27-WEBCAM-CAPTURE-PLAN.md). Browser capture requires HTTPS or `localhost` — Tailscale-over-HTTP falls back to file picker / phone upload.
