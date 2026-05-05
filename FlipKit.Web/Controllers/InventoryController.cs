@@ -17,17 +17,20 @@ namespace FlipKit.Web.Controllers
         private readonly ICardRepository _cardRepository;
         private readonly IWebHostEnvironment _env;
         private readonly IImageUploadService _imageUploadService;
+        private readonly IEbayListingImportService _ebayImportService;
         private readonly ILogger<InventoryController> _logger;
 
         public InventoryController(
             ICardRepository cardRepository,
             IWebHostEnvironment env,
             IImageUploadService imageUploadService,
+            IEbayListingImportService ebayImportService,
             ILogger<InventoryController> logger)
         {
             _cardRepository = cardRepository;
             _env = env;
             _imageUploadService = imageUploadService;
+            _ebayImportService = ebayImportService;
             _logger = logger;
         }
 
@@ -452,6 +455,62 @@ namespace FlipKit.Web.Controllers
                 _logger.LogError(ex, "Error deleting card {CardId}", id);
                 TempData["ErrorMessage"] = "Error deleting card. Please try again.";
                 return RedirectToAction(nameof(Index));
+            }
+        }
+
+        // GET: Inventory/ImportEbay — landing page with the file picker form.
+        [HttpGet]
+        public IActionResult ImportEbay() => View();
+
+        // POST: Inventory/ImportEbay — parse + commit in one shot. The Desktop
+        // dialog has a separate review step; the Web flow skips that to avoid
+        // either round-tripping a 200-row JSON preview through TempData or
+        // re-running the LLM enrichment on commit (would double cost).
+        // Future enhancement: session-keyed preview cache for a 2-step flow.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequestSizeLimit(20 * 1024 * 1024)] // 20 MB cap; 200 rows × 1 KB each leaves plenty of headroom
+        public async Task<IActionResult> ImportEbay(IFormFile? csvFile)
+        {
+            if (csvFile is null || csvFile.Length == 0)
+            {
+                TempData["ErrorMessage"] = "No file uploaded. Pick the eBay Seller Hub CSV export.";
+                return RedirectToAction(nameof(ImportEbay));
+            }
+
+            try
+            {
+                EbayListingImportPreview preview;
+                using (var stream = csvFile.OpenReadStream())
+                {
+                    preview = await _ebayImportService.ParseAsync(stream, csvFile.FileName);
+                }
+
+                if (preview.Rows.Count == 0)
+                {
+                    var warnings = string.Join(" ", preview.Warnings);
+                    TempData["ErrorMessage"] = $"No importable rows found in {csvFile.FileName}. {warnings}".Trim();
+                    return RedirectToAction(nameof(ImportEbay));
+                }
+
+                var result = await _ebayImportService.CommitAsync(preview);
+
+                var summary = $"Imported {result.Inserted} new + {result.Updated} updated from {csvFile.FileName}.";
+                if (result.Errors.Count > 0)
+                {
+                    TempData["ErrorMessage"] = $"{summary} ({result.Errors.Count} errors — first: {result.Errors[0]})";
+                }
+                else
+                {
+                    TempData["SuccessMessage"] = summary;
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "eBay listings import failed for {File}", csvFile.FileName);
+                TempData["ErrorMessage"] = $"Import failed: {ex.Message}";
+                return RedirectToAction(nameof(ImportEbay));
             }
         }
     }

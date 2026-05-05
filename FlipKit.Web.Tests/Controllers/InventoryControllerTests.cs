@@ -15,7 +15,8 @@ public class InventoryControllerTests
 {
     private static InventoryController Create(
         ICardRepository? repo = null,
-        IImageUploadService? upload = null)
+        IImageUploadService? upload = null,
+        IEbayListingImportService? ebayImport = null)
     {
         var env = Substitute.For<IWebHostEnvironment>();
         env.WebRootPath.Returns(Path.Combine(Path.GetTempPath(), "flipkit-test-www"));
@@ -23,6 +24,7 @@ public class InventoryControllerTests
             repo ?? Substitute.For<ICardRepository>(),
             env,
             upload ?? Substitute.For<IImageUploadService>(),
+            ebayImport ?? Substitute.For<IEbayListingImportService>(),
             NullLogger<InventoryController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;

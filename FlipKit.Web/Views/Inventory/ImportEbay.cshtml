@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "Import eBay Listings";
+}
+
+<div class="container mt-4">
+    <h1 class="display-5 mb-4"><i class="bi bi-cloud-upload"></i> Import eBay Listings</h1>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Pick the eBay Seller Hub CSV export</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-controller="Inventory" asp-action="ImportEbay" method="post" enctype="multipart/form-data" id="importForm">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-4">
+                            <label for="csvFile" class="form-label">
+                                <strong>CSV file</strong> <span class="text-danger">*</span>
+                            </label>
+                            <input type="file" class="form-control" id="csvFile" name="csvFile"
+                                   accept=".csv,text/csv" required>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> From eBay Seller Hub →
+                                Listings → Active → Download report (CSV).
+                            </small>
+                        </div>
+
+                        <div class="alert alert-info small">
+                            <strong>How this works:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Each CSV row becomes one card. The eBay item number is the upsert key — re-importing updates existing rows instead of duplicating them.</li>
+                                <li>Year, manufacturer, card #, serial /N, and the Auto/Relic/Rookie/SP/SSP flags come from a regex pass over the title.</li>
+                                <li>Player name, brand, set, parallel, and team come from an LLM second pass via OpenRouter (uses your default model from Settings).</li>
+                                <li>New rows save as <strong>Listed</strong>; updates preserve user-edited values.</li>
+                                <li>Unlike the Desktop app, the Web flow imports immediately — there's no review step before commit.</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="bi bi-upload"></i> Parse and Import
+                            </button>
+                            <a asp-action="Index" class="btn btn-link">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('importForm').addEventListener('submit', function () {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Parsing CSV and enriching titles via OpenRouter… this can take 30-60 seconds for a typical inventory.';
+        });
+    </script>
+}
