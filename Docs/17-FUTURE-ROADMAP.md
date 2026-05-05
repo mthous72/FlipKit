@@ -122,9 +122,10 @@ The [Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html) i
 **Future opt-in: paid third-party sold-data adapter.** SportsCardsPro ($6-20/month) has sold-price data via API, sports-card-specific, no eBay-developer-agreement constraints. Worth wiring as a second `ISoldPriceService` impl behind a paid-toggle if users ask for true automated sold-comps. [Docs/09-EBAY-API.md](09-EBAY-API.md) §"Better Alternatives for Sold Prices" lists this and Ximilar's Collectibles API as the realistic options. Out of scope for the current Browse-API-only plan.
 
 **Open work:**
-- PR A.1 — rename service + AppSettings field + Settings UI to match the Browse API path. Pure mechanical rename, no functional change.
-- PR B — `EbayBrowseApiClient` (OAuth token cache + GET /item_summary/search), response mapping to a new `ActiveListingRecord` (or repurpose `SoldPriceRecord` with a `IsSold` flag), median + outlier-trimmed analysis. Tests with mocked HTTP.
+- ~~PR A.1 — rename service + AppSettings field + Settings UI to match the Browse API path. Pure mechanical rename, no functional change.~~ ✅ Done (`56dee3b`, 2026-05-05)
+- PR B — `EbayBrowseApiClient` (OAuth token cache + GET /item_summary/search), response mapping to `ListingRecord`, outlier-trimmed median. Tests with mocked HTTP.
 - PR C — `PricingView` "Get Competitive Pricing" button, ASKING-prices disclaimer, 24-hour cache, error states (no listings found / quota exceeded / OAuth failed).
+- **User documentation (needed before shipping PR C):** end-user guide covering how to sign up for an eBay developer account, create a Production app, enable Browse API access, and copy the Client ID + Client Secret into FlipKit Settings. Must explain what the feature does (active asking prices, not sold prices) and why the two OAuth fields are needed. Ship as an in-app help page and/or the `M:\Software Development\Releases\Help\` doc per Motz SOP.
 
 ### ~~4. Unit and Integration Tests~~ — ✅ DELIVERED in Phase 4
 
