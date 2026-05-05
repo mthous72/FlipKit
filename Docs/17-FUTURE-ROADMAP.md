@@ -91,53 +91,40 @@ Import an eBay Seller Hub "All active listings" CSV export into the inventory. E
 - ~~Add `/api/cards/by-ebay-item-id/{id}` to the API server~~ — shipped 2026-05-05 in `31936b2`.
 - ~~Map eBay title → `Sport` enum~~ — shipped 2026-05-05 in `31936b2` (regex over league acronyms + brand fallbacks; leaves null on genuinely ambiguous titles).
 
-### 3. Automated Price Scraping
+### 3. Automated Pricing — Active-Listing Comps via Browse API
 
-**Status:** 📋 Planned — see also "Decision required" below
-**Effort:** High (4-6 weeks)
+> **Status (2026-05-05):** Stale recommendation rewritten. The previous version of this entry recommended building against eBay's Finding API `findCompletedItems` for sold-comp data. That API was **decommissioned 2026-02-05** (eBay [Traditional APIs deprecation thread](https://community.ebay.com/t5/Traditional-APIs-Search/Alert-Finding-API-and-Shopping-API-to-be-decommissioned-in-2025/td-p/34222062) + the [API Deprecation Status](https://developer.ebay.com/develop/get-started/api-deprecation-status) page). The replacement Marketplace Insights API is gated to "select developers approved by business units" (eBay [Marketplace Insights Overview](https://developer.ebay.com/api-docs/buy/marketplace-insights/static/overview.html)) — **not realistically attainable for FlipKit**. eBay's License Agreement also prohibits "deriving aggregated seller or buyer data" without express written permission, which constrains what we could ship even with Insights access. See [Docs/09-EBAY-API.md](09-EBAY-API.md) for the full posture analysis.
 
-Today PricerService only builds Terapeak/eBay search URLs and opens them in a browser. Target: pull median sold prices automatically. `Point130SoldPriceService` exists, is registered in DI, but is **shelved at the only call site** (`PricingViewModel.cs:19` — `// SHELVED: ISoldPriceService _soldPriceService (kept for potential future use)`).
+**Conclusion:** automated **sold-price** lookup via official eBay APIs is not viable for a regular developer account in 2026. Build automated **active-listing comps** via the Browse API instead, and keep sold-price research manual via the existing Terapeak/eBay deeplink workflow.
 
-**Decision required before this item starts:**
-- **Revive Point130** — finish wiring `PricingViewModel` to call it, decide on caching/throttling, accept the legal-gray scraping posture.
-- **Replace with eBay Finding API** — delete `Point130SoldPriceService`, build a new `EbayFindingApiService` (Option A below). Cleaner long-term but requires eBay developer approval + key management.
-- **Delete the shelf** — drop `ISoldPriceService` and `Point130SoldPriceService` entirely, keep manual pricing as the only path. Simplest, but blocks #9 (Price Alerts).
+**Status:** 📋 In progress (PR A scaffold shipped 2026-05-05 in `a255afe` — service shell + `AppSettings.EbayFindingApiAppId`. Both need renaming to match the chosen Browse API path; see "Required correction" below).
+**Effort:** Medium (~2 weeks for the Browse API path; the prior 4-6 week estimate assumed a sold-comp pipeline + statistical analysis).
 
-**Approach Options (when this is greenlit):**
+**Chosen path: Browse API for active competitive comps.**
 
-**Option A: eBay Finding API (Recommended)**
-- Official eBay developer API — sold listings via `findCompletedItems`
-- Free developer account, ~5,000 calls/day
-- Pros: official, reliable, no scraping risk
-- Cons: requires approval + key management
+The [Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html) is the sanctioned surface for keyword/category search. 5,000 calls/day default for free tier ([API Call Limits](https://developer.ebay.com/develop/get-started/api-call-limits)) — comfortable headroom for a 200-card inventory. Returns currently active listings only (not sold prices), so we surface results as **"asking prices, not sold"** throughout the UI to avoid misleading users into pricing low based on what someone is *trying* to charge but not getting.
 
-**Option B: Web scraping (HtmlAgilityPack or revived Point130)**
-- Pros: no API key
-- Cons: fragile (eBay/130point HTML changes), legal gray area
-
-**Option C: Terapeak Research API**
-- Best data quality but requires eBay Store subscription ($30/month)
-
-**Recommended Implementation:**
 ```csharp
-public interface IPriceScraperService
-{
-    Task<PriceDataResult> GetMarketPriceAsync(Card card);
-}
-
-public class PriceDataResult
-{
-    public decimal MedianSoldPrice { get; set; }
-    public decimal AverageSoldPrice { get; set; }
-    public int SoldCount { get; set; }
-    public DateTime DataAsOf { get; set; }
-    public List<RecentSale> RecentSales { get; set; }
-}
+// Endpoint: GET https://api.ebay.com/buy/browse/v1/item_summary/search
+// Auth: OAuth2 client_credentials grant → Bearer token (cached 2 hr)
+// Scope: https://api.ebay.com/oauth/api_scope
+// Rate: 5000 calls/day (default), 100 items/call
 ```
 
-**UI Changes:** "Get Market Price" button on PricingView, auto-populate `EstimatedValue`, show confidence interval ("$12-18 based on 15 sales"), 24-hour cache.
+**Configuration:** Settings → `EbayClientId` + `EbayClientSecret` (OAuth pair, replaces the single `EbayFindingApiAppId` shipped in PR A). Free developer account at https://developer.ebay.com/.
 
-**Configuration:** Settings → eBay API key, toggle auto-price vs manual.
+**UI:** "Get Competitive Pricing" button on PricingView (renamed from "Get Market Price" to be honest about what it returns). Shows median ask, low/high, listing count, and a prominent "ASKING prices — actual sales may differ" disclaimer. 24-hour cache so repeated views don't burn quota.
+
+**Required correction (PR A.1, before PR B):** The PR A scaffold landed `EbayFindingApiSoldPriceService` and `AppSettings.EbayFindingApiAppId` based on this stale roadmap entry. Both need to rename to `EbayBrowseApiActiveListingService` / `EbayClientId`+`EbayClientSecret` before any HTTP code lands. See open work below.
+
+**Sold-price research stays manual** — Terapeak Seller Hub (free for any eBay seller) or the LH_Sold=1&LH_Complete=1 deeplink workflow already wired into `PricingViewModel.OpenEbaySoldCommand`. Both surfaces accept browser-based research; FlipKit just generates the URL.
+
+**Future opt-in: paid third-party sold-data adapter.** SportsCardsPro ($6-20/month) has sold-price data via API, sports-card-specific, no eBay-developer-agreement constraints. Worth wiring as a second `ISoldPriceService` impl behind a paid-toggle if users ask for true automated sold-comps. [Docs/09-EBAY-API.md](09-EBAY-API.md) §"Better Alternatives for Sold Prices" lists this and Ximilar's Collectibles API as the realistic options. Out of scope for the current Browse-API-only plan.
+
+**Open work:**
+- PR A.1 — rename service + AppSettings field + Settings UI to match the Browse API path. Pure mechanical rename, no functional change.
+- PR B — `EbayBrowseApiClient` (OAuth token cache + GET /item_summary/search), response mapping to a new `ActiveListingRecord` (or repurpose `SoldPriceRecord` with a `IsSold` flag), median + outlier-trimmed analysis. Tests with mocked HTTP.
+- PR C — `PricingView` "Get Competitive Pricing" button, ASKING-prices disclaimer, 24-hour cache, error states (no listings found / quota exceeded / OAuth failed).
 
 ### ~~4. Unit and Integration Tests~~ — ✅ DELIVERED in Phase 4
 
