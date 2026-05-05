@@ -66,6 +66,15 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _autoAcceptTier1Matches;
         [ObservableProperty] private int _maxConcurrentScans = 1;
 
+        // Webcam capture (Roadmap #2 — Docs/27-WEBCAM-CAPTURE-PLAN.md). Device list
+        // is populated lazily via RefreshWebcamDevicesCommand because probing all
+        // OpenCV indices opens each camera in turn — we don't want that on app start.
+        [ObservableProperty] private bool _webcamCaptureEnabled = true;
+        [ObservableProperty] private CameraDevice? _selectedWebcamDevice;
+        [ObservableProperty] private bool _isProbingWebcams;
+        [ObservableProperty] private string? _webcamProbeStatus;
+        public ObservableCollection<CameraDevice> WebcamDevices { get; } = new();
+
         // Financial
         [ObservableProperty] private decimal _whatnotFeePercent = 11.0m;
         [ObservableProperty] private decimal _ebayFeePercent = 13.25m;
@@ -141,6 +150,8 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _tailscaleStatus = "Not configured";
 
         private readonly IOpenRouterModelCatalog? _modelCatalog;
+        private readonly ICameraService? _cameraService;
+        private readonly IWebcamCaptureDialogService? _webcamCaptureDialog;
 
         public SettingsViewModel(ISettingsService settingsService, IBrowserService browserService,
             IServiceProvider services, IServerManagementService serverManagement,
@@ -154,6 +165,8 @@ namespace FlipKit.Desktop.ViewModels
 
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
+            _cameraService = services.GetService(typeof(ICameraService)) as ICameraService;
+            _webcamCaptureDialog = services.GetService(typeof(IWebcamCaptureDialogService)) as IWebcamCaptureDialogService;
 
             LoadSettings();
             LoadCardCountAsync();
@@ -243,6 +256,11 @@ namespace FlipKit.Desktop.ViewModels
             EnableChecklistLearning = s.EnableChecklistLearning;
             AutoAcceptTier1Matches = s.AutoAcceptTier1Matches;
             MaxConcurrentScans = s.MaxConcurrentScans;
+
+            // Webcam capture — device list stays empty until the user clicks
+            // "Detect cameras" (probing is slow and disturbs other camera apps).
+            // The combo's selection placeholder shows the saved name when available.
+            WebcamCaptureEnabled = s.WebcamCaptureEnabled;
             WhatnotFeePercent = s.WhatnotFeePercent;
             EbayFeePercent = s.EbayFeePercent;
             DefaultShippingCostPwe = s.DefaultShippingCostPwe;
@@ -361,7 +379,14 @@ namespace FlipKit.Desktop.ViewModels
                 WebServerPort = WebServerPort,
                 ApiServerPort = ApiServerPort,
                 MinimizeToTray = MinimizeToTray,
-                AutoOpenBrowser = AutoOpenBrowser
+                AutoOpenBrowser = AutoOpenBrowser,
+                WebcamCaptureEnabled = WebcamCaptureEnabled,
+                // Preserve whatever the dialog last persisted unless the user
+                // explicitly picked something in this Settings session. Reading
+                // the saved values back keeps "Detect cameras" + select-but-not-save
+                // safe — switching device only sticks once the user hits Save.
+                PreferredCameraIndex = SelectedWebcamDevice?.Index ?? _settingsService.Load().PreferredCameraIndex,
+                PreferredCameraName = SelectedWebcamDevice?.Name ?? _settingsService.Load().PreferredCameraName,
             };
 
             _settingsService.Save(s);
@@ -751,6 +776,73 @@ namespace FlipKit.Desktop.ViewModels
         private void RefreshNetworkStatus()
         {
             UpdateLocalIpAddresses();
+        }
+
+        [RelayCommand]
+        private async Task RefreshWebcamDevicesAsync()
+        {
+            if (_cameraService is null)
+            {
+                WebcamProbeStatus = "Camera service not available.";
+                return;
+            }
+
+            IsProbingWebcams = true;
+            WebcamProbeStatus = "Probing cameras…";
+            try
+            {
+                var found = await _cameraService.ListDevicesAsync();
+                WebcamDevices.Clear();
+                foreach (var d in found)
+                    WebcamDevices.Add(d);
+
+                // Restore the saved selection if still present so Save doesn't
+                // accidentally null it out by reading SelectedWebcamDevice.
+                var saved = _settingsService.Load();
+                CameraDevice? choice = null;
+                if (saved.PreferredCameraIndex.HasValue)
+                    choice = WebcamDevices.FirstOrDefault(d => d.Index == saved.PreferredCameraIndex.Value);
+                if (choice is null && !string.IsNullOrEmpty(saved.PreferredCameraName))
+                    choice = WebcamDevices.FirstOrDefault(d => string.Equals(d.Name, saved.PreferredCameraName, StringComparison.OrdinalIgnoreCase));
+                SelectedWebcamDevice = choice ?? WebcamDevices.FirstOrDefault();
+
+                WebcamProbeStatus = WebcamDevices.Count == 0
+                    ? "No cameras detected. Connect a webcam and try again."
+                    : $"Found {WebcamDevices.Count} camera(s).";
+            }
+            catch (Exception ex)
+            {
+                WebcamProbeStatus = $"Probe failed: {ex.Message}";
+            }
+            finally
+            {
+                IsProbingWebcams = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task TestWebcamCaptureAsync()
+        {
+            if (_webcamCaptureDialog is null)
+            {
+                WebcamProbeStatus = "Webcam dialog service not available.";
+                return;
+            }
+
+            // Persist the current pick before opening so the dialog defaults to it.
+            // (Avoids confusing UX where the test ignores the in-flight selection.)
+            if (SelectedWebcamDevice is { } d)
+            {
+                var s = _settingsService.Load();
+                s.PreferredCameraIndex = d.Index;
+                s.PreferredCameraName = d.Name;
+                _settingsService.Save(s);
+            }
+
+            var path = await _webcamCaptureDialog.CaptureAsync();
+            WebcamProbeStatus = string.IsNullOrEmpty(path)
+                ? "Test capture cancelled."
+                : $"Test capture saved: {path}";
         }
 
         public void Dispose()

@@ -19,6 +19,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IFileDialogService _fileDialogService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
+        private readonly ISettingsService _settingsService;
         private readonly ILogger<EditCardViewModel> _logger;
 
         private Card? _originalCard;
@@ -39,6 +40,9 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _tierBadgeText = string.Empty;
         [ObservableProperty] private string _tierBadgeColor = "#9E9E9E";
 
+        // Webcam capture toggle — bound to the 📷 buttons' IsVisible.
+        [ObservableProperty] private bool _isWebcamEnabled = true;
+
         // Prefer ImgBB URLs (used for Whatnot) over local paths
         public string? DisplayImageFront => !string.IsNullOrEmpty(ImageUrl1) ? ImageUrl1 : ImagePathFront;
         public string? DisplayImageBack => !string.IsNullOrEmpty(ImageUrl2) ? ImageUrl2 : ImagePathBack;
@@ -53,6 +57,7 @@ namespace FlipKit.Desktop.ViewModels
             IFileDialogService fileDialogService,
             IImageUploadService imageUploadService,
             IWebcamCaptureDialogService webcamCaptureDialog,
+            ISettingsService settingsService,
             ILogger<EditCardViewModel> logger)
         {
             _cardRepository = cardRepository;
@@ -60,7 +65,10 @@ namespace FlipKit.Desktop.ViewModels
             _fileDialogService = fileDialogService;
             _imageUploadService = imageUploadService;
             _webcamCaptureDialog = webcamCaptureDialog;
+            _settingsService = settingsService;
             _logger = logger;
+
+            IsWebcamEnabled = settingsService.Load().WebcamCaptureEnabled;
         }
 
         public async Task LoadCardAsync(int cardId)

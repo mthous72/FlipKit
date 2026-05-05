@@ -90,5 +90,21 @@ namespace FlipKit.Core.Models
         // Health-check pings against the embedded servers should fail fast — they're
         // localhost. 2 seconds covers slow startup without hanging the UI.
         public int ServerHealthCheckTimeoutSeconds { get; set; } = 2;
+
+        // Webcam capture (Roadmap #2 — Docs/27-WEBCAM-CAPTURE-PLAN.md).
+        // Master toggle for the 📷 Webcam buttons on Scan / Edit. Auto-flipped to
+        // false the first time ListDevicesAsync returns no cameras so the buttons
+        // hide on machines without a webcam.
+        public bool WebcamCaptureEnabled { get; set; } = true;
+
+        // Default device the capture dialog opens on. Index follows OpenCV's
+        // ordering (probed 0..4). Null = pick the first device returned.
+        public int? PreferredCameraIndex { get; set; }
+
+        // Cross-session fallback for when the OS reorders devices (e.g. a USB cam
+        // gets unplugged and the index shifts). When the saved index points at a
+        // device whose label doesn't match this name, the dialog falls back to
+        // matching on name.
+        public string? PreferredCameraName { get; set; }
     }
 }

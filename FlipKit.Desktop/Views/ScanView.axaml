@@ -141,7 +141,8 @@
                                 <TextBlock Text="or" HorizontalAlignment="Center" Opacity="0.4"/>
                                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                                     <Button Content="Browse..." Command="{Binding BrowseImageCommand}"/>
-                                    <Button Content="📷 Webcam" Command="{Binding CaptureFrontImageCommand}"/>
+                                    <Button Content="📷 Webcam" Command="{Binding CaptureFrontImageCommand}"
+                                            IsVisible="{Binding IsWebcamEnabled}"/>
                                 </StackPanel>
                             </StackPanel>
 
@@ -159,7 +160,8 @@
                                            HorizontalAlignment="Center"/>
                                 <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                                     <Button Content="Change Image" Command="{Binding BrowseImageCommand}" Padding="16,6"/>
-                                    <Button Content="📷 Recapture" Command="{Binding CaptureFrontImageCommand}" Padding="16,6"/>
+                                    <Button Content="📷 Recapture" Command="{Binding CaptureFrontImageCommand}" Padding="16,6"
+                                            IsVisible="{Binding IsWebcamEnabled}"/>
                                 </StackPanel>
                             </StackPanel>
 
@@ -192,6 +194,7 @@
                                             Padding="16,6"/>
                                     <Button Content="📷 Webcam"
                                             Command="{Binding CaptureBackImageCommand}"
+                                            IsVisible="{Binding IsWebcamEnabled}"
                                             Padding="12,6"/>
                                 </StackPanel>
                                 <TextBlock Text="Helps identify card number, set, and serial number"
@@ -211,6 +214,7 @@
                                     <Button Content="Change" Command="{Binding BrowseBackImageCommand}"
                                             Padding="12,4" FontSize="12"/>
                                     <Button Content="📷 Recapture" Command="{Binding CaptureBackImageCommand}"
+                                            IsVisible="{Binding IsWebcamEnabled}"
                                             Padding="12,4" FontSize="12"/>
                                     <Button Content="Remove" Command="{Binding RemoveBackImageCommand}"
                                             Padding="12,4" FontSize="12"/>
@@ -260,6 +264,7 @@
                                         Padding="8,6" FontSize="12"/>
                                 <Button Grid.Column="1" Content="📷 Webcam"
                                         Command="{Binding CaptureAdditionalPhotoCommand}"
+                                        IsVisible="{Binding IsWebcamEnabled}"
                                         HorizontalAlignment="Stretch"
                                         Padding="8,6" FontSize="12"/>
                             </Grid>

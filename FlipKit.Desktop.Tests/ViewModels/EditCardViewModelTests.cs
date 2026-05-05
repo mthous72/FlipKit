@@ -13,13 +13,22 @@ public class EditCardViewModelTests
         INavigationService? nav = null,
         IFileDialogService? dialog = null,
         IImageUploadService? upload = null,
-        IWebcamCaptureDialogService? webcam = null) =>
+        IWebcamCaptureDialogService? webcam = null,
+        ISettingsService? settings = null) =>
         new(repo ?? Substitute.For<ICardRepository>(),
             nav ?? Substitute.For<INavigationService>(),
             dialog ?? Substitute.For<IFileDialogService>(),
             upload ?? Substitute.For<IImageUploadService>(),
             webcam ?? Substitute.For<IWebcamCaptureDialogService>(),
+            settings ?? BuildDefaultSettings(),
             NullLogger<EditCardViewModel>.Instance);
+
+    private static ISettingsService BuildDefaultSettings()
+    {
+        var s = Substitute.For<ISettingsService>();
+        s.Load().Returns(new FlipKit.Core.Models.AppSettings());
+        return s;
+    }
 
     private static Card SampleCard(int id = 7) => new()
     {

@@ -21,10 +21,12 @@ namespace FlipKit.Desktop.Services
     public class WebcamCaptureDialogService : IWebcamCaptureDialogService
     {
         private readonly ICameraService _cameraService;
+        private readonly ISettingsService _settingsService;
 
-        public WebcamCaptureDialogService(ICameraService cameraService)
+        public WebcamCaptureDialogService(ICameraService cameraService, ISettingsService settingsService)
         {
             _cameraService = cameraService;
+            _settingsService = settingsService;
         }
 
         public async Task<string?> CaptureAsync()
@@ -36,13 +38,30 @@ namespace FlipKit.Desktop.Services
                     var owner = GetMainWindow();
                     if (owner == null) return null;
 
+                    var settings = _settingsService.Load();
                     var captureDir = Path.Combine(
                         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                         "FlipKit", "webcam-captures");
 
-                    var vm = new WebcamCaptureViewModel(_cameraService, captureDir);
+                    var vm = new WebcamCaptureViewModel(
+                        _cameraService,
+                        captureDir,
+                        settings.PreferredCameraIndex,
+                        settings.PreferredCameraName);
                     var dialog = new WebcamCaptureWindow(vm);
                     var result = await dialog.ShowDialog<string?>(owner);
+
+                    // Persist the device the user actually used so the next open
+                    // defaults to it. Only update when something is selected.
+                    if (vm.SelectedDevice is { } chosen
+                        && (chosen.Index != settings.PreferredCameraIndex
+                            || chosen.Name != settings.PreferredCameraName))
+                    {
+                        settings.PreferredCameraIndex = chosen.Index;
+                        settings.PreferredCameraName = chosen.Name;
+                        _settingsService.Save(settings);
+                    }
+
                     return result;
                 });
             }

@@ -52,6 +52,11 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _tierBadgeText = string.Empty;
         [ObservableProperty] private string _tierBadgeColor = "#9E9E9E"; // grey when no tier
 
+        // Webcam capture (Roadmap #2). Master toggle read from settings at
+        // construction — bound to the 📷 buttons' IsVisible so users can hide
+        // them on machines without a working camera.
+        [ObservableProperty] private bool _isWebcamEnabled = true;
+
         // Model selection
         [ObservableProperty] private ModelOption? _selectedModel;
         [ObservableProperty] private bool _isLoadingModels;
@@ -92,6 +97,10 @@ namespace FlipKit.Desktop.ViewModels
             _browserService = browserService;
             _webcamCaptureDialog = webcamCaptureDialog;
             _logger = logger;
+
+            // Honour the master toggle from Settings. Read once — users can re-open
+            // the page after toggling to refresh.
+            IsWebcamEnabled = settingsService.Load().WebcamCaptureEnabled;
 
             // Populate the dropdown asynchronously — first call hits OpenRouter, subsequent
             // ones use the cached catalog. Until it lands the dropdown shows a loading entry.

@@ -20,6 +20,8 @@ namespace FlipKit.Desktop.ViewModels
     {
         private readonly ICameraService _cameraService;
         private readonly string _captureDir;
+        private readonly int? _preferredIndex;
+        private readonly string? _preferredName;
 
         private ICameraSession? _session;
         private CancellationTokenSource? _previewCts;
@@ -34,10 +36,16 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _statusMessage;
         [ObservableProperty] private string? _errorMessage;
 
-        public WebcamCaptureViewModel(ICameraService cameraService, string captureDir)
+        public WebcamCaptureViewModel(
+            ICameraService cameraService,
+            string captureDir,
+            int? preferredIndex = null,
+            string? preferredName = null)
         {
             _cameraService = cameraService;
             _captureDir = captureDir;
+            _preferredIndex = preferredIndex;
+            _preferredName = preferredName;
         }
 
         public bool HasCapturedImage => !string.IsNullOrEmpty(CapturedImagePath);
@@ -69,7 +77,14 @@ namespace FlipKit.Desktop.ViewModels
                 }
 
                 StatusMessage = null;
-                SelectedDevice = Devices[0];
+                // Prefer the saved index; fall back to matching by name (handles
+                // cameras getting reordered between sessions); otherwise device 0.
+                CameraDevice? choice = null;
+                if (_preferredIndex.HasValue)
+                    choice = Devices.FirstOrDefault(d => d.Index == _preferredIndex.Value);
+                if (choice is null && !string.IsNullOrEmpty(_preferredName))
+                    choice = Devices.FirstOrDefault(d => string.Equals(d.Name, _preferredName, StringComparison.OrdinalIgnoreCase));
+                SelectedDevice = choice ?? Devices[0];
             }
             catch (Exception ex)
             {

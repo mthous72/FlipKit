@@ -392,6 +392,52 @@
                 </Border>
             </Expander>
 
+            <!-- Webcam Capture (Collapsible) — Roadmap #2 / Docs/27-WEBCAM-CAPTURE-PLAN.md -->
+            <Expander Header="📷 Webcam Capture">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <CheckBox IsChecked="{Binding WebcamCaptureEnabled}"
+                                  Content="Show webcam capture buttons on Scan and Edit screens"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                            Turn off to hide the 📷 buttons (e.g. machines without a working camera).
+                        </TextBlock>
+
+                        <TextBlock Text="Default Camera" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <ComboBox Grid.Column="0"
+                                      ItemsSource="{Binding WebcamDevices}"
+                                      SelectedItem="{Binding SelectedWebcamDevice}"
+                                      PlaceholderText="Click 'Detect cameras' to populate"
+                                      HorizontalAlignment="Stretch"
+                                      IsEnabled="{Binding WebcamCaptureEnabled}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="1" Content="Detect cameras"
+                                    Command="{Binding RefreshWebcamDevicesCommand}"
+                                    IsEnabled="{Binding !IsProbingWebcams}"
+                                    Padding="12,6"/>
+                        </Grid>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                            Probing opens each camera in turn and may briefly disturb other apps using it. Resolution shown after the dash is each device's maximum.
+                        </TextBlock>
+
+                        <Button Content="Test capture…"
+                                Command="{Binding TestWebcamCaptureCommand}"
+                                IsEnabled="{Binding WebcamCaptureEnabled}"
+                                HorizontalAlignment="Left" Padding="16,6" Margin="0,4,0,0"/>
+
+                        <TextBlock Text="{Binding WebcamProbeStatus}"
+                                   FontSize="11" Opacity="0.7" TextWrapping="Wrap"
+                                   IsVisible="{Binding WebcamProbeStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
             <!-- Platform & Export Settings (Collapsible) -->
             <Expander Header="📋 Platform &amp; Export Settings">
                 <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
