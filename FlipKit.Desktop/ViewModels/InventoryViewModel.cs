@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
 using FlipKit.Desktop.Models;
+using FlipKit.Desktop.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FlipKit.Desktop.ViewModels
@@ -23,6 +27,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
         private readonly INavigationService _navigationService;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<InventoryViewModel> _logger;
 
         private List<Card> _allCards = new();
@@ -82,6 +87,7 @@ namespace FlipKit.Desktop.ViewModels
             IImageUploadService imageUploadService,
             IBrowserService browserService,
             INavigationService navigationService,
+            IServiceProvider serviceProvider,
             ILogger<InventoryViewModel> logger)
         {
             _cardRepository = cardRepository;
@@ -91,9 +97,37 @@ namespace FlipKit.Desktop.ViewModels
             _fileDialogService = fileDialogService;
             _imageUploadService = imageUploadService;
             _browserService = browserService;
+            _serviceProvider = serviceProvider;
             _logger = logger;
 
             LoadCardsAsync();
+        }
+
+        [RelayCommand]
+        private async Task ImportEbayListingsAsync()
+        {
+            try
+            {
+                var dialogVm = _serviceProvider.GetRequiredService<ImportEbayListingsViewModel>();
+                var dialog = new ImportEbayListingsDialog(dialogVm);
+
+                var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+                bool changed = false;
+                if (owner != null)
+                    changed = await dialog.ShowDialog<bool>(owner);
+                else
+                    dialog.Show();
+
+                // Whether the user fully committed or partial-committed-then-closed, refresh
+                // so any inserted/updated rows show up in the inventory list.
+                // (LoadCardsAsync is async void by convention here — call without awaiting.)
+                if (changed) LoadCardsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "eBay listings import dialog failed");
+                ExportError = $"Could not open eBay import: {ex.Message}";
+            }
         }
 
         partial void OnSelectedItemChanged(SelectableCard? value)

@@ -177,6 +177,7 @@ namespace FlipKit.Desktop
                 services.AddTransient<RepriceViewModel>();
                 services.AddTransient<ChecklistManagerViewModel>();
                 services.AddTransient<ImportChecklistViewModel>();
+                services.AddTransient<ImportEbayListingsViewModel>();
                 services.AddTransient<EditCardViewModel>();
 
                 // Navigation Service (must be after MainWindowViewModel)

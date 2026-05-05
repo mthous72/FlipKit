@@ -109,6 +109,11 @@
                       Width="130"/>
             <Button Content="Refresh" Command="{Binding RefreshCommand}" Padding="16,8"/>
             <Border Width="1" Background="{DynamicResource SystemBaseLowColor}" Margin="4,2"/>
+            <Button Content="Import eBay…"
+                    Command="{Binding ImportEbayListingsCommand}"
+                    ToolTip.Tip="Import an eBay Seller Hub CSV. Existing rows matched by item number get updated; new ones get added as Listed."
+                    Padding="12,8" FontSize="12"/>
+            <Border Width="1" Background="{DynamicResource SystemBaseLowColor}" Margin="4,2"/>
             <Button Content="Select All" Command="{Binding SelectAllCommand}" Padding="12,8" FontSize="12"/>
             <Button Content="Deselect All" Command="{Binding DeselectAllCommand}" Padding="12,8" FontSize="12"/>
             <TextBlock Text="{Binding SelectedCount, StringFormat='{}{0} selected'}"

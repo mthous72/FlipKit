@@ -1,3 +1,4 @@
+using System;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -17,7 +18,8 @@ public class InventoryViewModelTests
         IFileDialogService? dialog = null,
         IImageUploadService? upload = null,
         IBrowserService? browser = null,
-        INavigationService? nav = null)
+        INavigationService? nav = null,
+        IServiceProvider? services = null)
     {
         settings ??= Substitute.For<ISettingsService>();
         settings.Load().Returns(new AppSettings
@@ -34,6 +36,7 @@ public class InventoryViewModelTests
             upload ?? Substitute.For<IImageUploadService>(),
             browser ?? Substitute.For<IBrowserService>(),
             nav ?? Substitute.For<INavigationService>(),
+            services ?? Substitute.For<IServiceProvider>(),
             NullLogger<InventoryViewModel>.Instance);
     }
 

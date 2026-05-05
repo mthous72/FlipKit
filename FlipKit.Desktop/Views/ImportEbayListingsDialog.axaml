@@ -1,0 +1,121 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FlipKit.Desktop.ViewModels"
+        xmlns:models="using:FlipKit.Core.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="640"
+        x:Class="FlipKit.Desktop.Views.ImportEbayListingsDialog"
+        x:DataType="vm:ImportEbayListingsViewModel"
+        Width="900" Height="640"
+        MinWidth="700" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        Title="Import eBay Listings">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="20,18,20,20" RowSpacing="10">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock Text="Import eBay Listings" FontSize="18" FontWeight="Bold"/>
+            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                Pick the "All active listings" CSV from eBay Seller Hub. Each row maps to one card; matches by eBay item number update existing rows so re-imports stay clean.
+            </TextBlock>
+        </StackPanel>
+
+        <!-- File picker + summary -->
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                CornerRadius="6" Padding="12">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+                <Button Grid.Column="0" Content="Choose CSV…"
+                        Command="{Binding BrowseAndParseCommand}"
+                        IsEnabled="{Binding !IsParsing}"
+                        Padding="14,8"/>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                           Text="{Binding FileName, FallbackValue='No file selected.'}"
+                           Opacity="0.7" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="2" VerticalAlignment="Center"
+                           Text="{Binding InsertCount, StringFormat='{}{0} new'}"
+                           Foreground="#43A047" FontWeight="SemiBold" FontSize="12"
+                           IsVisible="{Binding HasPreview}"/>
+                <TextBlock Grid.Column="3" VerticalAlignment="Center" Margin="8,0,0,0"
+                           Text="{Binding UpdateCount, StringFormat='{}{0} updates'}"
+                           Foreground="#FB8C00" FontWeight="SemiBold" FontSize="12"
+                           IsVisible="{Binding HasPreview}"/>
+            </Grid>
+        </Border>
+
+        <!-- Preview grid -->
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                CornerRadius="6">
+            <Grid>
+                <DataGrid ItemsSource="{Binding Rows}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="False"
+                          GridLinesVisibility="Horizontal"
+                          IsVisible="{Binding HasPreview}">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="Skip" Binding="{Binding Skip}" Width="50"/>
+                        <DataGridTextColumn Header="Item #" Binding="{Binding CsvRow.EbayItemId}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Player" Binding="{Binding ProposedCard.PlayerName}" Width="160" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Year" Binding="{Binding ProposedCard.Year}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Brand" Binding="{Binding ProposedCard.Brand}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Parallel" Binding="{Binding ProposedCard.ParallelName}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="#" Binding="{Binding ProposedCard.CardNumber}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Price" Binding="{Binding ProposedCard.ListingPrice, StringFormat='${0:0.00}'}" Width="80" IsReadOnly="True"/>
+                        <DataGridCheckBoxColumn Header="Update?" Binding="{Binding IsExistingMatch}" Width="70" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Empty state -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            IsVisible="{Binding !HasPreview}" Spacing="8">
+                    <TextBlock Text="Pick a CSV to get started." Opacity="0.5"/>
+                    <TextBlock Text="Tip: from eBay Seller Hub → Listings → Active → Download report (CSV)."
+                               FontSize="11" Opacity="0.4" TextWrapping="Wrap" MaxWidth="400" TextAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Parsing overlay -->
+                <Border Background="#80000000"
+                        IsVisible="{Binding IsParsing}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                        <ProgressBar IsIndeterminate="True" Width="180"/>
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="White" HorizontalAlignment="Center"
+                                   TextAlignment="Center" MaxWidth="500" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Warnings + status -->
+        <StackPanel Grid.Row="3" Spacing="6">
+            <Border Background="#FFF3E0" CornerRadius="6" Padding="10,6"
+                    IsVisible="{Binding Warnings.Count}">
+                <ItemsControl ItemsSource="{Binding Warnings}" MaxHeight="80">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="#212121" FontSize="11" TextWrapping="Wrap"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+            <TextBlock Text="{Binding StatusMessage}" Opacity="0.7" FontSize="12"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#E53935" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+            <Button Grid.Column="1" Content="Close"
+                    Click="OnCloseClick"
+                    Padding="20,8" Margin="0,0,8,0"/>
+            <Button Grid.Column="2" Content="Import"
+                    Click="OnImportClick"
+                    Classes="accent"
+                    Padding="24,8"
+                    IsEnabled="{Binding HasPreview}"/>
+        </Grid>
+    </Grid>
+</Window>
