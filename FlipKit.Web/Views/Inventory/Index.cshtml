@@ -155,6 +155,15 @@
                                                  card.Status == FlipKit.Core.Models.Enums.CardStatus.Ready ||
                                                  card.Status == FlipKit.Core.Models.Enums.CardStatus.Listed)
                                             {
+                                                <button type="button" class="btn btn-outline-success"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#markAsSoldModal"
+                                                        data-card-id="@card.Id"
+                                                        data-card-name="@card.PlayerName"
+                                                        data-listing-price="@(card.ListingPrice?.ToString("F2") ?? "")"
+                                                        title="Mark as Sold">
+                                                    <i class="bi bi-currency-dollar"></i>
+                                                </button>
                                                 <button type="button" class="btn btn-outline-warning"
                                                         data-bs-toggle="modal"
                                                         data-bs-target="#repriceModal@(card.Id)"
@@ -281,3 +290,103 @@
         </div>
     }
 </div>
+
+<!-- Mark as Sold — single shared modal, populated by JS from button data attributes -->
+<div class="modal fade" id="markAsSoldModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-currency-dollar"></i> Mark as Sold</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="MarkAsSold" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="soldCardId" name="id" value="">
+                <div class="modal-body">
+                    <p class="fw-bold mb-3" id="soldCardName"></p>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Sale Price <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="soldSalePrice" name="salePrice"
+                                       step="0.01" min="0" required oninput="recalcNet()">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Sale Date</label>
+                            <input type="date" class="form-control" id="soldSaleDate" name="saleDate" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Platform</label>
+                            <select class="form-select" id="soldPlatform" name="salePlatform" onchange="recalcNet()">
+                                <option value="Whatnot">Whatnot</option>
+                                <option value="eBay">eBay</option>
+                                <option value="COMC">COMC</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Fees Paid</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="soldFees" name="feesPaid"
+                                       step="0.01" min="0" placeholder="auto" oninput="recalcNet()">
+                            </div>
+                            <div class="form-text">Leave blank to auto-calculate (11%)</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Shipping Cost</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="soldShipping" name="shippingCost"
+                                       step="0.01" min="0" value="1.00" oninput="recalcNet()">
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="p-2 bg-light rounded d-flex justify-content-between align-items-center">
+                                <span class="text-muted">Estimated Net Profit:</span>
+                                <span id="soldNetProfit" class="fw-bold fs-5 text-success"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg"></i> Mark as Sold
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const soldModal = document.getElementById('markAsSoldModal');
+    soldModal.addEventListener('show.bs.modal', function (event) {
+        const btn = event.relatedTarget;
+        document.getElementById('soldCardId').value = btn.dataset.cardId;
+        document.getElementById('soldCardName').textContent = btn.dataset.cardName;
+
+        const price = parseFloat(btn.dataset.listingPrice) || 0;
+        document.getElementById('soldSalePrice').value = price > 0 ? price.toFixed(2) : '';
+        document.getElementById('soldSaleDate').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('soldPlatform').value = 'Whatnot';
+        document.getElementById('soldFees').value = '';
+        document.getElementById('soldShipping').value = '1.00';
+        recalcNet();
+    });
+
+    function recalcNet() {
+        const price = parseFloat(document.getElementById('soldSalePrice').value) || 0;
+        const feesInput = document.getElementById('soldFees').value;
+        const fees = feesInput !== '' ? parseFloat(feesInput) : price * 0.11;
+        const shipping = parseFloat(document.getElementById('soldShipping').value) || 0;
+        const net = price - fees - shipping;
+        const el = document.getElementById('soldNetProfit');
+        el.textContent = '$' + net.toFixed(2);
+        el.className = 'fw-bold fs-5 ' + (net >= 0 ? 'text-success' : 'text-danger');
+    }
+</script>

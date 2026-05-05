@@ -219,4 +219,72 @@ public class InventoryControllerTests
         await repo.DidNotReceive().DeleteCardAsync(Arg.Any<int>());
         Assert.Contains("not found", controller.TempData["ErrorMessage"]!.ToString());
     }
+
+    // === MarkAsSold ===
+
+    [Fact]
+    public async Task MarkAsSold_UpdatesCardAndRedirects_WhenValid()
+    {
+        var card = new Card { Id = 7, PlayerName = "Patrick Mahomes", Status = CardStatus.Listed, ListingPrice = 50m, CostBasis = 20m };
+        var repo = Substitute.For<ICardRepository>();
+        repo.GetCardAsync(7).Returns(card);
+        var controller = Create(repo: repo);
+
+        var result = await controller.MarkAsSold(7, 50m, DateTime.Today, "Whatnot", 5.50m, 1.00m);
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
+        Assert.Equal(CardStatus.Sold, card.Status);
+        Assert.Equal(50m, card.SalePrice);
+        Assert.Equal("Whatnot", card.SalePlatform);
+        Assert.Equal(5.50m, card.FeesPaid);
+        Assert.Equal(1.00m, card.ShippingCost);
+        // NetProfit = 50 - 20 - 5.50 - 1.00 = 23.50
+        Assert.Equal(23.50m, card.NetProfit);
+        await repo.Received(1).UpdateCardAsync(card);
+        Assert.True(controller.TempData.ContainsKey("SuccessMessage"));
+    }
+
+    [Fact]
+    public async Task MarkAsSold_RedirectsWithError_WhenCardNotFound()
+    {
+        var repo = Substitute.For<ICardRepository>();
+        repo.GetCardAsync(99).Returns((Card?)null);
+        var controller = Create(repo: repo);
+
+        var result = await controller.MarkAsSold(99, 25m, DateTime.Today, "eBay", null, null);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        await repo.DidNotReceive().UpdateCardAsync(Arg.Any<Card>());
+        Assert.Contains("not found", controller.TempData["ErrorMessage"]!.ToString());
+    }
+
+    [Fact]
+    public async Task MarkAsSold_RedirectsWithError_WhenCardAlreadySold()
+    {
+        var card = new Card { Id = 8, PlayerName = "LeBron James", Status = CardStatus.Sold };
+        var repo = Substitute.For<ICardRepository>();
+        repo.GetCardAsync(8).Returns(card);
+        var controller = Create(repo: repo);
+
+        var result = await controller.MarkAsSold(8, 100m, DateTime.Today, "eBay", null, null);
+
+        Assert.IsType<RedirectToActionResult>(result);
+        await repo.DidNotReceive().UpdateCardAsync(Arg.Any<Card>());
+        Assert.Contains("already marked as sold", controller.TempData["ErrorMessage"]!.ToString());
+    }
+
+    [Fact]
+    public async Task MarkAsSold_CalculatesNetProfit_WithNullCostBasis()
+    {
+        var card = new Card { Id = 9, PlayerName = "Shohei Ohtani", Status = CardStatus.Priced, CostBasis = null };
+        var repo = Substitute.For<ICardRepository>();
+        repo.GetCardAsync(9).Returns(card);
+        var controller = Create(repo: repo);
+
+        await controller.MarkAsSold(9, 30m, DateTime.Today, "Whatnot", 3.30m, 1.00m);
+
+        // NetProfit = 30 - 0 - 3.30 - 1.00 = 25.70
+        Assert.Equal(25.70m, card.NetProfit);
+    }
 }

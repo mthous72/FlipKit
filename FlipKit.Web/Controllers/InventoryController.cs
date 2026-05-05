@@ -481,6 +481,55 @@ namespace FlipKit.Web.Controllers
             return fullPath;
         }
 
+        // POST: Inventory/MarkAsSold/5 — records a sale and sets status to Sold
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarkAsSold(
+            int id,
+            decimal salePrice,
+            DateTime saleDate,
+            string? salePlatform,
+            decimal? feesPaid,
+            decimal? shippingCost)
+        {
+            try
+            {
+                var card = await _cardRepository.GetCardAsync(id);
+                if (card == null)
+                {
+                    TempData["ErrorMessage"] = "Card not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (card.Status == CardStatus.Sold)
+                {
+                    TempData["ErrorMessage"] = $"'{card.PlayerName}' is already marked as sold.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                card.SalePrice = salePrice;
+                card.SaleDate = saleDate;
+                card.SalePlatform = salePlatform;
+                card.FeesPaid = feesPaid;
+                card.ShippingCost = shippingCost;
+                card.NetProfit = salePrice - (card.CostBasis ?? 0m) - (feesPaid ?? 0m) - (shippingCost ?? 0m);
+                card.Status = CardStatus.Sold;
+                card.UpdatedAt = DateTime.UtcNow;
+
+                await _cardRepository.UpdateCardAsync(card);
+
+                var net = card.NetProfit?.ToString("N2") ?? "0.00";
+                TempData["SuccessMessage"] = $"'{card.PlayerName}' marked as sold for ${salePrice:N2} (net ${net}).";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error marking card {CardId} as sold", id);
+                TempData["ErrorMessage"] = "Error recording sale. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
         // POST: Inventory/Reprice/5 — clears pricing and sends card back to Draft
         [HttpPost]
         [ValidateAntiForgeryToken]
