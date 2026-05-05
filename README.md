@@ -9,9 +9,11 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 
 | Platform | Download |
 |----------|----------|
-| Windows (Installer) | `FlipKit-Setup-v3.3.6.exe` |
-| Windows (Portable Hub) | `FlipKit-Hub-Windows-x64-v3.3.6.zip` |
-| Linux (Portable Hub) | `FlipKit-Hub-Linux-x64-v3.3.6.zip` |
+| Windows (Installer) | `FlipKit-Setup-v3.4.0.exe` |
+| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.4.0.zip` |
+| macOS Apple Silicon (M1+) | `FlipKit-macOS-Apple-Silicon-v3.4.0.dmg` |
+| macOS Intel | `FlipKit-macOS-Intel-v3.4.0.dmg` |
+| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.4.0.zip` |
 
 ## Features
 
@@ -60,13 +62,31 @@ docker build -t flipkit:latest .
 .\build-hub-for-installer.ps1
 ```
 
+## Getting Started
+
+FlipKit's AI scanning requires a free OpenRouter account. Image hosting for CSV exports requires a free ImgBB account. Both take under two minutes to set up.
+
+**Step 1 — OpenRouter (required for AI scanning)**
+1. Create a free account at [openrouter.ai](https://openrouter.ai)
+2. Go to [openrouter.ai/keys](https://openrouter.ai/keys) and generate an API key
+3. Paste it into FlipKit under **Settings → AI / OpenRouter API Key**
+
+Free-tier models (e.g. Gemini Flash) are available at no cost. Paid models offer higher accuracy and are opt-in — FlipKit will prompt for confirmation before using any paid model.
+
+**Step 2 — ImgBB (optional, for image hosting)**
+1. Create a free account at [imgbb.com](https://imgbb.com)
+2. Go to [api.imgbb.com](https://api.imgbb.com/) and generate an API key
+3. Paste it into FlipKit under **Settings → ImgBB API Key**
+
+ImgBB is only needed if you want card image URLs embedded in your Whatnot or eBay CSV exports. Everything else works without it.
+
 ## Configuration
 
 - **OpenRouter** ([get key](https://openrouter.ai/keys)) - Required for AI scanning (free tier available)
-- **ImgBB** ([get key](https://api.imgbb.com/)) - Optional, for image hosting
+- **ImgBB** ([get key](https://api.imgbb.com/)) - Optional, for image hosting in CSV exports
 
-**Desktop:** Configure via setup wizard or Settings page
-**Docker:** Configure at `http://[server-ip]:5000/Settings`
+**Desktop:** Configure via the first-run setup wizard or the Settings page
+**Web:** Configure at `http://[server-ip]:5000/Settings`
 
 ## Disclaimer
 
