@@ -114,18 +114,6 @@
                         Optional: Card recognition via Ximilar database (checked before AI). Saves tokens when cards are in their database. Get key at: https://www.ximilar.com/
                     </TextBlock>
 
-                    <!-- eBay Browse API (Optional) — active-listing competitive comps.
-                         OAuth client_credentials grant: Client ID + Client Secret.
-                         HTTP client lands in PR B. -->
-                    <TextBlock Text="eBay Browse API Credentials (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
-                    <TextBox Text="{Binding EbayClientId}"
-                             PasswordChar="*" Watermark="Client ID (OAuth App ID)"/>
-                    <TextBox Text="{Binding EbayClientSecret}"
-                             PasswordChar="*" Watermark="Client Secret (OAuth Client Secret)" Margin="0,4,0,0"/>
-                    <TextBlock Text="{Binding EbayBrowseApiStatus}" FontSize="12" Opacity="0.7"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Optional: enables competitive pricing lookup (active asking prices, not sold prices). Free developer account at https://developer.ebay.com/ — create a Production App, copy the Client ID and Client Secret. The "Get Competitive Pricing" button stays disabled until both fields are set.
-                    </TextBlock>
 
                     <!-- Model Selection -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">

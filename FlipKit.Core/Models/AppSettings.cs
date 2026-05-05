@@ -12,13 +12,6 @@ namespace FlipKit.Core.Models
         public string? ImgBBApiKey { get; set; }
         public string? XimilarApiKey { get; set; }
 
-        // eBay Browse API OAuth credentials (client_credentials grant).
-        // Replaced stale Finding API path on 2026-05-05; Browse API returns
-        // active-listing comps rather than sold history.
-        // Get at developer.ebay.com — Production app, OAuth scopes.
-        // Empty = competitive pricing disabled; falls back to manual Terapeak/eBay links.
-        public string? EbayClientId { get; set; }
-        public string? EbayClientSecret { get; set; }
         public bool IsEbaySeller { get; set; }
         public string DefaultShippingProfile { get; set; } = "4 oz";
         public string DefaultCondition { get; set; } = "Near Mint";

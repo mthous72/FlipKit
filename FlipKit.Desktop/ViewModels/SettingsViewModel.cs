@@ -37,12 +37,9 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _openRouterApiKey = string.Empty;
         [ObservableProperty] private string _imgBBApiKey = string.Empty;
         [ObservableProperty] private string _ximilarApiKey = string.Empty;
-        [ObservableProperty] private string _ebayClientId = string.Empty;
-        [ObservableProperty] private string _ebayClientSecret = string.Empty;
         [ObservableProperty] private string _openRouterStatus = "Not configured";
         [ObservableProperty] private string _imgBBStatus = "Not configured";
         [ObservableProperty] private string _ximilarStatus = "Not configured";
-        [ObservableProperty] private string _ebayBrowseApiStatus = "Not configured";
         [ObservableProperty] private bool _isTestingOpenRouter;
         [ObservableProperty] private bool _isTestingImgBB;
         [ObservableProperty] private bool _isTestingXimilar;
@@ -249,8 +246,6 @@ namespace FlipKit.Desktop.ViewModels
             OpenRouterApiKey = s.OpenRouterApiKey ?? string.Empty;
             ImgBBApiKey = s.ImgBBApiKey ?? string.Empty;
             XimilarApiKey = s.XimilarApiKey ?? string.Empty;
-            EbayClientId = s.EbayClientId ?? string.Empty;
-            EbayClientSecret = s.EbayClientSecret ?? string.Empty;
             IsEbaySeller = s.IsEbaySeller;
             DefaultShippingProfile = s.DefaultShippingProfile;
             DefaultCondition = s.DefaultCondition;
@@ -303,10 +298,6 @@ namespace FlipKit.Desktop.ViewModels
             OpenRouterStatus = string.IsNullOrWhiteSpace(OpenRouterApiKey) ? "Not configured" : "Configured (not tested)";
             ImgBBStatus = string.IsNullOrWhiteSpace(ImgBBApiKey) ? "Not configured" : "Configured (not tested)";
             XimilarStatus = string.IsNullOrWhiteSpace(XimilarApiKey) ? "Not configured" : "Configured (not tested)";
-            // No connection-test for eBay Browse API credentials yet — the HTTP client
-            // lands in PR B; until then "Configured" means "both fields are non-empty."
-            EbayBrowseApiStatus = (string.IsNullOrWhiteSpace(EbayClientId) || string.IsNullOrWhiteSpace(EbayClientSecret))
-                ? "Not configured" : "Configured (not tested)";
 
             DbPath = FlipKitDbContext.GetDbPath();
         }
@@ -356,8 +347,6 @@ namespace FlipKit.Desktop.ViewModels
                 OpenRouterApiKey = OpenRouterApiKey,
                 ImgBBApiKey = ImgBBApiKey,
                 XimilarApiKey = XimilarApiKey,
-                EbayClientId = EbayClientId,
-                EbayClientSecret = EbayClientSecret,
                 IsEbaySeller = IsEbaySeller,
                 DefaultShippingProfile = DefaultShippingProfile,
                 DefaultCondition = DefaultCondition,

@@ -16,7 +16,6 @@ namespace FlipKit.Core.Data
         public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
         public DbSet<SetChecklist> SetChecklists => Set<SetChecklist>();
         public DbSet<MissingChecklist> MissingChecklists => Set<MissingChecklist>();
-        public DbSet<ListingRecord> ListingRecords => Set<ListingRecord>();
 
         public FlipKitDbContext(DbContextOptions<FlipKitDbContext> options)
             : base(options)
@@ -142,24 +141,6 @@ namespace FlipKit.Core.Data
             missingChecklist.HasIndex(m => new { m.Manufacturer, m.Brand, m.Year, m.Sport })
                 .IsUnique();
 
-            // ListingRecord configuration (physical table: sold_price_records — unchanged for DB compat)
-            var soldPrice = modelBuilder.Entity<ListingRecord>();
-
-            soldPrice.ToTable("sold_price_records");
-            soldPrice.HasKey(s => s.Id);
-
-            soldPrice.Property(s => s.PlayerName).IsRequired();
-
-            // Decimal precision
-            soldPrice.Property(s => s.SoldPrice).HasColumnType("decimal(10,2)");
-            soldPrice.Property(s => s.ShippingCost).HasColumnType("decimal(10,2)");
-
-            // Indexes for efficient lookups
-            soldPrice.HasIndex(s => new { s.PlayerName, s.Year, s.Brand, s.Sport })
-                .HasDatabaseName("idx_soldprice_lookup");
-
-            soldPrice.HasIndex(s => s.SoldDate)
-                .HasDatabaseName("idx_soldprice_date");
         }
     }
 }

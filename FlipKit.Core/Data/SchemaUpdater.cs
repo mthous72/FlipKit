@@ -43,7 +43,6 @@ namespace FlipKit.Core.Data
 
             await EnsureAutoGradeColumnAsync(db);
             await EnsureChecklistLearningColumnsAsync(db);
-            await EnsureSoldPriceRecordsTableAsync(db);
             await EnsureExportColumnsAsync(db);
             await EnsureCardVerificationColumnsAsync(db);
             await EnsureEbayImportColumnsAsync(db);
@@ -204,40 +203,5 @@ namespace FlipKit.Core.Data
             }
         }
 
-        private static async Task EnsureSoldPriceRecordsTableAsync(FlipKitDbContext db)
-        {
-            await db.Database.ExecuteSqlRawAsync(@"
-                CREATE TABLE IF NOT EXISTS sold_price_records (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PlayerName TEXT NOT NULL,
-                    Year INTEGER,
-                    Manufacturer TEXT,
-                    Brand TEXT,
-                    CardNumber TEXT,
-                    ParallelName TEXT,
-                    Condition TEXT,
-                    IsGraded INTEGER NOT NULL DEFAULT 0,
-                    GradeCompany TEXT,
-                    GradeValue TEXT,
-                    SoldPrice DECIMAL(10,2) NOT NULL,
-                    SoldDate TEXT NOT NULL,
-                    Platform TEXT NOT NULL DEFAULT 'eBay',
-                    SaleType TEXT,
-                    ShippingCost DECIMAL(10,2),
-                    BidCount INTEGER,
-                    ListingTitle TEXT,
-                    SourceUrl TEXT,
-                    ScrapedAt TEXT NOT NULL DEFAULT '0001-01-01T00:00:00',
-                    Sport TEXT
-                );");
-
-            await db.Database.ExecuteSqlRawAsync(@"
-                CREATE INDEX IF NOT EXISTS idx_soldprice_lookup
-                ON sold_price_records (PlayerName, Year, Brand, Sport);");
-
-            await db.Database.ExecuteSqlRawAsync(@"
-                CREATE INDEX IF NOT EXISTS idx_soldprice_date
-                ON sold_price_records (SoldDate);");
-        }
     }
 }

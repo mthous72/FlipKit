@@ -138,9 +138,8 @@ namespace FlipKit.Desktop
                 services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
-                // VariationVerifier and EbayBrowseApiActiveListingService both take
-                // FlipKitDbContext; must be Scoped so they don't capture the
-                // first-resolved DbContext for the process lifetime. See
+                // VariationVerifier takes FlipKitDbContext; must be Scoped so it doesn't
+                // capture the first-resolved DbContext for the process lifetime. See
                 // AUDIT-2026-05 §4 (D1) for the captive-dependency bug.
                 services.AddScoped<IVariationVerifier, VariationVerifierService>();
                 services.AddSingleton<IChecklistLearningService, ChecklistLearningService>();
@@ -157,13 +156,6 @@ namespace FlipKit.Desktop
                 // embedded JSON at construction so only one instance is needed.
                 services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
                 services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
-                // eBay Browse API: OAuth client (singleton for token cache) + service (scoped for DbContext).
-                services.AddSingleton<IEbayBrowseApiClient>(sp =>
-                    new FlipKit.Core.Services.Implementations.EbayBrowseApiClient(
-                        sp.GetRequiredService<IHttpClientFactory>().CreateClient("EbayBrowse"),
-                        sp.GetRequiredService<ISettingsService>(),
-                        sp.GetRequiredService<ILogger<FlipKit.Core.Services.Implementations.EbayBrowseApiClient>>()));
-                services.AddScoped<ISoldPriceService, FlipKit.Core.Services.Implementations.EbayBrowseApiActiveListingService>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
                 // eBay Seller Hub CSV import (Roadmap #3 — see Docs/17-FUTURE-ROADMAP.md item
                 // "eBay Listings Import"). Enricher uses OpenRouter for the title LLM pass;

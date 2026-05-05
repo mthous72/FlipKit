@@ -16,7 +16,6 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IPricerService _pricerService;
         private readonly IBrowserService _browserService;
         private readonly ISettingsService _settingsService;
-        // SHELVED: ISoldPriceService _soldPriceService (kept for potential future use)
 
         private List<Card> _unpricedCards = new();
         private int _currentIndex;
@@ -34,10 +33,6 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _statusMessage;
         [ObservableProperty] private bool _hasCards;
 
-        // SHELVED: Automated pricing properties (kept for potential future use)
-        // [ObservableProperty] private bool _isLookingUpPrice;
-        // [ObservableProperty] private PriceLookupResult? _lookupResult;
-        // [ObservableProperty] private string _automatedStatusMessage = "";
 
         public PricingViewModel(
             ICardRepository cardRepository,
@@ -129,13 +124,6 @@ namespace FlipKit.Desktop.ViewModels
                 _browserService.OpenUrl(_pricerService.BuildEbaySoldUrl(CurrentCard));
         }
 
-        // SHELVED: Automated pricing via 130point scraping
-        // Keeping infrastructure in place for potential future use
-        // [RelayCommand]
-        // private async Task GetMarketPriceAsync()
-        // {
-        //     ... (code commented out)
-        // }
 
         [RelayCommand]
         private async Task SaveAndNextAsync()
