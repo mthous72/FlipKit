@@ -1,4 +1,5 @@
 using FlipKit.Core.Helpers;
+using FlipKit.Core.Models.Enums;
 
 namespace FlipKit.Core.Tests.Helpers;
 
@@ -153,5 +154,50 @@ public class EbayTitleParserTests
         Assert.Contains(nameof(EbayParsedTitle.SetName), parsed.LowConfidenceFields);
         Assert.Contains(nameof(EbayParsedTitle.ParallelName), parsed.LowConfidenceFields);
         Assert.Contains(nameof(EbayParsedTitle.Team), parsed.LowConfidenceFields);
+    }
+
+    // === Sport inference ===
+
+    [Theory]
+    [InlineData("Blake Corum RC 2024 National Treasures NFL Gear Dual Rookie Patch Auto 02/25", Sport.Football)]
+    [InlineData("2025 Topps Chrome Mike Trout MLB Refractor", Sport.Baseball)]
+    [InlineData("2024 Panini Prizm NBA Victor Wembanyama Silver", Sport.Basketball)]
+    [InlineData("Connor Bedard NHL Upper Deck SP Authentic Rookie", Sport.Hockey)]
+    [InlineData("Lionel Messi MLS Topps Chrome Refractor", Sport.Soccer)]
+    [InlineData("Conor McGregor UFC Topps Chrome Auto", Sport.MMA)]
+    [InlineData("Roman Reigns WWE Panini Chronicles", Sport.Wrestling)]
+    [InlineData("Tiger Woods PGA Upper Deck SP Authentic", Sport.Golf)]
+    [InlineData("Lewis Hamilton F1 Topps Chrome", Sport.Racing)]
+    [InlineData("Dale Earnhardt Jr NASCAR Press Pass", Sport.Racing)]
+    public void InferSport_LeagueAcronyms_MapToCorrectSport(string title, Sport expected)
+    {
+        Assert.Equal(expected, EbayTitleParser.InferSport(title));
+    }
+
+    [Theory]
+    [InlineData("2025 Bowman Chrome Roki Sasaki RC", Sport.Baseball)]
+    [InlineData("2024 Topps Chrome Paul Skenes Rookie Refractor", Sport.Baseball)]
+    public void InferSport_BrandFallback_ResolvesAmbiguousTitlesToBaseball(string title, Sport expected)
+    {
+        Assert.Equal(expected, EbayTitleParser.InferSport(title));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("2024 Panini Select Card Singles")]               // no league, no brand fallback
+    [InlineData("Random Card With No Identifying Tokens 2025")]   // genuine ambiguity — leave null
+    public void InferSport_ReturnsNull_When_TitleIsBlankOrAmbiguous(string? title)
+    {
+        Assert.Null(EbayTitleParser.InferSport(title));
+    }
+
+    [Fact]
+    public void InferSport_DoesNotFalseMatch_OnSubstring()
+    {
+        // "f1" inside "manufacturer" must NOT match "F1" (whole-word boundaries).
+        Assert.Null(EbayTitleParser.InferSport("manufacturer f1ish"));
+        // "MLS" inside "MLST" must NOT match.
+        Assert.Null(EbayTitleParser.InferSport("MLSTimes Card"));
     }
 }

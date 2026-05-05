@@ -47,6 +47,7 @@ app.MapGet("/", () => Results.Ok(new
     {
         Cards = "/api/cards",
         CardById = "/api/cards/{id}",
+        CardByEbayItemId = "/api/cards/by-ebay-item-id/{ebayItemId}",
         UnpricedCards = "/api/cards/unpriced",
         StaleCards = "/api/cards/stale",
         CardStats = "/api/cards/stats",
@@ -98,6 +99,17 @@ app.MapGet("/api/cards/{id:int}", async (int id, ICardRepository repo) =>
     return card is not null ? Results.Ok(card) : Results.NotFound();
 })
 .WithName("GetCard")
+.WithOpenApi();
+
+// EbayItemId lookup — used by ApiCardRepository's upsert path during eBay
+// listings import. Direct endpoint avoids fetching the full /api/cards list
+// just to filter by item number client-side.
+app.MapGet("/api/cards/by-ebay-item-id/{ebayItemId}", async (string ebayItemId, ICardRepository repo) =>
+{
+    var card = await repo.GetCardByEbayItemIdAsync(ebayItemId);
+    return card is not null ? Results.Ok(card) : Results.NotFound();
+})
+.WithName("GetCardByEbayItemId")
 .WithOpenApi();
 
 app.MapPost("/api/cards", async (Card card, ICardRepository repo) =>

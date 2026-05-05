@@ -130,6 +130,33 @@ public class EbayListingImportServiceTests
     }
 
     [Fact]
+    public async Task Parse_StampsSport_From_TitleHeuristic()
+    {
+        // "NFL Gear" in the title triggers the Football inference.
+        var line = "\"123\",Blake Corum RC 2024 National Treasures NFL Gear Dual Rookie Patch Auto 02/25,,,\"1\",\"FIXED_PRICE\",\"USD\",65.0,,,65.0,\"0\",,,Apr-29-26 17:02:34 PDT,May-29-26 17:02:34 PDT,,,,,Ungraded,,,,,,,,,";
+        var svc = Build();
+
+        var preview = await svc.ParseAsync(Csv(line), "in.csv");
+
+        Assert.Equal(Sport.Football, preview.Rows[0].ProposedCard.Sport);
+    }
+
+    [Fact]
+    public async Task Parse_PreservesUserSetSport_OnUpdate()
+    {
+        // Existing card has Basketball — re-import title says Football. User wins.
+        var line = "\"4\",Some NFL Card,,,\"1\",\"FIXED_PRICE\",\"USD\",10.0,,,10.0,\"0\",,,Apr-29-26 17:04:25 PDT,May-29-26 17:04:25 PDT,,,,,Ungraded,,,,,,,,,";
+        var repo = Substitute.For<ICardRepository>();
+        repo.GetCardByEbayItemIdAsync("4")
+            .Returns(new Card { Id = 33, EbayItemId = "4", Sport = Sport.Basketball });
+        var svc = Build(repo: repo);
+
+        var preview = await svc.ParseAsync(Csv(line), "in.csv");
+
+        Assert.Equal(Sport.Basketball, preview.Rows[0].ProposedCard.Sport);
+    }
+
+    [Fact]
     public async Task Parse_PullsGradingFields_From_EbayCustomColumns()
     {
         var line = "\"8\",PSA 10 Mahomes,,,\"1\",\"FIXED_PRICE\",\"USD\",500.0,,,500.0,\"0\",,,Apr-29-26 17:02:34 PDT,May-29-26 17:02:34 PDT,,,,,Graded,PSA,10,12345678,,,,,,";

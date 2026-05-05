@@ -28,6 +28,11 @@ namespace FlipKit.Desktop.ViewModels
 
         private CancellationTokenSource? _scanCts;
 
+        // Thread-safe counter for in-flight scans. Backs ScanProgress without
+        // having to mutate the source-generator-managed _scanProgress field
+        // directly (which used to require an MVVMTK0034 suppression).
+        private int _completedCount;
+
         [ObservableProperty] private bool _imagesArePairs = true;
         [ObservableProperty] private bool _isScanning;
         [ObservableProperty] private bool _isSaving;
@@ -194,6 +199,7 @@ namespace FlipKit.Desktop.ViewModels
             ErrorMessage = null;
             SuccessMessage = null;
             ScanProgress = 0;
+            Interlocked.Exchange(ref _completedCount, 0);
             ScanTotal = pending.Count;
             _scanCts = new CancellationTokenSource();
 
@@ -235,8 +241,12 @@ namespace FlipKit.Desktop.ViewModels
             // Create semaphore to limit concurrent scans (Moss Machine pattern)
             using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
 
-            // Process all items concurrently with semaphore limiting
-            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel));
+            // Process all items concurrently with semaphore limiting. Pass the
+            // CTS through explicitly so ProcessItemAsync doesn't read the
+            // nullable _scanCts field (eliminates the CS8602 suppression that
+            // used to wrap the whole method body).
+            var cts = _scanCts;
+            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel, cts));
 
             try
             {
@@ -312,16 +322,20 @@ namespace FlipKit.Desktop.ViewModels
             return chain;
         }
 
-        private async Task ProcessItemAsync(BulkScanItem item, SemaphoreSlim semaphore, AppSettings settings, IReadOnlyList<string> modelChain, bool isFreeModel)
+        private async Task ProcessItemAsync(
+            BulkScanItem item,
+            SemaphoreSlim semaphore,
+            AppSettings settings,
+            IReadOnlyList<string> modelChain,
+            bool isFreeModel,
+            CancellationTokenSource cts)
         {
-            // _scanCts is guaranteed non-null when this method is called from ScanAllAsync
-#pragma warning disable CS8602
             // Wait for semaphore slot (rate limiting)
-            await semaphore.WaitAsync(_scanCts.Token);
+            await semaphore.WaitAsync(cts.Token);
 
             try
             {
-                if (_scanCts.Token.IsCancellationRequested)
+                if (cts.Token.IsCancellationRequested)
                     return;
 
                 item.Status = BulkScanStatus.Scanning;
@@ -415,20 +429,20 @@ namespace FlipKit.Desktop.ViewModels
                     _errorLogger.LogError(item.Index, item.FrontImagePath, item.BackImagePath, ex, modelChain[0]);
                 }
 
-                // Thread-safe increment of progress
-                // Intentionally accessing backing field for Interlocked.Increment
-#pragma warning disable MVVMTK0034
-                Interlocked.Increment(ref _scanProgress);
-#pragma warning restore MVVMTK0034
-                OnPropertyChanged(nameof(ScanProgress));
+                // Thread-safe increment via a dedicated counter so we don't
+                // mutate the source-generator-managed _scanProgress backing
+                // field. Then publish the new value through the public setter
+                // so PropertyChanged fires correctly on the UI thread later.
+                var newCount = Interlocked.Increment(ref _completedCount);
+                ScanProgress = newCount;
 
                 // Add delay ONLY for free models to avoid rate limiting
                 // For paid models, the semaphore already limits concurrency
-                if (isFreeModel && !_scanCts.Token.IsCancellationRequested)
+                if (isFreeModel && !cts.Token.IsCancellationRequested)
                 {
                     StatusMessage = "Waiting 4 seconds to avoid free tier rate limits...";
                     _logger.LogInformation("Waiting 4 seconds before releasing semaphore slot to avoid rate limits...");
-                    await Task.Delay(4000, _scanCts.Token);
+                    await Task.Delay(4000, cts.Token);
                 }
             }
             finally
@@ -436,7 +450,6 @@ namespace FlipKit.Desktop.ViewModels
                 // Release semaphore slot
                 semaphore.Release();
             }
-#pragma warning restore CS8602
         }
 
         [RelayCommand]

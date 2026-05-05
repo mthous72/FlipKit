@@ -76,16 +76,19 @@ namespace FlipKit.Core.Services
 
         public async Task<Card?> GetCardByEbayItemIdAsync(string ebayItemId)
         {
-            // Remote-mode upsert lookup. The Api server doesn't expose a
-            // by-ebay-item-id endpoint yet, so fall back to scanning the full
-            // list. Acceptable for the import flow's one-shot use; if remote
-            // imports become hot, add /api/cards/by-ebay-item-id/{id}.
             if (string.IsNullOrWhiteSpace(ebayItemId)) return null;
 
             try
             {
-                var all = await _httpClient.GetFromJsonAsync<List<Card>>($"{_baseUrl}/api/cards");
-                return all?.FirstOrDefault(c => c.EbayItemId == ebayItemId);
+                // Direct endpoint added in the ebay-import-followups bundle —
+                // avoids fetching the full /api/cards list just to filter by
+                // item number client-side. Returns 404 when the id isn't known.
+                var encoded = Uri.EscapeDataString(ebayItemId);
+                return await _httpClient.GetFromJsonAsync<Card>($"{_baseUrl}/api/cards/by-ebay-item-id/{encoded}");
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
             }
             catch (Exception ex)
             {

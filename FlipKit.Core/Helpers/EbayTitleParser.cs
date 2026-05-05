@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
+using FlipKit.Core.Models.Enums;
 
 namespace FlipKit.Core.Helpers
 {
@@ -156,6 +158,52 @@ namespace FlipKit.Core.Helpers
             nameof(EbayParsedTitle.ParallelName),
             nameof(EbayParsedTitle.Team),
         };
+
+        // League / brand tokens that are safe enough to map a title straight to a Sport
+        // without an LLM call. Order matters — first match wins, so put the more specific
+        // tokens first (e.g. "WNBA" before "NBA" wouldn't matter for Sport but illustrates
+        // the pattern). Keys are case-insensitive whole-word matches.
+        private static readonly (string Token, Sport Sport)[] SportKeywords =
+        {
+            ("NFL", Sport.Football),
+            ("NCAAF", Sport.Football),
+            ("NBA", Sport.Basketball),
+            ("WNBA", Sport.Basketball),
+            ("NCAAB", Sport.Basketball),
+            ("MLB", Sport.Baseball),
+            ("NHL", Sport.Hockey),
+            ("MLS", Sport.Soccer),
+            ("UFC", Sport.MMA),
+            ("WWE", Sport.Wrestling),
+            ("AEW", Sport.Wrestling),
+            ("PGA", Sport.Golf),
+            ("F1", Sport.Racing),
+            ("Formula 1", Sport.Racing),
+            ("NASCAR", Sport.Racing),
+            ("ATP", Sport.Tennis),
+            ("WTA", Sport.Tennis),
+            // Brand → sport fallbacks. Many brands are sport-specific in collector parlance:
+            ("Bowman", Sport.Baseball),  // Bowman is overwhelmingly baseball
+            ("Topps Chrome", Sport.Baseball),
+        };
+
+        /// <summary>
+        /// Best-effort map of an eBay listing title to a <see cref="Sport"/> using
+        /// league acronyms and a small set of brand fallbacks. Returns null when no
+        /// signal is present so the caller can leave the field blank rather than
+        /// guessing wrong. Whole-word matching is case-insensitive.
+        /// </summary>
+        public static Sport? InferSport(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return null;
+
+            foreach (var (token, sport) in SportKeywords)
+            {
+                if (Regex.IsMatch(title, $@"\b{Regex.Escape(token)}\b", RegexOptions.IgnoreCase))
+                    return sport;
+            }
+            return null;
+        }
     }
 
     public class EbayParsedTitle

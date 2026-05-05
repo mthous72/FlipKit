@@ -171,6 +171,12 @@ namespace FlipKit.Core.Services.Implementations
             card.ParallelName ??= llm.ParallelName;
             card.SerialNumbered ??= rule.SerialNumbered;
 
+            // Sport heuristic — only fills when blank (preserves user corrections on
+            // re-import). Returns null for ambiguous titles and we leave it null
+            // rather than guessing wrong.
+            if (card.Sport is null)
+                card.Sport = EbayTitleParser.InferSport(csv.Title);
+
             // Default VariationType: anything with a parallel name leaves "Base".
             // (Card initialises VariationType="Base"; we don't override it here
             // because eBay listings rarely tell us the variation type directly.)
