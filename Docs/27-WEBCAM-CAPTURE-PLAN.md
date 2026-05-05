@@ -1,7 +1,6 @@
 # Webcam Capture Implementation Plan — Desktop + Web
 
-> **Status:** Planning — to be built on a separate branch (`feature/webcam-capture`) **after** the CSV export overhaul lands.
-> **Why a separate branch:** the CSV export work has a focused scope (Whatnot/eBay exporters); webcam capture is a parallel image-acquisition path that touches the same `ScanViewModel` / `EditCardViewModel` files. Keeping them split keeps each PR's review surface manageable.
+> **Status:** ✅ **Shipped 2026-05-04** on branch `feature/webcam-capture` (4 PRs + 1 follow-up). Branched off `master` ahead of the planned CSV-export prereq because that branch had stalled and the touched files don't overlap. See the Outcome section at the bottom of this doc for what landed vs. what was planned, smoke-test findings, and follow-ups.
 
 ## 1. Goal
 
@@ -179,4 +178,38 @@ Web side adds zero packages — `getUserMedia` is browser-native.
 
 ---
 
-*Plan locked-in pending CSV export overhaul completion. New branch: `feature/webcam-capture` off `master` after `feature/csv-export-overhaul` merges.*
+## 12. Outcome (post-ship notes)
+
+Shipped on 2026-05-04 across 5 commits on `feature/webcam-capture`, merged to `master`:
+
+| Commit | Layer | What |
+|---|---|---|
+| PR 1 | Desktop | `ICameraService` / `ICameraSession` / `CameraDevice` / `CapturedFrame` in `FlipKit.Core`; `OpenCvCameraService` + `WebcamCaptureViewModel` + `WebcamCaptureWindow` in Desktop |
+| PR 2 | Desktop | `IWebcamCaptureDialogService` abstraction; ScanView and EditCardView 📷 button wiring; DI registration. Added a Replace flow on EditCardView since one didn't exist before. |
+| PR 2.1 | Desktop | Smoke-test fixes — see "Findings on first hardware run" below |
+| PR 3 | Desktop | `AppSettings.WebcamCaptureEnabled / PreferredCameraIndex / PreferredCameraName`; Settings UI device picker + master toggle; `IsWebcamEnabled` visibility gate on all 7 webcam buttons |
+| PR 4 | Web | `ImageUploadController` POST endpoint; `webcam-capture.js` (browser `getUserMedia` + canvas + blob upload); `_WebcamCaptureModal.cshtml` partial; Scan/Index wiring; `ScanController.Upload` accepts path-as-alternative-to-file |
+
+**Findings on first hardware run (PR 2.1):**
+
+- **NVIDIA Broadcast virtual camera** showed up alongside the real webcam at 640×480, and the original "Camera 0" / "Camera 1" labels were indistinguishable. Fix: probe each device with a max-res request and label as `Camera N — WxH` so users can spot the low-res virtual cam.
+- **First captures looked blurry in the ScanView preview pane** even though the underlying JPG was 1920×1080. Two unrelated issues:
+  1. ScanView used `FilePathToBitmapConverter` (a 56-px DataGrid thumbnail decoder) for the main 300-px preview surface. Switched to `FilePathToFullSizeBitmapConverter` (which EditCardView already used).
+  2. Avalonia's default `BitmapInterpolationMode` is `Low` (bilinear) — added `RenderOptions.BitmapInterpolationMode="HighQuality"` on the preview Image controls.
+- **Captured stills came out of focus on first take** because the OpenCV driver buffer holds 4-5 frames, so the still grab returned a frame from before continuous-autofocus settled after the preview pause. Fixes: `CAP_PROP_BUFFERSIZE=1` in `OpenAsync` (drivers that ignore it fall through to the drain loop), 15-frame / ~750 ms drain in `CaptureStillAsync`, JPG quality 92 → 95, "Holding still — waiting for autofocus…" status hint.
+- **Diagnostic log line** — every capture now writes `Webcam still captured: WxH, NN KB → path` at INF so future "blurry capture" reports can be triaged from the log.
+
+**Deviations from the plan:**
+
+- **Branched ahead of CSV-export merge.** The plan called for `feature/webcam-capture` off `master` *after* `feature/csv-export-overhaul` merged. That branch had stalled, so we branched off `master` directly. The two paths touch different files (CSV exporters vs. ScanViewModel image acquisition) so the conflict risk was zero.
+- **Device labels are `Camera N — WxH`, not OS-friendly names.** OpenCvSharp4 has no cross-platform device-name API. WMI on Windows could provide friendly names but adds the `System.Management` dep — deferred. The resolution suffix turned out to be the more useful disambiguator anyway.
+- **EditCardView Replace flow was added in PR 2.** Plan said "webcam button on each existing slot's Replace action" — but no Replace action existed yet. Added Browse + Webcam together (the same input/output pair), plus the matching `_originalCard.ImagePathFront/Back` write-through on save and ImageUrl1/2 cache invalidation when the local file changes.
+
+**Deferred / not shipped:**
+
+- **Inventory edit-card webcam wiring on Web.** The Desktop EditCardView got the Replace flow, but the Web Inventory edit page didn't. Lower priority because the primary Web user flow is Scan, not Edit.
+- **Mac/Linux smoke pass.** Only Windows was verified on real hardware. The OpenCvSharp4 OSX/Linux runtime packages are wired into the csproj but untested.
+- **OpenCvSharp4 osx-arm64 risk** flagged in §11 — still untested on Apple Silicon.
+- **Test capture button validation** flagged in §11 — replaced by the Settings → "Test capture…" button which exercises the full dialog instead.
+
+*Original plan content above is preserved for historical reference. Current behavior may diverge — check the code.*

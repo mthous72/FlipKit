@@ -22,6 +22,7 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 - **CSV Export** - Spec-compliant Whatnot and eBay Bulk Upload exports with template-based validation, ImgBB image hosting, and re-export support
 - **Sales Tracking** - Record sales, calculate profit, generate reports
 - **Mobile Scanning** - Camera integration for phone browsers via the Web app
+- **Webcam Capture** - Capture card images directly from a laptop webcam in both the Desktop app (OpenCvSharp4) and Web browser (`getUserMedia`); see [Docs/27-WEBCAM-CAPTURE-PLAN.md](Docs/27-WEBCAM-CAPTURE-PLAN.md). Browser capture requires HTTPS or `localhost` — Tailscale-over-HTTP falls back to file picker / phone upload.
 - **Tailscale Support** - Access your inventory from anywhere on your private network (see [Docs/Tailscale-Sync-Architecture.md](Docs/Tailscale-Sync-Architecture.md))
 
 ## Tech Stack

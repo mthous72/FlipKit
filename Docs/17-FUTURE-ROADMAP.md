@@ -65,11 +65,12 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 
 ### 2. Webcam Capture for Scanning
 
-**Status:** 📋 Planned
-**Effort:** Medium (2-3 weeks)
-**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md) — re-validate against current Avalonia version before starting
+**Status:** ✅ Shipped 2026-05-04 (`feature/webcam-capture`, 5 commits)
+**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md) — see §12 "Outcome" for what landed, smoke-test findings, and follow-ups.
 
-Allow scanning directly from a connected webcam instead of requiring file uploads, enabling a true "stream of cards" workflow on Desktop. Avalonia 11.3 doesn't ship a webcam control; expect to either bind a platform-specific MediaFoundation/AVFoundation/V4L2 wrapper or use a third-party library (e.g. `LibVLCSharp`). Reconfirm the chosen approach in the plan doc when work starts.
+📷 Webcam buttons on Scan + Edit (Desktop, OpenCvSharp4) and Scan (Web, `getUserMedia`+canvas). Settings → Webcam Capture exposes a master toggle, device picker with max-resolution labels, and a Test capture button. Browser capture requires HTTPS or `localhost`; on HTTP-via-Tailscale the trigger buttons hide and a banner explains why.
+
+**Deferred follow-ups:** Inventory edit-card webcam wiring on Web; Mac/Linux smoke pass; OpenCvSharp4 osx-arm64 verification.
 
 ### 3. Automated Price Scraping
 
