@@ -85,6 +85,7 @@ namespace FlipKit.Core.Data
             card.HasIndex(c => c.PlayerName);
             card.HasIndex(c => c.Year);
             card.HasIndex(c => c.Sku).IsUnique();
+            card.HasIndex(c => c.EbayItemId).IsUnique();
 
             // PriceHistory configuration
             var priceHistory = modelBuilder.Entity<PriceHistory>();

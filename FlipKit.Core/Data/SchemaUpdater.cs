@@ -46,6 +46,41 @@ namespace FlipKit.Core.Data
             await EnsureSoldPriceRecordsTableAsync(db);
             await EnsureExportColumnsAsync(db);
             await EnsureCardVerificationColumnsAsync(db);
+            await EnsureEbayImportColumnsAsync(db);
+        }
+
+        // eBay Seller Hub CSV import — EbayItemId is the upsert key on re-import,
+        // ListedAt captures the eBay "Start date" so reports can age listings.
+        // Partial unique index mirrors the Sku pattern: enforce uniqueness only
+        // on populated values so the column stays nullable for non-imported cards.
+        public static async Task EnsureEbayImportColumnsAsync(FlipKitDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(cards)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+
+                if (!columns.Contains("EbayItemId"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN EbayItemId TEXT");
+
+                if (!columns.Contains("ListedAt"))
+                    await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN ListedAt TEXT");
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
+
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_cards_EbayItemId
+                ON cards (EbayItemId)
+                WHERE EbayItemId IS NOT NULL AND EbayItemId <> ''");
         }
 
         // Phase 2 of the Checklist Insider import work — Card carries the tier outcome

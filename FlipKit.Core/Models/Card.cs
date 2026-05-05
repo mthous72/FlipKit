@@ -91,6 +91,13 @@ namespace FlipKit.Core.Models
         // === EXPORT IDENTIFIERS ===
         public string? Sku { get; set; }
 
+        // === MARKETPLACE LINKAGE ===
+        // eBay listing ID for cards imported from a Seller Hub CSV. Used as the
+        // upsert key on re-import so a fresh export of the same listing updates
+        // the existing row instead of creating a duplicate.
+        public string? EbayItemId { get; set; }
+        public DateTime? ListedAt { get; set; }
+
         // === WHATNOT-SPECIFIC ===
         public string WhatnotCategory { get; set; } = "Sports Cards";
         public string? WhatnotSubcategory { get; set; }
