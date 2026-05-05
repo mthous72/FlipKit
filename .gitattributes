@@ -3,6 +3,11 @@
 ###############################################################################
 * text=auto
 
+# GitHub Actions workflow files must use LF — CRLF breaks shell heredocs
+# and the runner bash environment on macOS/Linux.
+*.yml text eol=lf
+*.yaml text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

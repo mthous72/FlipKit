@@ -1,4 +1,5 @@
 name: macOS Release
+# https://github.com/mthous72/FlipKit
 
 # Triggers:
 #   - Automatically when a GitHub Release is published (attaches DMGs to it)
@@ -14,7 +15,7 @@ on:
         required: true
 
 permissions:
-  contents: write  # required to upload release assets
+  contents: write
 
 jobs:
   build-macos:
@@ -25,7 +26,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Install both SDKs: Core/Desktop/Web target net8.0, Api targets net9.0
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -42,38 +42,34 @@ jobs:
             TAG="${{ inputs.tag }}"
           fi
           VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Run test suite (release gate)
+      - name: Run test suite
         run: dotnet test FlipKit.sln --nologo --verbosity minimal
 
-      - name: Publish Desktop, Web, and API (ARM64 + x64)
+      - name: Publish Desktop, Web, and API
         run: |
           for ARCH in arm64 x64; do
-            echo "--- Publishing for osx-$ARCH ---"
+            echo "=== Publishing osx-$ARCH ==="
 
             dotnet publish FlipKit.Desktop \
-              -c Release \
-              -r osx-$ARCH \
+              -c Release -r osx-$ARCH \
               --self-contained true \
               -p:PublishSingleFile=true \
               -p:IncludeNativeLibrariesForSelfExtract=true \
               -o publish/osx-$ARCH/desktop
 
             dotnet publish FlipKit.Web \
-              -c Release \
-              -r osx-$ARCH \
+              -c Release -r osx-$ARCH \
               --self-contained true \
               -o publish/osx-$ARCH/servers
 
             dotnet publish FlipKit.Api \
-              -c Release \
-              -r osx-$ARCH \
+              -c Release -r osx-$ARCH \
               --self-contained true \
               -o publish/osx-$ARCH/api-temp
 
-            # Merge API output into the servers folder (same pattern as Windows/Linux builds)
             cp -Rn publish/osx-$ARCH/api-temp/. publish/osx-$ARCH/servers/
             rm -rf publish/osx-$ARCH/api-temp
           done
@@ -85,43 +81,18 @@ jobs:
           for ARCH in arm64 x64; do
             APP="publish/osx-$ARCH/FlipKit.app"
 
-            # Standard macOS app bundle layout.
-            # Servers go in Contents/MacOS/servers/ because AppContext.BaseDirectory
-            # resolves to Contents/MacOS/ and ServerManagementService looks for
-            # "servers/" relative to that path.
             mkdir -p "$APP/Contents/MacOS/servers"
             mkdir -p "$APP/Contents/Resources"
 
-            # Move the Desktop single-file executable and make it executable
             mv "publish/osx-$ARCH/desktop/FlipKit.Desktop" "$APP/Contents/MacOS/FlipKit"
             chmod +x "$APP/Contents/MacOS/FlipKit"
 
-            # Copy servers alongside the main binary
             cp -R "publish/osx-$ARCH/servers/." "$APP/Contents/MacOS/servers/"
-            chmod +x "$APP/Contents/MacOS/servers/FlipKit.Web"  2>/dev/null || true
-            chmod +x "$APP/Contents/MacOS/servers/FlipKit.Api"  2>/dev/null || true
+            chmod +x "$APP/Contents/MacOS/servers/FlipKit.Web" 2>/dev/null || true
+            chmod +x "$APP/Contents/MacOS/servers/FlipKit.Api" 2>/dev/null || true
 
-            # Write Info.plist
-            cat > "$APP/Contents/Info.plist" << PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleName</key>            <string>FlipKit</string>
-  <key>CFBundleDisplayName</key>     <string>FlipKit</string>
-  <key>CFBundleIdentifier</key>      <string>com.flipkit.desktop</string>
-  <key>CFBundleVersion</key>         <string>${VERSION}</string>
-  <key>CFBundleShortVersionString</key><string>${VERSION}</string>
-  <key>CFBundleExecutable</key>      <string>FlipKit</string>
-  <key>CFBundlePackageType</key>     <string>APPL</string>
-  <key>NSHighResolutionCapable</key> <true/>
-  <key>NSPrincipalClass</key>        <string>NSApplication</string>
-  <key>LSMinimumSystemVersion</key>  <string>12.0</string>
-  <key>NSCameraUsageDescription</key>
-    <string>FlipKit uses your camera to capture card images for scanning.</string>
-</dict>
-</plist>
-PLIST
+            sed "s/{{VERSION}}/$VERSION/g" installer/Mac/Info.plist \
+              > "$APP/Contents/Info.plist"
           done
 
       - name: Create DMGs
@@ -133,22 +104,19 @@ PLIST
             LABEL=$([ "$ARCH" = "arm64" ] && echo "Apple-Silicon" || echo "Intel")
             DMG="releases/FlipKit-macOS-${LABEL}-v${VERSION}.dmg"
 
-            # Stage: app bundle + Applications symlink + install notes
             STAGING=$(mktemp -d)
             cp -R "publish/osx-$ARCH/FlipKit.app" "$STAGING/"
             ln -s /Applications "$STAGING/Applications"
             cp installer/Mac/README-INSTALL.txt "$STAGING/" 2>/dev/null || true
 
-            # hdiutil produces a read-only compressed DMG — no extra tools needed
             hdiutil create \
               -volname "FlipKit $VERSION" \
               -srcfolder "$STAGING" \
-              -ov \
-              -format UDZO \
+              -ov -format UDZO \
               "$DMG"
 
             rm -rf "$STAGING"
-            echo "Created: $DMG ($(du -sh "$DMG" | cut -f1))"
+            echo "Created $DMG ($(du -sh "$DMG" | cut -f1))"
           done
 
       - name: Upload DMGs to GitHub Release
