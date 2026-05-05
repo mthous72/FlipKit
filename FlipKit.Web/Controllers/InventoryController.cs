@@ -481,6 +481,40 @@ namespace FlipKit.Web.Controllers
             return fullPath;
         }
 
+        // POST: Inventory/Reprice/5 — clears pricing and sends card back to Draft
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Reprice(int id)
+        {
+            try
+            {
+                var card = await _cardRepository.GetCardAsync(id);
+                if (card == null)
+                {
+                    TempData["ErrorMessage"] = "Card not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                card.EstimatedValue = null;
+                card.ListingPrice = null;
+                card.PriceSource = null;
+                card.PriceDate = null;
+                card.Status = CardStatus.Draft;
+                card.UpdatedAt = DateTime.UtcNow;
+
+                await _cardRepository.UpdateCardAsync(card);
+
+                TempData["SuccessMessage"] = $"'{card.PlayerName}' sent back to Draft for repricing.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error repricing card {CardId}", id);
+                TempData["ErrorMessage"] = "Error repricing card. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
         // POST: Inventory/Delete/5
         [HttpPost]
         [ValidateAntiForgeryToken]

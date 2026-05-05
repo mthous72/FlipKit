@@ -1,192 +1,179 @@
 @model FlipKit.Web.Models.ReportsViewModel
 @{
-    ViewData["Title"] = "Reports Dashboard";
+    ViewData["Title"] = "Reports";
 }
 
 <div class="container-fluid mt-4">
-    <h1 class="display-5 mb-4"><i class="bi bi-graph-up"></i> Reports Dashboard</h1>
+    <h1 class="display-5 mb-4"><i class="bi bi-graph-up"></i> Reports</h1>
 
-    <!-- Inventory Statistics -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5><i class="bi bi-box"></i> Inventory Statistics</h5>
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Date Range Filter -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="Index" method="post" class="row g-3 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-3">
+                    <label for="startDate" class="form-label">From</label>
+                    <input type="date" class="form-control" id="startDate" name="startDate"
+                           value="@Model.StartDate.ToString("yyyy-MM-dd")">
                 </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-md-2 col-sm-4 mb-3">
-                            <div class="border rounded p-3">
-                                <h2 class="text-primary mb-0">@Model.TotalCards</h2>
-                                <small class="text-muted">Total Cards</small>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 mb-3">
-                            <div class="border rounded p-3">
-                                <h2 class="text-secondary mb-0">@Model.DraftCards</h2>
-                                <small class="text-muted">Draft</small>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 mb-3">
-                            <div class="border rounded p-3">
-                                <h2 class="text-info mb-0">@Model.PricedCards</h2>
-                                <small class="text-muted">Priced</small>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 mb-3">
-                            <div class="border rounded p-3">
-                                <h2 class="text-warning mb-0">@Model.ReadyCards</h2>
-                                <small class="text-muted">Ready</small>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 mb-3">
-                            <div class="border rounded p-3">
-                                <h2 class="text-primary mb-0">@Model.ListedCards</h2>
-                                <small class="text-muted">Listed</small>
-                            </div>
-                        </div>
-                        <div class="col-md-2 col-sm-4 mb-3">
-                            <div class="border rounded p-3">
-                                <h2 class="text-success mb-0">@Model.SoldCards</h2>
-                                <small class="text-muted">Sold</small>
-                            </div>
-                        </div>
+                <div class="col-md-3">
+                    <label for="endDate" class="form-label">To</label>
+                    <input type="date" class="form-control" id="endDate" name="endDate"
+                           value="@Model.EndDate.ToString("yyyy-MM-dd")">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Update
+                    </button>
+                </div>
+                <div class="col-md-4 text-end">
+                    <form asp-action="ExportTaxCsv" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="startDate" value="@Model.StartDate.ToString("yyyy-MM-dd")">
+                        <input type="hidden" name="endDate" value="@Model.EndDate.ToString("yyyy-MM-dd")">
+                        <button type="submit" class="btn btn-outline-success" @(Model.SoldInRange.Count == 0 ? "disabled" : "")>
+                            <i class="bi bi-download"></i> Tax CSV (@Model.SoldInRange.Count sales)
+                        </button>
+                    </form>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Snapshot -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-boxes"></i> Inventory Snapshot</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center g-3">
+                <div class="col-6 col-md-2">
+                    <div class="border rounded p-3">
+                        <h3 class="text-primary mb-0">@Model.TotalCards</h3>
+                        <small class="text-muted">Total</small>
                     </div>
                 </div>
+                <div class="col-6 col-md-2">
+                    <div class="border rounded p-3">
+                        <h3 class="text-secondary mb-0">@Model.DraftCards</h3>
+                        <small class="text-muted">Draft</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="border rounded p-3">
+                        <h3 class="text-primary mb-0">@Model.PricedCards</h3>
+                        <small class="text-muted">Priced</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="border rounded p-3">
+                        <h3 class="text-success mb-0">@Model.ReadyCards</h3>
+                        <small class="text-muted">Ready</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="border rounded p-3">
+                        <h3 class="text-info mb-0">@Model.ListedCards</h3>
+                        <small class="text-muted">Listed</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="border rounded p-3">
+                        <h3 class="text-dark mb-0">@Model.SoldCards</h3>
+                        <small class="text-muted">Sold (all time)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3 text-center text-muted">
+                Active inventory listing value: <strong class="text-success">$@Model.TotalInventoryValue.ToString("N2")</strong>
             </div>
         </div>
     </div>
 
-    <!-- Financial Statistics -->
+    <!-- Sales Summary for Date Range -->
     <div class="row mb-4">
         <div class="col-md-6 mb-3">
             <div class="card h-100">
                 <div class="card-header bg-success text-white">
-                    <h5><i class="bi bi-currency-dollar"></i> Financial Overview</h5>
+                    <h5 class="mb-0"><i class="bi bi-currency-dollar"></i>
+                        Sales Summary — @Model.StartDate.ToString("MMM d") to @Model.EndDate.ToString("MMM d, yyyy")
+                    </h5>
                 </div>
                 <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-6">Active Inventory Value:</dt>
-                        <dd class="col-sm-6 text-end">
-                            <span class="fs-5 text-success fw-bold">$@Model.TotalInventoryValue.ToString("N2")</span>
-                        </dd>
-
-                        <dt class="col-sm-6">Active Inventory Cost:</dt>
-                        <dd class="col-sm-6 text-end">
-                            <span class="fs-5 text-warning fw-bold">$@Model.TotalCostBasis.ToString("N2")</span>
-                        </dd>
-
-                        <dt class="col-sm-6">Total Revenue (Sold):</dt>
-                        <dd class="col-sm-6 text-end">
-                            <span class="fs-5 text-primary fw-bold">$@Model.TotalRevenue.ToString("N2")</span>
-                        </dd>
-
-                        <dt class="col-sm-6">Total Profit:</dt>
-                        <dd class="col-sm-6 text-end">
-                            <span class="fs-5 @(Model.TotalProfit >= 0 ? "text-success" : "text-danger") fw-bold">
-                                $@Model.TotalProfit.ToString("N2")
-                            </span>
-                        </dd>
-                    </dl>
-
-                    <div class="mt-3">
-                        <a asp-action="Financial" class="btn btn-success w-100">
-                            <i class="bi bi-graph-up"></i> View Detailed Financial Report
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6 mb-3">
-            <div class="card h-100">
-                <div class="card-header bg-info text-white">
-                    <h5><i class="bi bi-pie-chart"></i> Cards by Sport</h5>
-                </div>
-                <div class="card-body">
-                    @if (Model.CardsBySport.Any())
+                    @if (Model.SoldInRange.Count > 0)
                     {
-                        <table class="table table-sm mb-0">
-                            <tbody>
-                                @foreach (var sport in Model.CardsBySport.OrderByDescending(s => s.Value))
-                                {
-                                    <tr>
-                                        <td><strong>@sport.Key</strong></td>
-                                        <td class="text-end">
-                                            <span class="badge bg-primary">@sport.Value cards</span>
-                                        </td>
-                                        <td class="text-end" style="width: 40%;">
-                                            <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar" role="progressbar"
-                                                     style="width: @((double)sport.Value / Model.TotalCards * 100)%"
-                                                     aria-valuenow="@sport.Value" aria-valuemin="0" aria-valuemax="@Model.TotalCards">
-                                                    @((double)sport.Value / Model.TotalCards * 100).ToString("F1")%
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <dl class="row mb-0">
+                            <dt class="col-7">Cards sold:</dt>
+                            <dd class="col-5 text-end fw-bold">@Model.SoldInRange.Count</dd>
+
+                            <dt class="col-7">Total revenue:</dt>
+                            <dd class="col-5 text-end text-primary fw-bold">$@Model.TotalRevenue.ToString("N2")</dd>
+
+                            <dt class="col-7">Total cost basis:</dt>
+                            <dd class="col-5 text-end text-warning fw-bold">$@Model.TotalCostBasis.ToString("N2")</dd>
+
+                            <dt class="col-7">Total profit:</dt>
+                            <dd class="col-5 text-end fw-bold @(Model.TotalProfit >= 0 ? "text-success" : "text-danger")">
+                                $@Model.TotalProfit.ToString("N2")
+                            </dd>
+
+                            <dt class="col-7">Avg profit/card:</dt>
+                            <dd class="col-5 text-end @(Model.AverageProfit >= 0 ? "text-success" : "text-danger")">
+                                $@Model.AverageProfit.ToString("N2")
+                            </dd>
+                        </dl>
                     }
                     else
                     {
-                        <p class="text-muted mb-0">No cards in inventory yet.</p>
+                        <p class="text-muted mb-0">No sales in this date range.</p>
                     }
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Recent Sales -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-cart-check"></i> Recent Sales (Last 30 Days)</h5>
-                    <a asp-action="Sales" class="btn btn-light btn-sm">
-                        <i class="bi bi-file-earmark-text"></i> View Full Sales Report
-                    </a>
+        <!-- Monthly Breakdown -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-info text-dark">
+                    <h5 class="mb-0"><i class="bi bi-calendar3"></i> Monthly Breakdown</h5>
                 </div>
-                <div class="card-body">
-                    @if (Model.RecentSales.Any())
+                <div class="card-body p-0">
+                    @if (Model.MonthlyBreakdowns.Any())
                     {
                         <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Date</th>
-                                        <th>Player</th>
-                                        <th>Sport</th>
-                                        <th>Year</th>
-                                        <th>Sale Price</th>
-                                        <th>Cost</th>
-                                        <th>Profit</th>
+                                        <th>Month</th>
+                                        <th class="text-center">Sales</th>
+                                        <th class="text-end">Revenue</th>
+                                        <th class="text-end">Profit</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var card in Model.RecentSales)
+                                    @foreach (var m in Model.MonthlyBreakdowns)
                                     {
-                                        var profit = (card.SalePrice ?? 0) - (card.CostBasis ?? 0);
                                         <tr>
-                                            <td>@card.SaleDate?.ToString("MM/dd/yyyy")</td>
-                                            <td>
-                                                <strong>@card.PlayerName</strong>
-                                                @if (card.IsRookie)
-                                                {
-                                                    <span class="badge bg-warning text-dark">RC</span>
-                                                }
-                                                @if (card.IsGraded)
-                                                {
-                                                    <span class="badge bg-success">@card.GradeCompany @card.GradeValue</span>
-                                                }
-                                            </td>
-                                            <td>@card.Sport</td>
-                                            <td>@(card.Year?.ToString() ?? "-")</td>
-                                            <td class="text-success fw-bold">$@(card.SalePrice?.ToString("N2") ?? "0.00")</td>
-                                            <td class="text-warning">$@(card.CostBasis?.ToString("N2") ?? "0.00")</td>
-                                            <td class="@(profit >= 0 ? "text-success" : "text-danger") fw-bold">
-                                                $@profit.ToString("N2")
+                                            <td>@m.MonthLabel</td>
+                                            <td class="text-center">@m.Count</td>
+                                            <td class="text-end">$@m.Revenue.ToString("N2")</td>
+                                            <td class="text-end @(m.Profit >= 0 ? "text-success" : "text-danger") fw-bold">
+                                                $@m.Profit.ToString("N2")
                                             </td>
                                         </tr>
                                     }
@@ -196,52 +183,69 @@
                     }
                     else
                     {
-                        <div class="alert alert-info mb-0">
-                            <i class="bi bi-info-circle"></i> No sales in the last 30 days.
-                        </div>
+                        <div class="p-3 text-muted">No sales data for this period.</div>
                     }
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <i class="bi bi-calendar3 display-4 text-primary mb-3"></i>
-                    <h5>Sales by Date Range</h5>
-                    <p class="text-muted">View detailed sales report with custom date filtering</p>
-                    <a asp-action="Sales" class="btn btn-primary">
-                        <i class="bi bi-file-earmark-text"></i> Sales Report
-                    </a>
+    <!-- Top 10 Sellers -->
+    @if (Model.TopSellers.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-trophy"></i> Top 10 Sales by Profit</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Player</th>
+                                <th>Sport</th>
+                                <th>Year / Set</th>
+                                <th class="text-end">Sale Price</th>
+                                <th class="text-end">Cost</th>
+                                <th class="text-end">Net Profit</th>
+                                <th>Platform</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{int rank = 1;}
+                            @foreach (var card in Model.TopSellers)
+                            {
+                                var profit = card.NetProfit ?? ((card.SalePrice ?? 0m) - (card.CostBasis ?? 0m));
+                                <tr>
+                                    <td class="fw-bold text-muted">@rank</td>
+                                    <td>
+                                        <strong>@card.PlayerName</strong>
+                                        @if (card.IsRookie) { <span class="badge bg-warning text-dark">RC</span> }
+                                        @if (card.IsAuto) { <span class="badge bg-info text-dark">Auto</span> }
+                                        @if (card.IsGraded) { <span class="badge bg-success">@card.GradeCompany @card.GradeValue</span> }
+                                    </td>
+                                    <td>@card.Sport</td>
+                                    <td>
+                                        @(card.Year?.ToString() ?? "-")
+                                        @if (!string.IsNullOrEmpty(card.SetName))
+                                        {
+                                            <br><small class="text-muted">@card.SetName</small>
+                                        }
+                                    </td>
+                                    <td class="text-end text-primary fw-bold">$@(card.SalePrice?.ToString("N2") ?? "-")</td>
+                                    <td class="text-end text-muted">$@(card.CostBasis?.ToString("N2") ?? "-")</td>
+                                    <td class="text-end fw-bold @(profit >= 0 ? "text-success" : "text-danger")">
+                                        $@profit.ToString("N2")
+                                    </td>
+                                    <td><small>@(card.SalePlatform ?? "-")</small></td>
+                                </tr>
+                                rank++;
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <i class="bi bi-graph-up display-4 text-success mb-3"></i>
-                    <h5>Financial Analysis</h5>
-                    <p class="text-muted">Profitability breakdown by sport and detailed metrics</p>
-                    <a asp-action="Financial" class="btn btn-success">
-                        <i class="bi bi-graph-up"></i> Financial Report
-                    </a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <i class="bi bi-box display-4 text-info mb-3"></i>
-                    <h5>View Inventory</h5>
-                    <p class="text-muted">Browse and manage all cards in your inventory</p>
-                    <a asp-controller="Inventory" asp-action="Index" class="btn btn-info">
-                        <i class="bi bi-box"></i> Inventory
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+    }
 </div>

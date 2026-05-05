@@ -151,6 +151,17 @@
                                                class="btn btn-outline-secondary" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
+                                            @if (card.Status == FlipKit.Core.Models.Enums.CardStatus.Priced ||
+                                                 card.Status == FlipKit.Core.Models.Enums.CardStatus.Ready ||
+                                                 card.Status == FlipKit.Core.Models.Enums.CardStatus.Listed)
+                                            {
+                                                <button type="button" class="btn btn-outline-warning"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#repriceModal@(card.Id)"
+                                                        title="Reprice">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                </button>
+                                            }
                                             <button type="button" class="btn btn-outline-danger"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#deleteModal@(card.Id)"
@@ -158,6 +169,34 @@
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </div>
+
+                                        <!-- Reprice Confirmation Modal -->
+                                        @if (card.Status == FlipKit.Core.Models.Enums.CardStatus.Priced ||
+                                             card.Status == FlipKit.Core.Models.Enums.CardStatus.Ready ||
+                                             card.Status == FlipKit.Core.Models.Enums.CardStatus.Listed)
+                                        {
+                                            <div class="modal fade" id="repriceModal@(card.Id)" tabindex="-1">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Reprice Card</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            Clear pricing for <strong>@card.PlayerName</strong> and send back to Draft?
+                                                            This will clear the listing price and market value.
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <form asp-action="Reprice" asp-route-id="@card.Id" method="post" style="display:inline;">
+                                                                @Html.AntiForgeryToken()
+                                                                <button type="submit" class="btn btn-warning">Reprice</button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
 
                                         <!-- Delete Confirmation Modal -->
                                         <div class="modal fade" id="deleteModal@(card.Id)" tabindex="-1">
