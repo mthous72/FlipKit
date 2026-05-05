@@ -43,10 +43,12 @@ public class MainWindowViewModelTests
             Substitute.For<ISettingsService>().Tap(s => s.Load().Returns(new AppSettings())),
             Substitute.For<IVariationVerifier>(),
             Substitute.For<IChecklistLearningService>(),
+            Substitute.For<IChecklistVerificationMatcher>(),
             Substitute.For<IOpenRouterModelCatalog>().Tap(m => m.GetAsync(default).ReturnsForAnyArgs(Task.FromResult(
                 new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow)))),
             Substitute.For<IPaidModelConsentService>(),
             Substitute.For<IImageUploadService>(),
+            Substitute.For<IBrowserService>(),
             NullLogger<ScanViewModel>.Instance);
 
     private static SetupWizardViewModel BuildWizardVm() =>

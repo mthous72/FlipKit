@@ -12,6 +12,7 @@
     <UserControl.Resources>
         <conv:ConfidenceToColorConverter x:Key="ConfidenceToColorConverter"/>
         <conv:FilePathToBitmapConverter x:Key="FilePathToBitmapConverter"/>
+        <conv:HexStringToBrushConverter x:Key="HexStringToBrushConverter"/>
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
@@ -247,6 +248,34 @@
             <!-- Right Column: Card Detail Form -->
             <ScrollViewer Grid.Column="1" Padding="0,0,0,40">
                 <StackPanel Spacing="8" Margin="12,0,0,0">
+
+                    <!-- Phase 2: tier badge from the checklist verification matcher.
+                         Coloured from TierBadgeColor; only shown once a scan result is
+                         on screen and a tier was assigned. -->
+                    <Border CornerRadius="6" Padding="10,6" HorizontalAlignment="Stretch"
+                            Background="{Binding TierBadgeColor, Converter={StaticResource HexStringToBrushConverter}}"
+                            IsVisible="{Binding TierBadgeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock Text="{Binding TierBadgeText}" Foreground="White" FontWeight="SemiBold" FontSize="12"/>
+                    </Border>
+
+                    <!-- Phase 2 — Surface B: yellow banner when the scanned card's set has
+                         no imported checklist. Deeplinks to checklistinsider.com pre-searched
+                         for this set. The actual import happens via Settings → Checklists. -->
+                    <Border CornerRadius="6" Padding="12,10" Background="#FFF3E0" BorderBrush="#FB8C00" BorderThickness="1"
+                            IsVisible="{Binding HasMissingChecklist}">
+                        <StackPanel Spacing="6">
+                            <TextBlock Foreground="#212121" FontWeight="SemiBold" FontSize="13">
+                                <Run Text="No checklist imported for "/>
+                                <Run Text="{Binding MissingChecklistLabel}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="#212121" FontSize="11" TextWrapping="Wrap">
+                                Verification accuracy is limited until you import this set's .xlsx from Checklist Insider.
+                            </TextBlock>
+                            <Button Content="Get Checklist for this set →"
+                                    Command="{Binding OpenChecklistInsiderForMissingSetCommand}"
+                                    HorizontalAlignment="Left" Padding="10,5" FontSize="12"/>
+                        </StackPanel>
+                    </Border>
 
                     <!-- Show form only when card is scanned or entered manually -->
                     <Border IsVisible="{Binding ScannedCard, Converter={x:Static ObjectConverters.IsNotNull}}">

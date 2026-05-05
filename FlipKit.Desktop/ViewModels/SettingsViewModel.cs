@@ -61,6 +61,9 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _autoApplyHighConfidenceSuggestions = true;
         [ObservableProperty] private bool _runConfirmationPass = true;
         [ObservableProperty] private bool _enableChecklistLearning = true;
+        // Phase 2 of Checklist Insider — auto-save Tier 1 (Verified) matches without
+        // user confirmation. Off by default; opt-in shortcut for trusted sets.
+        [ObservableProperty] private bool _autoAcceptTier1Matches;
         [ObservableProperty] private int _maxConcurrentScans = 1;
 
         // Financial
@@ -238,6 +241,7 @@ namespace FlipKit.Desktop.ViewModels
             AutoApplyHighConfidenceSuggestions = s.AutoApplyHighConfidenceSuggestions;
             RunConfirmationPass = s.RunConfirmationPass;
             EnableChecklistLearning = s.EnableChecklistLearning;
+            AutoAcceptTier1Matches = s.AutoAcceptTier1Matches;
             MaxConcurrentScans = s.MaxConcurrentScans;
             WhatnotFeePercent = s.WhatnotFeePercent;
             EbayFeePercent = s.EbayFeePercent;
@@ -333,6 +337,7 @@ namespace FlipKit.Desktop.ViewModels
                 AutoApplyHighConfidenceSuggestions = AutoApplyHighConfidenceSuggestions,
                 RunConfirmationPass = RunConfirmationPass,
                 EnableChecklistLearning = EnableChecklistLearning,
+                AutoAcceptTier1Matches = AutoAcceptTier1Matches,
                 MaxConcurrentScans = MaxConcurrentScans,
                 WhatnotFeePercent = WhatnotFeePercent,
                 EbayFeePercent = EbayFeePercent,

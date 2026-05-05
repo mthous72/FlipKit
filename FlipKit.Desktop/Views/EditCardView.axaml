@@ -11,15 +11,22 @@
 
     <UserControl.Resources>
         <conv:FilePathToFullSizeBitmapConverter x:Key="FullSizeBitmapConverter"/>
+        <conv:HexStringToBrushConverter x:Key="HexStringToBrushConverter"/>
     </UserControl.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="24,24,24,8">
+        <StackPanel Grid.Row="0" Margin="24,24,24,8" Spacing="6">
             <TextBlock Text="Edit Card" FontSize="24" FontWeight="Bold"/>
             <TextBlock Text="Update card details and save changes"
-                       Opacity="0.6" Margin="0,4,0,0"/>
+                       Opacity="0.6"/>
+            <!-- Phase 2: tier outcome from the saved card. Hidden when status is NotChecked. -->
+            <Border CornerRadius="6" Padding="10,5" HorizontalAlignment="Left"
+                    Background="{Binding TierBadgeColor, Converter={StaticResource HexStringToBrushConverter}}"
+                    IsVisible="{Binding TierBadgeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding TierBadgeText}" Foreground="White" FontWeight="SemiBold" FontSize="11"/>
+            </Border>
         </StackPanel>
 
         <!-- Main Content: Two columns -->

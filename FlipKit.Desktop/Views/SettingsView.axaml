@@ -375,6 +375,10 @@
                         <CheckBox IsChecked="{Binding EnableChecklistLearning}"
                                   Content="Auto-learn checklists from saved cards"/>
 
+                        <CheckBox IsChecked="{Binding AutoAcceptTier1Matches}"
+                                  Content="Auto-accept Tier 1 (Verified) matches"
+                                  ToolTip.Tip="When the checklist verifier returns a confident match (green ✓ tier), save the card without requiring manual confirmation. Tier 2/3 matches always require review. Off by default."/>
+
                         <!-- Concurrent Scans -->
                         <TextBlock Text="Max Concurrent Bulk Scans" FontWeight="SemiBold" Margin="0,8,0,0"/>
                         <NumericUpDown Value="{Binding MaxConcurrentScans}"

@@ -33,6 +33,11 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _imageUrl1;
         [ObservableProperty] private string? _imageUrl2;
 
+        // Phase 2 — surface the saved card's tier outcome in the editor so users can see
+        // at a glance which checklist tier the card was committed under.
+        [ObservableProperty] private string _tierBadgeText = string.Empty;
+        [ObservableProperty] private string _tierBadgeColor = "#9E9E9E";
+
         // Prefer ImgBB URLs (used for Whatnot) over local paths
         public string? DisplayImageFront => !string.IsNullOrEmpty(ImageUrl1) ? ImageUrl1 : ImagePathFront;
         public string? DisplayImageBack => !string.IsNullOrEmpty(ImageUrl2) ? ImageUrl2 : ImagePathBack;
@@ -74,6 +79,7 @@ namespace FlipKit.Desktop.ViewModels
                 ImagePathBack = _originalCard.ImagePathBack;
                 ImageUrl1 = _originalCard.ImageUrl1;
                 ImageUrl2 = _originalCard.ImageUrl2;
+                ApplyTierBadge(_originalCard);
 
                 AdditionalPhotos.Clear();
                 AddSlotIfAny(_originalCard.ImagePath3, _originalCard.ImageUrl3);
@@ -120,6 +126,33 @@ namespace FlipKit.Desktop.ViewModels
         {
             if (!string.IsNullOrEmpty(path) || !string.IsNullOrEmpty(url))
                 AdditionalPhotos.Add(new PhotoSlot(path, url));
+        }
+
+        private void ApplyTierBadge(Card card)
+        {
+            switch (card.VerificationStatus)
+            {
+                case Core.Models.Enums.VerificationStatus.Verified:
+                    TierBadgeText = "✓ Verified against checklist";
+                    TierBadgeColor = "#43A047";
+                    break;
+                case Core.Models.Enums.VerificationStatus.BestGuess:
+                    TierBadgeText = "⚠ Best guess (Tier 2)";
+                    TierBadgeColor = "#FB8C00";
+                    break;
+                case Core.Models.Enums.VerificationStatus.UserCorrected:
+                    TierBadgeText = "✎ User corrected from picker";
+                    TierBadgeColor = "#1E88E5";
+                    break;
+                case Core.Models.Enums.VerificationStatus.NoMatchFound:
+                    TierBadgeText = "❓ No match — saved with AI guess";
+                    TierBadgeColor = "#E53935";
+                    break;
+                default:
+                    TierBadgeText = string.Empty;
+                    TierBadgeColor = "#9E9E9E";
+                    break;
+            }
         }
 
         [RelayCommand]

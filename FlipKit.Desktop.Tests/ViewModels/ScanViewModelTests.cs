@@ -39,9 +39,11 @@ public class ScanViewModelTests
             settings,
             verifier ?? Substitute.For<IVariationVerifier>(),
             learning ?? Substitute.For<IChecklistLearningService>(),
+            Substitute.For<IChecklistVerificationMatcher>(),
             catalog,
             consent ?? Substitute.For<IPaidModelConsentService>(),
             upload ?? Substitute.For<IImageUploadService>(),
+            Substitute.For<IBrowserService>(),
             NullLogger<ScanViewModel>.Instance);
     }
 

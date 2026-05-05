@@ -21,9 +21,11 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IVariationVerifier _variationVerifier;
         private readonly IChecklistLearningService _checklistLearningService;
+        private readonly IChecklistVerificationMatcher _checklistMatcher;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
         private readonly IImageUploadService _imageUploadService;
+        private readonly IBrowserService _browserService;
         private readonly ILogger<ScanViewModel> _logger;
 
         private ScanResult? _lastScanResult;
@@ -37,6 +39,17 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private VerificationResult? _verificationResult;
         [ObservableProperty] private bool _isVerifying;
         [ObservableProperty] private string _verificationStatus = "";
+
+        // Phase 2 tier-aware verification (Roadmap 1 §8d). When the matcher returns
+        // ChecklistMissing the UI shows the Surface B banner; otherwise the tier badge
+        // colour-codes the result. ChecklistMatchResult carries the candidate list for
+        // the Pick-from-checklist picker (UI lands in a follow-up).
+        [ObservableProperty] private ChecklistMatchResult? _checklistMatchResult;
+        [ObservableProperty] private bool _hasMissingChecklist;
+        [ObservableProperty] private string? _missingChecklistDeeplink;
+        [ObservableProperty] private string? _missingChecklistLabel;
+        [ObservableProperty] private string _tierBadgeText = string.Empty;
+        [ObservableProperty] private string _tierBadgeColor = "#9E9E9E"; // grey when no tier
 
         // Model selection
         [ObservableProperty] private ModelOption? _selectedModel;
@@ -57,9 +70,11 @@ namespace FlipKit.Desktop.ViewModels
             ISettingsService settingsService,
             IVariationVerifier variationVerifier,
             IChecklistLearningService checklistLearningService,
+            IChecklistVerificationMatcher checklistMatcher,
             IOpenRouterModelCatalog modelCatalog,
             IPaidModelConsentService consentService,
             IImageUploadService imageUploadService,
+            IBrowserService browserService,
             ILogger<ScanViewModel> logger)
         {
             _scannerService = scannerService;
@@ -68,9 +83,11 @@ namespace FlipKit.Desktop.ViewModels
             _settingsService = settingsService;
             _variationVerifier = variationVerifier;
             _checklistLearningService = checklistLearningService;
+            _checklistMatcher = checklistMatcher;
             _modelCatalog = modelCatalog;
             _consentService = consentService;
             _imageUploadService = imageUploadService;
+            _browserService = browserService;
             _logger = logger;
 
             // Populate the dropdown asynchronously — first call hits OpenRouter, subsequent
@@ -210,6 +227,20 @@ namespace FlipKit.Desktop.ViewModels
                 ScannedCard = CardDetailViewModel.FromCard(scanResult.Card);
                 MergeCustomGradingCompanies(ScannedCard);
 
+                // Phase 2 tier-aware verification (Roadmap 1 §8d). Runs alongside the
+                // existing variation verifier — produces a coloured tier badge + the
+                // Surface B "no checklist imported" banner when applicable. Errors
+                // here never block the scan; matcher failure just leaves tier blank.
+                try
+                {
+                    await RunChecklistMatcherAsync(scanResult.Card, settings);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Checklist verification matcher failed for {ImagePath}", ImagePath);
+                    ResetMatcherState();
+                }
+
                 // Run verification pipeline if enabled
                 if (settings.EnableVariationVerification)
                 {
@@ -344,6 +375,7 @@ namespace FlipKit.Desktop.ViewModels
                 card.ImagePathFront = ImagePath;
                 card.ImagePathBack = ImagePathBack;
                 ApplyAdditionalPhotosToCard(card);
+                ApplyChecklistMatchToCard(card);
 
                 // Auto-fill Whatnot category/subcategory from Sport if user left them
                 // blank (e.g. Sport=Football → WhatnotSubcategory="Football Singles").
@@ -398,6 +430,106 @@ namespace FlipKit.Desktop.ViewModels
             }
         }
 
+        private void ApplyChecklistMatchToCard(Card card)
+        {
+            // Stamp the card with whichever tier outcome the matcher produced. The user
+            // hasn't been given the picker yet (deferred UI), so Tier 1 stays Verified,
+            // Tier 2 lands as BestGuess, Tier 3 as NoMatchFound. When no checklist exists
+            // for the set we leave VerificationStatus at NotChecked.
+            var match = ChecklistMatchResult;
+            if (match == null || match.ChecklistMissing) return;
+
+            card.MatchedChecklistKey = match.MatchKey;
+            card.VerificationStatus = match.Tier switch
+            {
+                VerificationTier.Verified => Core.Models.Enums.VerificationStatus.Verified,
+                VerificationTier.BestGuess => Core.Models.Enums.VerificationStatus.BestGuess,
+                _ => Core.Models.Enums.VerificationStatus.NoMatchFound,
+            };
+        }
+
+        private async Task RunChecklistMatcherAsync(Card scannedCard, AppSettings settings)
+        {
+            var match = await _checklistMatcher.MatchAsync(scannedCard);
+            ChecklistMatchResult = match;
+
+            if (match.ChecklistMissing)
+            {
+                HasMissingChecklist = true;
+                MissingChecklistLabel = BuildMissingLabel(scannedCard);
+                MissingChecklistDeeplink = BuildChecklistInsiderDeeplink(scannedCard);
+                TierBadgeText = string.Empty;
+                TierBadgeColor = "#9E9E9E";
+                return;
+            }
+
+            HasMissingChecklist = false;
+            MissingChecklistLabel = null;
+            MissingChecklistDeeplink = null;
+
+            switch (match.Tier)
+            {
+                case VerificationTier.Verified:
+                    TierBadgeText = "✓ Verified against checklist";
+                    TierBadgeColor = "#43A047"; // green
+                    if (settings.AutoAcceptTier1Matches)
+                    {
+                        // Power-user shortcut: stamp the card's verification status
+                        // immediately so SaveCard takes the auto-accept path.
+                        scannedCard.VerificationStatus = Core.Models.Enums.VerificationStatus.Verified;
+                        scannedCard.MatchedChecklistKey = match.MatchKey;
+                    }
+                    break;
+                case VerificationTier.BestGuess:
+                    TierBadgeText = "⚠ Best guess — review fields";
+                    TierBadgeColor = "#FB8C00"; // amber
+                    break;
+                default:
+                    TierBadgeText = "❓ No match — pick from checklist";
+                    TierBadgeColor = "#E53935"; // red
+                    break;
+            }
+
+            // Stash the proposed match key on the in-memory card. SaveCard will write
+            // it to the row alongside whatever VerificationStatus the user accepts.
+            scannedCard.MatchedChecklistKey = match.MatchKey;
+        }
+
+        private void ResetMatcherState()
+        {
+            ChecklistMatchResult = null;
+            HasMissingChecklist = false;
+            MissingChecklistLabel = null;
+            MissingChecklistDeeplink = null;
+            TierBadgeText = string.Empty;
+            TierBadgeColor = "#9E9E9E";
+        }
+
+        private static string BuildMissingLabel(Card card)
+        {
+            var year = card.Year?.ToString() ?? "?";
+            var brand = card.Brand ?? "?";
+            var sport = card.Sport?.ToString();
+            return string.IsNullOrWhiteSpace(sport)
+                ? $"{year} {brand}"
+                : $"{year} {brand} {sport}";
+        }
+
+        private static string BuildChecklistInsiderDeeplink(Card card)
+        {
+            var query = string.Join(" ", new[] { card.Year?.ToString(), card.Brand, card.Sport?.ToString() }
+                .Where(s => !string.IsNullOrWhiteSpace(s)));
+            var encoded = Uri.EscapeDataString(query);
+            return $"https://www.checklistinsider.com/?s={encoded}";
+        }
+
+        [RelayCommand]
+        private void OpenChecklistInsiderForMissingSet()
+        {
+            if (!string.IsNullOrWhiteSpace(MissingChecklistDeeplink))
+                _browserService.OpenUrl(MissingChecklistDeeplink);
+        }
+
         [RelayCommand]
         private void EnterManually()
         {
@@ -420,6 +552,7 @@ namespace FlipKit.Desktop.ViewModels
             VerificationResult = null;
             VerificationStatus = "";
             _lastScanResult = null;
+            ResetMatcherState();
         }
 
         private void ApplyAdditionalPhotosToCard(Card card)
