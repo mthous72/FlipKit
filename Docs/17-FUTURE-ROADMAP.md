@@ -70,7 +70,7 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 
 📷 Webcam buttons on Scan + Edit (Desktop, OpenCvSharp4) and Scan (Web, `getUserMedia`+canvas). Settings → Webcam Capture exposes a master toggle, device picker with max-resolution labels, and a Test capture button. Browser capture requires HTTPS or `localhost`; on HTTP-via-Tailscale the trigger buttons hide and a banner explains why.
 
-**Deferred follow-ups:** Inventory edit-card webcam wiring on Web; Mac/Linux smoke pass; OpenCvSharp4 osx-arm64 verification.
+**Deferred follow-ups:** Inventory edit-card webcam wiring on Web; Mac/Linux smoke pass and OpenCvSharp4 osx-arm64 verification — **blocked**, the maintainer has no Mac on hand to test against. Open issue for an external contributor or accept "Windows-only verified" until a Mac is available.
 
 ### 3. Automated Price Scraping
 

@@ -208,8 +208,8 @@ Shipped on 2026-05-04 across 5 commits on `feature/webcam-capture`, merged to `m
 **Deferred / not shipped:**
 
 - **Inventory edit-card webcam wiring on Web.** The Desktop EditCardView got the Replace flow, but the Web Inventory edit page didn't. Lower priority because the primary Web user flow is Scan, not Edit.
-- **Mac/Linux smoke pass.** Only Windows was verified on real hardware. The OpenCvSharp4 OSX/Linux runtime packages are wired into the csproj but untested.
-- **OpenCvSharp4 osx-arm64 risk** flagged in §11 — still untested on Apple Silicon.
+- **Mac/Linux smoke pass — blocked (2026-05-05).** Only Windows was verified on real hardware. Maintainer has no Mac to test on, and the OpenCvSharp4 OSX/osx-arm64 runtime packages are wired into the csproj but untested. The build will succeed on Mac (the package downloads correctly), but real-camera behavior is unverified. Open an issue for an external contributor with Mac hardware, or accept "Windows-verified, Mac-untested" until a Mac becomes available.
+- **OpenCvSharp4 osx-arm64 risk** flagged in §11 — same blocker as above.
 - **Test capture button validation** flagged in §11 — replaced by the Settings → "Test capture…" button which exercises the full dialog instead.
 
 *Original plan content above is preserved for historical reference. Current behavior may diverge — check the code.*
