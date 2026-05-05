@@ -44,6 +44,7 @@ public class ScanViewModelTests
             consent ?? Substitute.For<IPaidModelConsentService>(),
             upload ?? Substitute.For<IImageUploadService>(),
             Substitute.For<IBrowserService>(),
+            Substitute.For<IWebcamCaptureDialogService>(),
             NullLogger<ScanViewModel>.Instance);
     }
 

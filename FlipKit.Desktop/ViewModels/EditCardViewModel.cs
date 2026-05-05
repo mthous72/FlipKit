@@ -18,6 +18,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly INavigationService _navigationService;
         private readonly IFileDialogService _fileDialogService;
         private readonly IImageUploadService _imageUploadService;
+        private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
         private readonly ILogger<EditCardViewModel> _logger;
 
         private Card? _originalCard;
@@ -51,12 +52,14 @@ namespace FlipKit.Desktop.ViewModels
             INavigationService navigationService,
             IFileDialogService fileDialogService,
             IImageUploadService imageUploadService,
+            IWebcamCaptureDialogService webcamCaptureDialog,
             ILogger<EditCardViewModel> logger)
         {
             _cardRepository = cardRepository;
             _navigationService = navigationService;
             _fileDialogService = fileDialogService;
             _imageUploadService = imageUploadService;
+            _webcamCaptureDialog = webcamCaptureDialog;
             _logger = logger;
         }
 
@@ -113,6 +116,66 @@ namespace FlipKit.Desktop.ViewModels
             var path = await _fileDialogService.OpenImageFileAsync();
             if (!string.IsNullOrEmpty(path))
                 AdditionalPhotos.Add(new PhotoSlot(path));
+        }
+
+        [RelayCommand]
+        private async Task CaptureAdditionalPhotoAsync()
+        {
+            if (AdditionalPhotos.Count >= MaxAdditionalPhotos)
+                return;
+
+            var path = await _webcamCaptureDialog.CaptureAsync();
+            if (!string.IsNullOrEmpty(path))
+                AdditionalPhotos.Add(new PhotoSlot(path));
+        }
+
+        [RelayCommand]
+        private async Task ReplaceFrontImageBrowseAsync()
+        {
+            var path = await _fileDialogService.OpenImageFileAsync();
+            if (!string.IsNullOrEmpty(path))
+                ApplyNewFrontImage(path);
+        }
+
+        [RelayCommand]
+        private async Task ReplaceFrontImageWebcamAsync()
+        {
+            var path = await _webcamCaptureDialog.CaptureAsync();
+            if (!string.IsNullOrEmpty(path))
+                ApplyNewFrontImage(path);
+        }
+
+        [RelayCommand]
+        private async Task ReplaceBackImageBrowseAsync()
+        {
+            var path = await _fileDialogService.OpenImageFileAsync();
+            if (!string.IsNullOrEmpty(path))
+                ApplyNewBackImage(path);
+        }
+
+        [RelayCommand]
+        private async Task ReplaceBackImageWebcamAsync()
+        {
+            var path = await _webcamCaptureDialog.CaptureAsync();
+            if (!string.IsNullOrEmpty(path))
+                ApplyNewBackImage(path);
+        }
+
+        private void ApplyNewFrontImage(string path)
+        {
+            ImagePathFront = path;
+            // Clear the hosted URL so DisplayImageFront falls back to the new local file
+            // instead of showing the stale ImgBB image. SaveAsync's TryUploadMissingUrlsAsync
+            // will re-upload and repopulate ImageUrl1.
+            ImageUrl1 = null;
+            OnPropertyChanged(nameof(DisplayImageFront));
+        }
+
+        private void ApplyNewBackImage(string path)
+        {
+            ImagePathBack = path;
+            ImageUrl2 = null;
+            OnPropertyChanged(nameof(DisplayImageBack));
         }
 
         [RelayCommand]
@@ -201,6 +264,14 @@ namespace FlipKit.Desktop.ViewModels
                 _originalCard.WhatnotSubcategory = CardDetail.WhatnotSubcategory;
                 _originalCard.Notes = CardDetail.Notes;
                 _originalCard.UpdatedAt = DateTime.UtcNow;
+
+                // Front/back image swaps from the new Replace flow. We also clear the
+                // hosted URL when the local path changes so TryUploadMissingUrlsAsync
+                // re-uploads with the new image (otherwise the row keeps the stale URL).
+                _originalCard.ImagePathFront = ImagePathFront;
+                _originalCard.ImagePathBack = ImagePathBack;
+                _originalCard.ImageUrl1 = ImageUrl1;
+                _originalCard.ImageUrl2 = ImageUrl2;
 
                 // Sync slots 3-8 from the AdditionalPhotos collection. Slots beyond the
                 // current collection size are cleared (handles user removing a photo).

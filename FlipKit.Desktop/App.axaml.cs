@@ -123,6 +123,11 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
                 services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
+                // Webcam capture (Roadmap #2 — Docs/27-WEBCAM-CAPTURE-PLAN.md). The
+                // ICameraService probes/opens cameras via OpenCvSharp4; the dialog
+                // service owns the modal window so ViewModels stay Avalonia-free.
+                services.AddSingleton<ICameraService, OpenCvCameraService>();
+                services.AddSingleton<IWebcamCaptureDialogService, WebcamCaptureDialogService>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 // Export pipeline — registered unconditionally (no DbContext dependency).

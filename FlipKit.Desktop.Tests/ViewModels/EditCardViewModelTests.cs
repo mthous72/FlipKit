@@ -12,11 +12,13 @@ public class EditCardViewModelTests
         ICardRepository? repo = null,
         INavigationService? nav = null,
         IFileDialogService? dialog = null,
-        IImageUploadService? upload = null) =>
+        IImageUploadService? upload = null,
+        IWebcamCaptureDialogService? webcam = null) =>
         new(repo ?? Substitute.For<ICardRepository>(),
             nav ?? Substitute.For<INavigationService>(),
             dialog ?? Substitute.For<IFileDialogService>(),
             upload ?? Substitute.For<IImageUploadService>(),
+            webcam ?? Substitute.For<IWebcamCaptureDialogService>(),
             NullLogger<EditCardViewModel>.Instance);
 
     private static Card SampleCard(int id = 7) => new()

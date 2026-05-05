@@ -46,7 +46,11 @@
                                         Spacing="12" MinHeight="200"
                                         IsVisible="{Binding DisplayImageFront, Converter={x:Static StringConverters.IsNullOrEmpty}}">
                                 <TextBlock Text="No Front Image" FontSize="14" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center" Opacity="0.5" Margin="0,80,0,80"/>
+                                           HorizontalAlignment="Center" Opacity="0.5" Margin="0,40,0,12"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,0,0,40">
+                                    <Button Content="Browse..." Command="{Binding ReplaceFrontImageBrowseCommand}"/>
+                                    <Button Content="📷 Webcam" Command="{Binding ReplaceFrontImageWebcamCommand}"/>
+                                </StackPanel>
                             </StackPanel>
 
                             <!-- Image preview -->
@@ -57,6 +61,12 @@
                                 <Image Source="{Binding DisplayImageFront, Converter={StaticResource FullSizeBitmapConverter}}"
                                        MaxHeight="300" Stretch="Uniform"
                                        HorizontalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                    <Button Content="Replace" Command="{Binding ReplaceFrontImageBrowseCommand}"
+                                            Padding="12,4" FontSize="12"/>
+                                    <Button Content="📷 Recapture" Command="{Binding ReplaceFrontImageWebcamCommand}"
+                                            Padding="12,4" FontSize="12"/>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -67,9 +77,17 @@
                             Background="{DynamicResource SystemChromeLowColor}">
                         <StackPanel>
                             <!-- No back image -->
-                            <TextBlock Text="No Back Image" FontSize="12" Opacity="0.4"
-                                       HorizontalAlignment="Center" Margin="0,20,0,20"
-                                       IsVisible="{Binding DisplayImageBack, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            <StackPanel HorizontalAlignment="Center" Margin="0,20,0,20" Spacing="8"
+                                        IsVisible="{Binding DisplayImageBack, Converter={x:Static StringConverters.IsNullOrEmpty}}">
+                                <TextBlock Text="No Back Image" FontSize="12" Opacity="0.4"
+                                           HorizontalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                    <Button Content="Browse..." Command="{Binding ReplaceBackImageBrowseCommand}"
+                                            Padding="12,4" FontSize="12"/>
+                                    <Button Content="📷 Webcam" Command="{Binding ReplaceBackImageWebcamCommand}"
+                                            Padding="12,4" FontSize="12"/>
+                                </StackPanel>
+                            </StackPanel>
 
                             <!-- Back image preview -->
                             <StackPanel IsVisible="{Binding DisplayImageBack, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
@@ -79,6 +97,12 @@
                                 <Image Source="{Binding DisplayImageBack, Converter={StaticResource FullSizeBitmapConverter}}"
                                        MaxHeight="200" Stretch="Uniform"
                                        HorizontalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                    <Button Content="Replace" Command="{Binding ReplaceBackImageBrowseCommand}"
+                                            Padding="12,4" FontSize="12"/>
+                                    <Button Content="📷 Recapture" Command="{Binding ReplaceBackImageWebcamCommand}"
+                                            Padding="12,4" FontSize="12"/>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -119,10 +143,16 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <Button Content="+ Add Photo"
-                                    Command="{Binding AddAdditionalPhotoCommand}"
-                                    HorizontalAlignment="Stretch"
-                                    Padding="8,6" FontSize="12"/>
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                                <Button Grid.Column="0" Content="+ From File"
+                                        Command="{Binding AddAdditionalPhotoCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        Padding="8,6" FontSize="12"/>
+                                <Button Grid.Column="1" Content="📷 Webcam"
+                                        Command="{Binding CaptureAdditionalPhotoCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        Padding="8,6" FontSize="12"/>
+                            </Grid>
                         </StackPanel>
                     </Border>
 

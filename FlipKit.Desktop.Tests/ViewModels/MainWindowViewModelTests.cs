@@ -49,6 +49,7 @@ public class MainWindowViewModelTests
             Substitute.For<IPaidModelConsentService>(),
             Substitute.For<IImageUploadService>(),
             Substitute.For<IBrowserService>(),
+            Substitute.For<IWebcamCaptureDialogService>(),
             NullLogger<ScanViewModel>.Instance);
 
     private static SetupWizardViewModel BuildWizardVm() =>

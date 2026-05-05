@@ -26,6 +26,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IPaidModelConsentService _consentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
+        private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
         private readonly ILogger<ScanViewModel> _logger;
 
         private ScanResult? _lastScanResult;
@@ -75,6 +76,7 @@ namespace FlipKit.Desktop.ViewModels
             IPaidModelConsentService consentService,
             IImageUploadService imageUploadService,
             IBrowserService browserService,
+            IWebcamCaptureDialogService webcamCaptureDialog,
             ILogger<ScanViewModel> logger)
         {
             _scannerService = scannerService;
@@ -88,6 +90,7 @@ namespace FlipKit.Desktop.ViewModels
             _consentService = consentService;
             _imageUploadService = imageUploadService;
             _browserService = browserService;
+            _webcamCaptureDialog = webcamCaptureDialog;
             _logger = logger;
 
             // Populate the dropdown asynchronously — first call hits OpenRouter, subsequent
@@ -152,6 +155,18 @@ namespace FlipKit.Desktop.ViewModels
         }
 
         [RelayCommand]
+        private async Task CaptureFrontImageAsync()
+        {
+            var path = await _webcamCaptureDialog.CaptureAsync();
+            if (!string.IsNullOrEmpty(path))
+            {
+                ImagePath = path;
+                ErrorMessage = null;
+                SuccessMessage = null;
+            }
+        }
+
+        [RelayCommand]
         private async Task BrowseBackImageAsync()
         {
             var path = await _fileDialogService.OpenImageFileAsync();
@@ -159,6 +174,14 @@ namespace FlipKit.Desktop.ViewModels
             {
                 ImagePathBack = path;
             }
+        }
+
+        [RelayCommand]
+        private async Task CaptureBackImageAsync()
+        {
+            var path = await _webcamCaptureDialog.CaptureAsync();
+            if (!string.IsNullOrEmpty(path))
+                ImagePathBack = path;
         }
 
         [RelayCommand]
@@ -174,6 +197,17 @@ namespace FlipKit.Desktop.ViewModels
                 return;
 
             var path = await _fileDialogService.OpenImageFileAsync();
+            if (!string.IsNullOrEmpty(path))
+                AdditionalPhotos.Add(new PhotoSlot(path));
+        }
+
+        [RelayCommand]
+        private async Task CaptureAdditionalPhotoAsync()
+        {
+            if (AdditionalPhotos.Count >= MaxAdditionalPhotos)
+                return;
+
+            var path = await _webcamCaptureDialog.CaptureAsync();
             if (!string.IsNullOrEmpty(path))
                 AdditionalPhotos.Add(new PhotoSlot(path));
         }
