@@ -86,11 +86,24 @@ namespace FlipKit.Web.Controllers
         // POST: Scan/Upload
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Upload(IFormFile? frontImage, IFormFile? backImage, string? selectedModel, string? ximilarMode)
+        public async Task<IActionResult> Upload(
+            IFormFile? frontImage,
+            IFormFile? backImage,
+            string? selectedModel,
+            string? ximilarMode,
+            string? frontImagePath,
+            string? backImagePath)
         {
-            if (frontImage == null || frontImage.Length == 0)
+            // Either a multipart upload OR a server-side path from the webcam
+            // capture flow (POST /api/cards/upload-image) is acceptable for
+            // each slot. The path-based variant skips the second copy because
+            // the file is already in wwwroot/uploads.
+            var hasFrontFile = frontImage is { Length: > 0 };
+            var hasFrontPath = !string.IsNullOrEmpty(frontImagePath) && System.IO.File.Exists(frontImagePath);
+
+            if (!hasFrontFile && !hasFrontPath)
             {
-                TempData["ErrorMessage"] = "Please upload at least a front image of the card.";
+                TempData["ErrorMessage"] = "Please upload or capture a front image of the card.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -104,25 +117,36 @@ namespace FlipKit.Web.Controllers
                     HttpContext.Session.SetString("XimilarScanMode", ximilarMode);
                 }
 
-                // Save uploaded images to temp directory
+                // Save uploaded images to temp directory (only when a fresh file
+                // arrived — webcam captures land in wwwroot/uploads via the
+                // ImageUploadController already and pass us a path).
                 var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads");
                 Directory.CreateDirectory(uploadsPath);
 
-                var frontImagePath = Path.Combine(uploadsPath, $"{Guid.NewGuid()}_{frontImage.FileName}");
-                using (var stream = new FileStream(frontImagePath, FileMode.Create))
+                if (hasFrontFile)
                 {
+                    frontImagePath = Path.Combine(uploadsPath, $"{Guid.NewGuid()}_{frontImage!.FileName}");
+                    using var stream = new FileStream(frontImagePath, FileMode.Create);
                     await frontImage.CopyToAsync(stream);
                 }
 
-                string? backImagePath = null;
-                if (backImage != null && backImage.Length > 0)
+                var hasBackFile = backImage is { Length: > 0 };
+                var hasBackPath = !string.IsNullOrEmpty(backImagePath) && System.IO.File.Exists(backImagePath);
+                if (hasBackFile)
                 {
-                    backImagePath = Path.Combine(uploadsPath, $"{Guid.NewGuid()}_{backImage.FileName}");
-                    using (var stream = new FileStream(backImagePath, FileMode.Create))
-                    {
-                        await backImage.CopyToAsync(stream);
-                    }
+                    backImagePath = Path.Combine(uploadsPath, $"{Guid.NewGuid()}_{backImage!.FileName}");
+                    using var stream = new FileStream(backImagePath, FileMode.Create);
+                    await backImage.CopyToAsync(stream);
                 }
+                else if (!hasBackPath)
+                {
+                    backImagePath = null;
+                }
+
+                // Promote to non-null for the rest of the method. The early-return
+                // above guarantees one of the two front-image paths set this.
+                if (string.IsNullOrEmpty(frontImagePath))
+                    throw new InvalidOperationException("Front image path was not set after validation — this should be unreachable.");
 
                 // Resolve scan strategy from the form value:
                 //   • "auto" or null → server-side free-model rotation (no paid fallback on Web).

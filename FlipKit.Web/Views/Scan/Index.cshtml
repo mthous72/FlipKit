@@ -3,6 +3,10 @@
     ViewData["Title"] = "Scan Card";
 }
 
+@* Webcam capture modal — opened by the "Webcam" buttons next to each file input.
+   Only renders the markup; JS in the bottom @@section Scripts wires it up. *@
+@await Html.PartialAsync("_WebcamCaptureModal")
+
 <div class="container mt-4">
     <h1 class="display-5 mb-4"><i class="bi bi-camera"></i> Scan Card</h1>
 
@@ -29,6 +33,11 @@
                     <h5>Upload Card Images</h5>
                 </div>
                 <div class="card-body">
+                    <div class="alert alert-warning small" data-webcam-unsupported style="display:none;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Webcam capture isn't available in this browser.</strong>
+                        Browsers only allow camera access over HTTPS or on localhost — if you're connecting via Tailscale over HTTP, the buttons are hidden. Use the file picker (or a phone with the FlipKit Web app) to upload a card image instead.
+                    </div>
                     <form asp-action="Upload" method="post" enctype="multipart/form-data" id="uploadForm">
                         @Html.AntiForgeryToken()
 
@@ -37,14 +46,24 @@
                             <label for="frontImage" class="form-label">
                                 <strong>Front Image</strong> <span class="text-danger">*</span>
                             </label>
-                            <input type="file" class="form-control" id="frontImage" name="frontImage"
-                                   accept="image/*" capture="environment" required
-                                   onchange="previewImage(this, 'frontPreview')">
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="frontImage" name="frontImage"
+                                       accept="image/*" capture="environment"
+                                       onchange="previewImage(this, 'frontPreview'); clearCapturedPath('front');">
+                                <button type="button" class="btn btn-outline-primary"
+                                        data-webcam-trigger="front" data-webcam-required>
+                                    <i class="bi bi-camera-fill"></i> Webcam
+                                </button>
+                            </div>
+                            <input type="hidden" id="frontImagePath" name="frontImagePath" value="" />
                             <small class="text-muted">
-                                <i class="bi bi-info-circle"></i> On mobile, you can use your camera directly
+                                <i class="bi bi-info-circle"></i> On mobile, you can use your camera directly. On desktop, click Webcam to capture from a connected camera.
                             </small>
                             <div id="frontPreview" class="mt-3" style="display:none;">
                                 <img src="" class="img-fluid rounded" style="max-height: 300px;">
+                                <div class="small text-muted mt-1" data-webcam-source-label="front" style="display:none;">
+                                    <i class="bi bi-camera-fill"></i> Captured from webcam
+                                </div>
                             </div>
                         </div>
 
@@ -53,14 +72,24 @@
                             <label for="backImage" class="form-label">
                                 <strong>Back Image</strong> <span class="text-muted">(Optional)</span>
                             </label>
-                            <input type="file" class="form-control" id="backImage" name="backImage"
-                                   accept="image/*" capture="environment"
-                                   onchange="previewImage(this, 'backPreview')">
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="backImage" name="backImage"
+                                       accept="image/*" capture="environment"
+                                       onchange="previewImage(this, 'backPreview'); clearCapturedPath('back');">
+                                <button type="button" class="btn btn-outline-primary"
+                                        data-webcam-trigger="back" data-webcam-required>
+                                    <i class="bi bi-camera-fill"></i> Webcam
+                                </button>
+                            </div>
+                            <input type="hidden" id="backImagePath" name="backImagePath" value="" />
                             <small class="text-muted">
                                 <i class="bi bi-info-circle"></i> Back image helps with grading and authenticity
                             </small>
                             <div id="backPreview" class="mt-3" style="display:none;">
                                 <img src="" class="img-fluid rounded" style="max-height: 300px;">
+                                <div class="small text-muted mt-1" data-webcam-source-label="back" style="display:none;">
+                                    <i class="bi bi-camera-fill"></i> Captured from webcam
+                                </div>
                             </div>
                         </div>
 
@@ -165,6 +194,7 @@
 </div>
 
 @section Scripts {
+    <script src="~/js/webcam-capture.js" asp-append-version="true"></script>
     <script>
         function previewImage(input, previewId) {
             const preview = document.getElementById(previewId);
@@ -184,8 +214,62 @@
             }
         }
 
-        // Show loading spinner on submit
-        document.getElementById('uploadForm').addEventListener('submit', function () {
+        // Webcam wiring: when the user clicks 📷 Webcam → opens modal → on capture
+        // the JS calls onCapture({ path, url }, triggerButton). We stuff the path
+        // into the hidden input and show the URL in the preview, then clear the
+        // file input so the server uses the path-based fallback.
+        function applyCapturedImage(slot, result) {
+            const path = result.path;
+            const url = result.url;
+
+            const fileInput = document.getElementById(slot + 'Image');
+            const hiddenPath = document.getElementById(slot + 'ImagePath');
+            const preview = document.getElementById(slot + 'Preview');
+            const sourceLabel = document.querySelector('[data-webcam-source-label="' + slot + '"]');
+
+            if (fileInput) fileInput.value = '';
+            if (hiddenPath) hiddenPath.value = path;
+            if (preview) {
+                preview.querySelector('img').src = url;
+                preview.style.display = 'block';
+            }
+            if (sourceLabel) sourceLabel.style.display = '';
+        }
+
+        // When the user picks a file from disk we clear any captured-path slot so
+        // the upload uses the new file rather than the now-stale capture.
+        function clearCapturedPath(slot) {
+            const hiddenPath = document.getElementById(slot + 'ImagePath');
+            const sourceLabel = document.querySelector('[data-webcam-source-label="' + slot + '"]');
+            if (hiddenPath) hiddenPath.value = '';
+            if (sourceLabel) sourceLabel.style.display = 'none';
+        }
+
+        FlipKitWebcam.attach('[data-webcam-trigger="front"]', {
+            onCapture: result => applyCapturedImage('front', result)
+        });
+        FlipKitWebcam.attach('[data-webcam-trigger="back"]', {
+            onCapture: result => applyCapturedImage('back', result)
+        });
+
+        // Hide the buttons (and surface a hint) on browsers/origins that can't
+        // access the camera — typically Tailscale-over-HTTP per the plan §6.
+        FlipKitWebcam.gate('[data-webcam-required]');
+
+        // Show loading spinner on submit + tighten the "front required" rule:
+        // a captured path is just as valid as a chosen file.
+        const form = document.getElementById('uploadForm');
+        form.addEventListener('submit', function (evt) {
+            const frontFile = document.getElementById('frontImage');
+            const frontPath = document.getElementById('frontImagePath');
+            const hasFile = frontFile?.files?.length > 0;
+            const hasPath = !!frontPath?.value;
+            if (!hasFile && !hasPath) {
+                evt.preventDefault();
+                alert('Please upload or capture a front image of the card.');
+                return;
+            }
+
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Scanning... This may take up to 60 seconds';

@@ -1,0 +1,47 @@
+@*
+    Bootstrap modal partial for browser-side webcam capture (Roadmap #2 /
+    Docs/27-WEBCAM-CAPTURE-PLAN.md). Pages that need capture include this
+    once and call FlipKitWebcam.attach('selector', { onCapture: fn }) on
+    their trigger buttons. JS lives in wwwroot/js/webcam-capture.js.
+*@
+<div class="modal fade" id="webcamCaptureModal" tabindex="-1" aria-labelledby="webcamCaptureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="webcamCaptureModalLabel">
+                    <i class="bi bi-camera-video"></i> Capture from Webcam
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="webcamDeviceSelect" class="form-label fw-semibold">Camera</label>
+                    <select id="webcamDeviceSelect" class="form-select"></select>
+                    <small class="text-muted d-block mt-1">
+                        Browser will ask for camera permission the first time. Real device names appear after access is granted.
+                    </small>
+                </div>
+
+                <div class="ratio ratio-16x9 bg-dark rounded overflow-hidden">
+                    <video id="webcamVideo" autoplay playsinline muted class="w-100 h-100" style="object-fit:contain;"></video>
+                    <canvas id="webcamCanvas" class="w-100 h-100" style="object-fit:contain; display:none;"></canvas>
+                </div>
+
+                <div id="webcamStatus" class="alert alert-info mt-3 mb-0" style="display:none;"></div>
+                <div id="webcamError" class="alert alert-danger mt-3 mb-0" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="webcamCancelBtn" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="webcamRetakeBtn" class="btn btn-outline-primary" style="display:none;">
+                    <i class="bi bi-arrow-counterclockwise"></i> Retake
+                </button>
+                <button type="button" id="webcamCaptureBtn" class="btn btn-primary">
+                    <i class="bi bi-camera-fill"></i> Capture
+                </button>
+                <button type="button" id="webcamUseBtn" class="btn btn-success" style="display:none;">
+                    <i class="bi bi-check-lg"></i> Use This
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
