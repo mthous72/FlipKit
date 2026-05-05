@@ -199,6 +199,11 @@ namespace FlipKit.Desktop.ViewModels
                 }
                 IsPreviewing = false;
 
+                // The capture method drains ~15 frames over ~750ms to let
+                // autofocus settle — without a status hint the user sees a
+                // black surface and assumes it crashed.
+                StatusMessage = "Holding still — waiting for autofocus…";
+
                 Directory.CreateDirectory(_captureDir);
                 CapturedImagePath = await _session.CaptureStillAsync(_captureDir).ConfigureAwait(true);
             }
@@ -208,6 +213,7 @@ namespace FlipKit.Desktop.ViewModels
             }
             finally
             {
+                StatusMessage = null;
                 IsBusy = false;
             }
         }

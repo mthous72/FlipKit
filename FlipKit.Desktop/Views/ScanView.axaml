@@ -11,7 +11,12 @@
 
     <UserControl.Resources>
         <conv:ConfidenceToColorConverter x:Key="ConfidenceToColorConverter"/>
+        <!-- 56-px thumbnail decode for the small additional-photos row icons. -->
         <conv:FilePathToBitmapConverter x:Key="FilePathToBitmapConverter"/>
+        <!-- Full-resolution decode for the main front/back preview surfaces.
+             FilePathToBitmapConverter would render those at 56px → 300px which
+             looks heavily blurred. -->
+        <conv:FilePathToFullSizeBitmapConverter x:Key="FilePathToFullSizeBitmapConverter"/>
         <conv:HexStringToBrushConverter x:Key="HexStringToBrushConverter"/>
     </UserControl.Resources>
 
@@ -145,8 +150,9 @@
                                         Spacing="8" Margin="8">
                                 <TextBlock Text="Front" FontSize="12" FontWeight="SemiBold" Opacity="0.6"
                                            HorizontalAlignment="Center"/>
-                                <Image Source="{Binding ImagePath, Converter={StaticResource FilePathToBitmapConverter}}"
+                                <Image Source="{Binding ImagePath, Converter={StaticResource FilePathToFullSizeBitmapConverter}}"
                                        MaxHeight="300" Stretch="Uniform"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
                                        HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding ImagePath}" FontSize="11"
                                            Opacity="0.5" TextTrimming="CharacterEllipsis"
@@ -197,8 +203,9 @@
                                         Spacing="8" Margin="8">
                                 <TextBlock Text="Back" FontSize="12" FontWeight="SemiBold" Opacity="0.6"
                                            HorizontalAlignment="Center"/>
-                                <Image Source="{Binding ImagePathBack, Converter={StaticResource FilePathToBitmapConverter}}"
+                                <Image Source="{Binding ImagePathBack, Converter={StaticResource FilePathToFullSizeBitmapConverter}}"
                                        MaxHeight="200" Stretch="Uniform"
+                                       RenderOptions.BitmapInterpolationMode="HighQuality"
                                        HorizontalAlignment="Center"/>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
                                     <Button Content="Change" Command="{Binding BrowseBackImageCommand}"

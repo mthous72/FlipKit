@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:FlipKit.Desktop.ViewModels"
+        xmlns:media="using:Avalonia.Media"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="640"
@@ -44,11 +45,16 @@
                 <!-- Live preview image: bound code-behind copies frames into this WriteableBitmap -->
                 <Image x:Name="PreviewImage"
                        Stretch="Uniform"
+                       RenderOptions.BitmapInterpolationMode="HighQuality"
                        IsVisible="{Binding !HasCapturedImage}"/>
 
-                <!-- Captured still preview -->
+                <!-- Captured still preview. HighQuality interpolation matters here:
+                     the captured JPG is typically smaller than the preview surface,
+                     and the default (Low/Bilinear) makes it look blurry on upscale
+                     even when the underlying file is sharp. -->
                 <Image x:Name="CapturedImage"
                        Stretch="Uniform"
+                       RenderOptions.BitmapInterpolationMode="HighQuality"
                        IsVisible="{Binding HasCapturedImage}"/>
 
                 <!-- Status overlay -->
