@@ -18,6 +18,10 @@ _Nothing yet._
 ### Changed
 - **Expanded README disclaimer** — added explicit paragraphs covering AI accuracy risk (AI output is probabilistic, every result must be verified), financial-decision risk (pricing data is reference only, not investment advice), no professional advice, and use-at-your-own-risk statement.
 
+### Fixed
+- **Consistent app icon across shortcut, taskbar, and tray** — the Desktop project now embeds `Assets\avalonia-logo.ico` as the Win32 `ApplicationIcon`, so the desktop shortcut, taskbar button, and system tray icon all show the same logo (previously the shortcut and pre-launch taskbar slot showed a generic Windows icon while the running window/tray showed the FlipKit asset).
+- **Single-instance enforcement** — launching FlipKit while another instance is already running (e.g. minimized in the system tray from auto-start) now terminates the existing process and its child Web/API server processes before starting the new one. Prevents duplicate tray icons, port conflicts on 5000/5001, and SQLite WAL contention.
+
 ## [3.6.0] - 2026-05
 
 ### Added
