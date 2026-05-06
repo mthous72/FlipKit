@@ -26,11 +26,14 @@ public class SettingsControllerTests : IDisposable
         Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", _originalDbPath);
     }
 
-    private static SettingsController Create(ISettingsService? settings = null)
+    private static SettingsController Create(ISettingsService? settings = null, IOpenRouterModelCatalog? catalog = null)
     {
+        var defaultCatalog = catalog ?? Substitute.For<IOpenRouterModelCatalog>();
+        defaultCatalog.GetAsync(default).ReturnsForAnyArgs(
+            new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow));
         var controller = new SettingsController(
             settings ?? Substitute.For<ISettingsService>(),
-            Substitute.For<IOpenRouterModelCatalog>(),
+            defaultCatalog,
             NullLogger<SettingsController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;
