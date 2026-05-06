@@ -23,44 +23,46 @@
             <Border BorderBrush="#2196F3" BorderThickness="2"
                     CornerRadius="8" Padding="20" Background="{DynamicResource SystemChromeLowColor}">
                 <StackPanel Spacing="12">
-                    <TextBlock Text="🚀 Quick Start - Get Your API Keys" FontSize="18" FontWeight="Bold"/>
+                    <TextBlock Text="🚀 Quick Start - API Keys &amp; Credentials" FontSize="18" FontWeight="Bold"/>
                     <TextBlock TextWrapping="Wrap" FontSize="13">
-                        FlipKit needs two free API keys to function:
+                        Two free API keys are required to scan and export. eBay credentials are optional (only needed for direct listing creation).
                     </TextBlock>
 
                     <StackPanel Spacing="8" Margin="12,4,0,0">
                         <TextBlock TextWrapping="Wrap" FontSize="13">
-                            <Run FontWeight="Bold">1. OpenRouter API</Run> (for AI card scanning)
+                            <Run FontWeight="Bold">1. OpenRouter API</Run> (required — AI card scanning)
                             <LineBreak/>
                             • Visit: <Run Foreground="#2196F3">https://openrouter.ai/keys</Run>
                             <LineBreak/>
-                            • Sign in with Google/GitHub
+                            • Sign in with Google/GitHub → click "Create Key" → name it "FlipKit"
                             <LineBreak/>
-                            • Click "Create Key" - name it "FlipKit"
-                            <LineBreak/>
-                            • Copy the key (starts with "sk-or-v1-...")
-                            <LineBreak/>
-                            • Paste below in "OpenRouter API Key"
+                            • Copy the key (starts with "sk-or-v1-...") and paste below
                         </TextBlock>
 
                         <TextBlock TextWrapping="Wrap" FontSize="13" Margin="0,8,0,0">
-                            <Run FontWeight="Bold">2. ImgBB API</Run> (for image hosting)
+                            <Run FontWeight="Bold">2. ImgBB API</Run> (optional — image hosting for CSV exports)
                             <LineBreak/>
                             • Visit: <Run Foreground="#2196F3">https://api.imgbb.com/</Run>
                             <LineBreak/>
-                            • Click "Get API Key"
+                            • Click "Get API Key" → sign up free → copy your key and paste below
+                        </TextBlock>
+
+                        <TextBlock TextWrapping="Wrap" FontSize="13" Margin="0,8,0,0">
+                            <Run FontWeight="Bold">3. eBay Developer Credentials</Run> (optional — direct listing creation)
                             <LineBreak/>
-                            • Sign up with email (free, no credit card)
+                            • Visit: <Run Foreground="#2196F3">https://developer.ebay.com/my/keys</Run>
                             <LineBreak/>
-                            • Copy your API key
+                            • Sign in → click "Get a Production Keyset" (or select your existing app)
                             <LineBreak/>
-                            • Paste below in "ImgBB API Key"
+                            • Copy the <Run FontWeight="SemiBold">App ID (Client ID)</Run> and <Run FontWeight="SemiBold">Client Secret</Run> and paste below
+                            <LineBreak/>
+                            • Click Test to verify — eBay may require a one-time production approval
                         </TextBlock>
                     </StackPanel>
 
                     <Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,8,0,0">
                         <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#212121">
-                            💡 <Run FontWeight="Bold">Both services are FREE!</Run> OpenRouter provides free AI models (11 available), and ImgBB offers free image hosting. No credit card required.
+                            💡 <Run FontWeight="Bold">OpenRouter and ImgBB are completely free</Run> — no credit card required. eBay credentials require a free eBay Developer account and a one-time approval for production listing access.
                         </TextBlock>
                     </Border>
                 </StackPanel>
@@ -115,21 +117,26 @@
                     </TextBlock>
 
                     <!-- eBay API Credentials -->
-                    <TextBlock Text="eBay API Credentials" FontWeight="SemiBold" Margin="0,12,0,0"/>
-                    <TextBlock Text="Client ID" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
+                    <TextBlock Text="eBay API Credentials (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7" Margin="0,2,0,6">
+                        Needed only for direct eBay listing creation. CSV export works without these.
+                    </TextBlock>
+                    <TextBlock Text="App ID (Client ID)" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                     <TextBox Text="{Binding EbayClientId}"
-                             PasswordChar="*" Watermark="Your eBay App ID (Client ID)"/>
+                             PasswordChar="*" Watermark="e.g. YourApp-12345-Prod-xxxxxxxx-xxxxxxxx"/>
                     <TextBlock Text="Client Secret" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
                                 Command="{Binding TestEbayCommand}"
                                 IsEnabled="{Binding !IsTestingEbay}"/>
                         <TextBox Text="{Binding EbayClientSecret}"
-                                 PasswordChar="*" Watermark="Your eBay Client Secret"/>
+                                 PasswordChar="*" Watermark="PRD-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/>
                     </DockPanel>
                     <TextBlock Text="{Binding EbayStatus}" FontSize="12" Opacity="0.7"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Required for eBay listing creation. Get credentials at: https://developer.ebay.com/my/keys
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,2,0,0">
+                        Get credentials: developer.ebay.com/my/keys → sign in → Get a Production Keyset.
+                        eBay may require a one-time production approval — submit a support ticket at
+                        developer.ebay.com/support if the Test button returns "Connection failed".
                     </TextBlock>
 
 

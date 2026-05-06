@@ -9,11 +9,11 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 
 | Platform | Download |
 |----------|----------|
-| Windows (Installer) | `FlipKit-Setup-v3.4.0.exe` |
-| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.4.0.zip` |
-| macOS Apple Silicon (M1+) | `FlipKit-macOS-Apple-Silicon-v3.4.0.dmg` |
-| macOS Intel | `FlipKit-macOS-Intel-v3.4.0.dmg` |
-| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.4.0.zip` |
+| Windows (Installer) | `FlipKit-Setup-v3.5.0.exe` |
+| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.5.0.zip` |
+| macOS Apple Silicon (M1+) | `FlipKit-macOS-Apple-Silicon-v3.5.0.dmg` |
+| macOS Intel | `FlipKit-macOS-Intel-v3.5.0.dmg` |
+| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.5.0.zip` |
 
 ## Features
 
@@ -64,29 +64,42 @@ docker build -t flipkit:latest .
 
 ## Getting Started
 
-FlipKit's AI scanning requires a free OpenRouter account. Image hosting for CSV exports requires a free ImgBB account. Both take under two minutes to set up.
+FlipKit's AI scanning requires a free OpenRouter account. Image hosting for CSV exports requires a free ImgBB account. eBay listing creation requires a free eBay Developer account.
 
 **Step 1 — OpenRouter (required for AI scanning)**
 1. Create a free account at [openrouter.ai](https://openrouter.ai)
 2. Go to [openrouter.ai/keys](https://openrouter.ai/keys) and generate an API key
-3. Paste it into FlipKit under **Settings → AI / OpenRouter API Key**
+3. Paste it into FlipKit under **Settings → OpenRouter API Key**
 
 Free-tier models (e.g. Gemini Flash) are available at no cost. Paid models offer higher accuracy and are opt-in — FlipKit will prompt for confirmation before using any paid model.
 
-**Step 2 — ImgBB (optional, for image hosting)**
+**Step 2 — ImgBB (optional, for image hosting in CSV exports)**
 1. Create a free account at [imgbb.com](https://imgbb.com)
 2. Go to [api.imgbb.com](https://api.imgbb.com/) and generate an API key
 3. Paste it into FlipKit under **Settings → ImgBB API Key**
 
 ImgBB is only needed if you want card image URLs embedded in your Whatnot or eBay CSV exports. Everything else works without it.
 
+**Step 3 — eBay Developer credentials (optional, for direct listing creation)**
+1. Create a free account at [developer.ebay.com](https://developer.ebay.com)
+2. Go to [developer.ebay.com/my/keys](https://developer.ebay.com/my/keys)
+3. Click **"Get a Production Keyset"** (or create an app if you don't have one)
+4. Copy the **App ID (Client ID)** and **Client Secret** from your Production keyset
+5. Paste both into FlipKit under **Settings → eBay API Credentials** and click **Test** to verify
+
+> **Note:** eBay requires a one-time production access approval for the Sell Inventory API. Submit a support ticket at [developer.ebay.com](https://developer.ebay.com/support) explaining your use case (personal selling app) before attempting to publish live listings.
+
 ## Configuration
 
-- **OpenRouter** ([get key](https://openrouter.ai/keys)) - Required for AI scanning (free tier available)
-- **ImgBB** ([get key](https://api.imgbb.com/)) - Optional, for image hosting in CSV exports
+| Service | Where to get it | Required for |
+|---------|----------------|-------------|
+| **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | AI card scanning (free tier available) |
+| **ImgBB** | [api.imgbb.com](https://api.imgbb.com/) | Image URLs in CSV exports (optional) |
+| **Ximilar** | [ximilar.com](https://www.ximilar.com/) | Faster card recognition before AI (optional) |
+| **eBay Client ID + Secret** | [developer.ebay.com/my/keys](https://developer.ebay.com/my/keys) | Direct eBay listing creation (optional) |
 
-**Desktop:** Configure via the first-run setup wizard or the Settings page
-**Web:** Configure at `http://[server-ip]:5000/Settings`
+**Desktop:** Configure via the Settings page (gear icon in the sidebar)
+**Web:** Configure at `http://[server-ip]:5000/Settings` (Docker/remote mode only)
 
 ## Disclaimer
 
