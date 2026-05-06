@@ -103,7 +103,15 @@ ImgBB is only needed if you want card image URLs embedded in your Whatnot or eBa
 
 ## Disclaimer
 
-FlipKit is provided "as is" for educational purposes. AI-generated card data may contain errors. Verify all identifications and pricing independently.
+**FlipKit is provided "AS IS" without warranty of any kind, express or implied.**
+
+**AI accuracy.** Card identification is performed by third-party AI models (OpenRouter, Ximilar). AI output is probabilistic and will contain errors — wrong players, wrong sets, wrong parallels, wrong serial numbers. Every scan result must be verified by a human before being acted on. FlipKit makes no representation that AI identifications are correct, complete, or suitable for any purpose.
+
+**Financial decisions.** Pricing data shown in FlipKit (eBay sold comps, Terapeak research) is pulled from public sources for reference only. It is not investment advice, and it is not a guarantee of what a card will sell for. Do not use FlipKit output as the sole basis for buying, selling, grading, or insuring cards. Card values fluctuate and individual sale prices vary widely based on condition, timing, platform, and buyer demand. You bear full responsibility for any financial decisions you make.
+
+**No professional advice.** FlipKit is not a substitute for professional accounting, tax, legal, or financial advice. Consult a qualified professional for questions about taxes on card sales, business structuring, or insurance valuation.
+
+**Use at your own risk.** By using this software you accept sole responsibility for verifying data accuracy, complying with applicable laws (including sales tax obligations, platform terms of service, and export controls), and all outcomes resulting from your use of FlipKit.
 
 ## License
 
