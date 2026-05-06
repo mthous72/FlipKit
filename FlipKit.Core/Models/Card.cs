@@ -113,6 +113,11 @@ namespace FlipKit.Core.Models
         // matched row back up from the editor or re-verify pass.
         public string? MatchedChecklistKey { get; set; }
 
+        // === SURPRISE SET ===
+        public int? SurpriseSetId { get; set; }
+        public int? SurpriseSetSlot { get; set; }  // 1-based position in the set's checklist
+        public SurpriseSet? SurpriseSet { get; set; }
+
         // === STATUS / METADATA ===
         public CardStatus Status { get; set; } = CardStatus.Draft;
         public string? Notes { get; set; }

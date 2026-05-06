@@ -34,7 +34,9 @@ namespace FlipKit.Web.Controllers
 
                 // Get cards that need pricing (Draft or no price set)
                 var needsPricing = allCards
-                    .Where(c => c.Status == CardStatus.Draft || !c.ListingPrice.HasValue)
+                    .Where(c => (c.Status == CardStatus.Draft || !c.ListingPrice.HasValue)
+                             && c.Status != CardStatus.ReservedForSet
+                             && c.Status != CardStatus.SoldInSet)
                     .OrderByDescending(c => c.UpdatedAt)
                     .ToList();
 

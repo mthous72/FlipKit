@@ -104,6 +104,8 @@ builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
 // Scoped because the import service holds an ICardRepository.
 builder.Services.AddScoped<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
 builder.Services.AddScoped<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
+// Surprise Set repository — Scoped (consistent with other DbContext-dependent services on Web).
+builder.Services.AddScoped<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
 // IMemoryCache backs the 2-step Web import preview — parse + LLM enrich on
 // upload, stash by GUID token, render the review page, commit reads back by
 // token. Avoids re-running the LLM on every commit.

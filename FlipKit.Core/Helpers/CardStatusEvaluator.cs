@@ -39,8 +39,13 @@ namespace FlipKit.Core.Helpers
         /// </summary>
         public static CardStatus Evaluate(Card card)
         {
-            if (card.Status == CardStatus.Listed || card.Status == CardStatus.Sold)
+            // Terminal states set by specific workflows; never overridden by image/price checks.
+            if (card.Status is CardStatus.Listed or CardStatus.Sold or CardStatus.SoldInSet)
                 return card.Status;
+
+            // ReservedForSet is intentionally NOT preserved here: a card being removed from
+            // a set should have its SurpriseSetId nulled before Evaluate is called, at which
+            // point it re-evaluates to Draft/Ready based on image and price.
 
             return HasAnyImage(card) && HasPrice(card)
                 ? CardStatus.Ready

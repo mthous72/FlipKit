@@ -176,6 +176,8 @@ namespace FlipKit.Desktop
                 // import service composes the rule parser + enricher + repo upsert.
                 services.AddTransient<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
                 services.AddTransient<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
+                // Surprise Set repository — Transient (owns FlipKitDbContext which is Transient on Desktop).
+                services.AddTransient<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();

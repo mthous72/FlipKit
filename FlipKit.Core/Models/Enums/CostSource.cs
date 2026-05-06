@@ -9,6 +9,7 @@ namespace FlipKit.Core.Models.Enums
         Trade,
         Gift,
         PersonalCollection,
-        Unknown
+        Unknown,
+        LotSplit,  // cost was auto-computed as LotCostBasis / N for a SurpriseSet; re-balanced on add/remove
     }
 }
