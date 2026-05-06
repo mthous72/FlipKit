@@ -11,6 +11,7 @@ using System.Net.Http;
 using FlipKit.Core.Data;
 using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
+using FlipKit.Core.Services.Interfaces;
 using FlipKit.Desktop.ViewModels;
 using FlipKit.Desktop.Views;
 using FlipKit.Desktop.Services;
@@ -132,12 +133,12 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 // Export pipeline — registered unconditionally (no DbContext dependency).
                 services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
-                services.AddSingleton<FlipKit.Core.Services.Export.EbayTemplateProvider>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ShippingProfileNormalizer>();
                 services.AddSingleton<FlipKit.Core.Services.Export.WhatnotExporter>();
-                services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
                 services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
                 services.AddTransient<IExportService, CsvExportService>();
+                services.AddSingleton<TitleTemplateService>();
+                services.AddSingleton<IEbayPublishingService, EbayPublishingService>();
                 // VariationVerifier takes FlipKitDbContext; must be Scoped so it doesn't
                 // capture the first-resolved DbContext for the process lifetime. See
                 // AUDIT-2026-05 §4 (D1) for the captive-dependency bug.
@@ -178,6 +179,7 @@ namespace FlipKit.Desktop
                 services.AddTransient<ImportChecklistViewModel>();
                 services.AddTransient<ImportEbayListingsViewModel>();
                 services.AddTransient<EditCardViewModel>();
+                services.AddTransient<EbayPublishViewModel>();
 
                 // Navigation Service (must be after MainWindowViewModel)
                 services.AddSingleton<INavigationService, AvaloniaNavigationService>();

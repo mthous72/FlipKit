@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FlipKit.Desktop.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="FlipKit.Desktop.Views.EbayPublishView"
+             x:DataType="vm:EbayPublishViewModel">
+
+    <ScrollViewer Padding="24,24,24,24"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="16" MaxWidth="860">
+
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Grid.Column="0" Text="Publish to eBay" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCommand}"
+                        Margin="0,0,8,0" IsEnabled="{Binding !IsPublishing}"/>
+                <Button Grid.Column="2" Content="Publish Selected"
+                        Command="{Binding PublishSelectedCommand}"
+                        IsEnabled="{Binding HasSelection}"
+                        Classes="accent"/>
+            </Grid>
+
+            <!-- Connection status -->
+            <Border IsVisible="{Binding !IsConnected}"
+                    BorderBrush="#FF5722" BorderThickness="1" CornerRadius="6" Padding="12">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#FF5722" TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- Progress -->
+            <Border IsVisible="{Binding IsPublishing}"
+                    BorderBrush="#2196F3" BorderThickness="1" CornerRadius="6" Padding="12">
+                <TextBlock Text="{Binding ProgressText}" Foreground="#2196F3"/>
+            </Border>
+
+            <!-- Status -->
+            <TextBlock Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- Card list -->
+            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1" CornerRadius="8">
+                <StackPanel>
+                    <!-- Header row -->
+                    <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemBaseLowColor}" Padding="12,8">
+                        <Grid ColumnDefinitions="Auto,*,Auto,150">
+                            <Button Grid.Column="0" Content="Toggle All"
+                                    Command="{Binding ToggleSelectAllCommand}"
+                                    Padding="8,4" FontSize="11" Margin="0,0,8,0"
+                                    IsEnabled="{Binding !IsPublishing}"/>
+                            <TextBlock Grid.Column="1" Text="Card" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="Price" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                            <TextBlock Grid.Column="3" Text="Status" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:EbayPublishItem">
+                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                        Padding="12,8">
+                                    <Grid ColumnDefinitions="Auto,*,80,150">
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}"
+                                                  Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding Card.ListingPrice, StringFormat={}{0:C}}"
+                                                   VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Status}"
+                                                   FontSize="12" VerticalAlignment="Center"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock IsVisible="{Binding !Items.Count}"
+                               Text="No eligible cards found. Cards must have a listing price, at least one image, and a SKU."
+                               Padding="16" Opacity="0.6" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Selection summary -->
+            <TextBlock FontSize="12" Opacity="0.7">
+                <Run Text="{Binding SelectedCount}"/>
+                <Run Text="card(s) selected"/>
+            </TextBlock>
+
+            <!-- Results -->
+            <Border IsVisible="{Binding Results.Count}"
+                    BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1" CornerRadius="8">
+                <StackPanel>
+                    <TextBlock Text="Publish Results" FontWeight="SemiBold" Padding="12,10,12,8"/>
+                    <ItemsControl ItemsSource="{Binding Results}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:EbayPublishResult_">
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                        Padding="12,8">
+                                    <Grid ColumnDefinitions="*,180">
+                                        <TextBlock Grid.Column="0" Text="{Binding CardName}"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Status}"
+                                                   FontSize="12" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -69,6 +69,12 @@
                             Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=Export}">
                         <TextBlock Text="Export" FontSize="14"/>
                     </Button>
+                    <Button Command="{Binding NavigateToCommand}" CommandParameter="EbayPublish"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Padding="12,10" Classes="nav"
+                            Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=EbayPublish}">
+                        <TextBlock Text="Publish to eBay" FontSize="14"/>
+                    </Button>
                     <Button Command="{Binding NavigateToCommand}" CommandParameter="Checklists"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Padding="12,10" Classes="nav"

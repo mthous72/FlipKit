@@ -1,9 +1,9 @@
 # FlipKit Hub Release Build Script
 # Builds unified Hub packages for Windows and Linux
-# Version: 3.2.0
+# Version: 3.6.0
 
 param(
-    [string]$Version = "3.2.0"
+    [string]$Version = "3.6.0"
 )
 
 $ErrorActionPreference = "Stop"

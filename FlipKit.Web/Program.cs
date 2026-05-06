@@ -70,10 +70,8 @@ builder.Services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Sca
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
 // Export pipeline — registered unconditionally (no DbContext dependency).
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
-builder.Services.AddSingleton<FlipKit.Core.Services.Export.EbayTemplateProvider>();
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.ShippingProfileNormalizer>();
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotExporter>();
-builder.Services.AddSingleton<FlipKit.Core.Services.Export.EbayExporter>();
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.ExportValidator>();
 builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on DbContext
 builder.Services.AddSingleton<IImageUploadService, ImgBBUploadService>();

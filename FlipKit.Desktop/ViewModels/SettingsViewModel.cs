@@ -11,6 +11,7 @@ using FlipKit.Core.Helpers;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Core.Services.Interfaces;
 using FlipKit.Desktop.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -26,6 +27,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IServiceProvider _services;
         private readonly IServerManagementService _serverManagement;
         private readonly INetworkAddressProvider _networkAddresses;
+        private readonly IEbayPublishingService? _ebayPublishingService;
         private Timer? _statusRefreshTimer;
 
         // Phase 5.10 fix — gate the 2-second Timer's UpdateServerStatus while an explicit
@@ -39,14 +41,21 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _ximilarApiKey = string.Empty;
         [ObservableProperty] private string _ebayClientId = string.Empty;
         [ObservableProperty] private string _ebayClientSecret = string.Empty;
+        [ObservableProperty] private string _ebayRuName = string.Empty;
         [ObservableProperty] private string _openRouterStatus = "Not configured";
         [ObservableProperty] private string _imgBBStatus = "Not configured";
         [ObservableProperty] private string _ximilarStatus = "Not configured";
         [ObservableProperty] private string _ebayStatus = "Not configured";
+        [ObservableProperty] private string _ebayConnectStatus = "Not connected";
+        [ObservableProperty] private string _ebayPoliciesStatus = "Not fetched";
         [ObservableProperty] private bool _isTestingOpenRouter;
         [ObservableProperty] private bool _isTestingImgBB;
         [ObservableProperty] private bool _isTestingXimilar;
         [ObservableProperty] private bool _isTestingEbay;
+        [ObservableProperty] private bool _isConnectingEbay;
+        [ObservableProperty] private bool _isFetchingEbayPolicies;
+        [ObservableProperty] private bool _isAwaitingEbayCode;
+        [ObservableProperty] private string _ebayAuthCode = string.Empty;
 
         // Preferences
         [ObservableProperty] private bool _isEbaySeller;
@@ -166,6 +175,7 @@ namespace FlipKit.Desktop.ViewModels
             _services = services;
             _serverManagement = serverManagement;
             _networkAddresses = networkAddresses;
+            _ebayPublishingService = services.GetService(typeof(IEbayPublishingService)) as IEbayPublishingService;
 
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
@@ -252,6 +262,7 @@ namespace FlipKit.Desktop.ViewModels
             XimilarApiKey = s.XimilarApiKey ?? string.Empty;
             EbayClientId = s.EbayClientId ?? string.Empty;
             EbayClientSecret = s.EbayClientSecret ?? string.Empty;
+            EbayRuName = s.EbayRuName ?? string.Empty;
             IsEbaySeller = s.IsEbaySeller;
             DefaultShippingProfile = s.DefaultShippingProfile;
             DefaultCondition = s.DefaultCondition;
@@ -307,6 +318,8 @@ namespace FlipKit.Desktop.ViewModels
             EbayStatus = (string.IsNullOrWhiteSpace(EbayClientId) || string.IsNullOrWhiteSpace(EbayClientSecret))
                 ? "Not configured"
                 : "Configured (not tested)";
+            EbayConnectStatus = !string.IsNullOrEmpty(s.EbayAccessToken) ? "Connected ✓" : "Not connected";
+            EbayPoliciesStatus = !string.IsNullOrEmpty(s.EbayFulfillmentPolicyId) ? "Policies loaded ✓" : "Not fetched";
 
             DbPath = FlipKitDbContext.GetDbPath();
         }
@@ -351,6 +364,10 @@ namespace FlipKit.Desktop.ViewModels
                 }
             }
 
+            // Preserve OAuth tokens and policy IDs set by the Connect flow — they aren't
+            // exposed in the UI and must not be overwritten with empty defaults on save.
+            var current = _settingsService.Load();
+
             var s = new AppSettings
             {
                 OpenRouterApiKey = OpenRouterApiKey,
@@ -358,6 +375,13 @@ namespace FlipKit.Desktop.ViewModels
                 XimilarApiKey = XimilarApiKey,
                 EbayClientId = EbayClientId,
                 EbayClientSecret = EbayClientSecret,
+                EbayRuName = EbayRuName,
+                EbayAccessToken = current.EbayAccessToken,
+                EbayRefreshToken = current.EbayRefreshToken,
+                EbayTokenExpiry = current.EbayTokenExpiry,
+                EbayFulfillmentPolicyId = current.EbayFulfillmentPolicyId,
+                EbayPaymentPolicyId = current.EbayPaymentPolicyId,
+                EbayReturnPolicyId = current.EbayReturnPolicyId,
                 IsEbaySeller = IsEbaySeller,
                 DefaultShippingProfile = DefaultShippingProfile,
                 DefaultCondition = DefaultCondition,
@@ -452,6 +476,112 @@ namespace FlipKit.Desktop.ViewModels
             EbayStatus = success ? "Connected!" : "Connection failed";
 
             IsTestingEbay = false;
+        }
+
+        [RelayCommand]
+        private void ConnectEbayAccount()
+        {
+            if (_ebayPublishingService == null)
+            {
+                EbayConnectStatus = "Service not available.";
+                return;
+            }
+
+            // Persist Client ID, Secret, and RuName before building the URL
+            SaveSettings();
+
+            string authUrl;
+            try { authUrl = _ebayPublishingService.BuildAuthorizationUrl(); }
+            catch (Exception ex) { EbayConnectStatus = $"Config error: {ex.Message}"; return; }
+
+            EbayAuthCode = string.Empty;
+            IsAwaitingEbayCode = true;
+            EbayConnectStatus = "Browser opened — authorize FlipKit, then paste the code below.";
+            _browserService.OpenUrl(authUrl);
+        }
+
+        [RelayCommand]
+        private async Task SubmitEbayAuthCodeAsync()
+        {
+            if (_ebayPublishingService == null) return;
+            if (string.IsNullOrWhiteSpace(EbayAuthCode))
+            {
+                EbayConnectStatus = "Paste the authorization code from eBay first.";
+                return;
+            }
+
+            var code = ExtractAuthCode(EbayAuthCode.Trim());
+            if (string.IsNullOrEmpty(code))
+            {
+                EbayConnectStatus = "Couldn't find an authorization code in that text.";
+                return;
+            }
+
+            IsConnectingEbay = true;
+            EbayConnectStatus = "Exchanging code for tokens…";
+            try
+            {
+                await _ebayPublishingService.ExchangeCodeForTokensAsync(code);
+                EbayConnectStatus = "Connected ✓";
+                IsAwaitingEbayCode = false;
+                EbayAuthCode = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                EbayConnectStatus = $"Failed: {ex.Message}";
+            }
+            finally
+            {
+                IsConnectingEbay = false;
+            }
+        }
+
+        // Accepts either a raw code or a full redirect URL like
+        // https://auth.ebay.com/...?code=v%5E1.1%23i...&expires_in=299
+        // and returns the URL-decoded code value.
+        private static string ExtractAuthCode(string input)
+        {
+            if (input.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Uri.TryCreate(input, UriKind.Absolute, out var uri))
+                {
+                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    var c = query["code"];
+                    if (!string.IsNullOrEmpty(c)) return c;
+                }
+            }
+            // Raw paste — eBay codes are URL-encoded in the redirect, so decode any escapes.
+            return System.Web.HttpUtility.UrlDecode(input);
+        }
+
+        [RelayCommand]
+        private void CancelEbayAuth()
+        {
+            IsAwaitingEbayCode = false;
+            EbayAuthCode = string.Empty;
+            EbayConnectStatus = "Authorization cancelled.";
+        }
+
+        [RelayCommand]
+        private async Task FetchEbayPoliciesAsync()
+        {
+            if (_ebayPublishingService == null)
+            {
+                EbayPoliciesStatus = "Service not available.";
+                return;
+            }
+
+            IsFetchingEbayPolicies = true;
+            EbayPoliciesStatus = "Fetching policies…";
+            try
+            {
+                var ok = await _ebayPublishingService.FetchAndStorePoliciesAsync();
+                EbayPoliciesStatus = ok ? "Policies loaded ✓" : "Failed — check connection and retry.";
+            }
+            finally
+            {
+                IsFetchingEbayPolicies = false;
+            }
         }
 
         [RelayCommand]

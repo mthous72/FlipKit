@@ -119,11 +119,14 @@
                     <!-- eBay API Credentials -->
                     <TextBlock Text="eBay API Credentials (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7" Margin="0,2,0,6">
-                        Needed only for direct eBay listing creation. CSV export works without these.
+                        Required for direct eBay listing creation via the Publish to eBay page.
+                        Enter your App ID and Client Secret, then authorize your account with Connect.
                     </TextBlock>
+
                     <TextBlock Text="App ID (Client ID)" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                     <TextBox Text="{Binding EbayClientId}"
                              PasswordChar="*" Watermark="e.g. YourApp-12345-Prod-xxxxxxxx-xxxxxxxx"/>
+
                     <TextBlock Text="Client Secret" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
@@ -133,10 +136,64 @@
                                  PasswordChar="*" Watermark="PRD-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/>
                     </DockPanel>
                     <TextBlock Text="{Binding EbayStatus}" FontSize="12" Opacity="0.7"/>
+
+                    <TextBlock Text="RuName (eBay Redirect URL Name)" FontSize="12" Opacity="0.7" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding EbayRuName}"
+                             Watermark="e.g. YourName-AppID-PRD-xxxxxxxx-xxxxxxxx"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,2,0,0">
+                        Register one at developer.ebay.com/my/keys → User Tokens → "Add eBay Redirect URL".
+                        Select the OAuth radio button (not Auth'n'Auth), leave Accept/Decline URLs blank,
+                        and Save. Then copy the RuName here (the long ID like "YourName-AppID-PRD-...").
+                    </TextBlock>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+                        <TextBlock Grid.Column="0" Text="{Binding EbayConnectStatus}" FontSize="12" Opacity="0.7" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <Button Grid.Column="1" Content="Connect eBay Account"
+                                Command="{Binding ConnectEbayAccountCommand}"
+                                IsEnabled="{Binding !IsConnectingEbay}"
+                                Margin="0,0,8,0"/>
+                        <Button Grid.Column="2" Content="Fetch Account Policies"
+                                Command="{Binding FetchEbayPoliciesCommand}"
+                                IsEnabled="{Binding !IsFetchingEbayPolicies}"/>
+                    </Grid>
+
+                    <!-- Paste-back UI for the authorization code -->
+                    <Border IsVisible="{Binding IsAwaitingEbayCode}"
+                            BorderBrush="#2196F3" BorderThickness="1"
+                            CornerRadius="4" Padding="12" Margin="0,8,0,0">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Paste eBay Authorization URL" FontWeight="SemiBold"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.85">
+                                <Run FontWeight="SemiBold">eBay shows "Authorization successfully completed" but doesn't display the code on the page.</Run>
+                                <LineBreak/>
+                                The code is in the browser's <Run FontWeight="SemiBold">address bar (URL)</Run>.
+                                Click in the URL bar, press <Run FontWeight="SemiBold">Ctrl+L</Run> then <Run FontWeight="SemiBold">Ctrl+C</Run>
+                                to copy the full URL, then paste it below. FlipKit will extract the code automatically.
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                The URL looks like:  https://signin.ebay.com/...?code=v%5E1.1%23i...&amp;expires_in=299
+                            </TextBlock>
+                            <TextBox Text="{Binding EbayAuthCode}"
+                                     Watermark="Paste the full URL from the browser's address bar here"
+                                     AcceptsReturn="False"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Submit Code"
+                                        Command="{Binding SubmitEbayAuthCodeCommand}"
+                                        IsEnabled="{Binding !IsConnectingEbay}"
+                                        Classes="accent"/>
+                                <Button Content="Cancel"
+                                        Command="{Binding CancelEbayAuthCommand}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding EbayPoliciesStatus}" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
+
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,4,0,0">
                         Get credentials: developer.ebay.com/my/keys → sign in → Get a Production Keyset.
-                        eBay may require a one-time production approval — submit a support ticket at
-                        developer.ebay.com/support if the Test button returns "Connection failed".
+                        After entering App ID + Client Secret + RuName, click Connect eBay Account
+                        to authorize FlipKit via your browser, then paste the code eBay gives you back here.
+                        Once connected, click Fetch Account Policies to load your fulfillment, payment, and return policies.
                     </TextBlock>
 
 

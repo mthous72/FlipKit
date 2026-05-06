@@ -18,12 +18,10 @@ public class CsvExportServiceTests
 
         var whatnot = new WhatnotValuesProvider();
         var shipping = new ShippingProfileNormalizer(whatnot);
-        var ebayTemplate = new EbayTemplateProvider();
 
         return new CsvExportService(
             settings,
             new WhatnotExporter(whatnot, shipping),
-            new EbayExporter(ebayTemplate, shipping),
             new ExportValidator(whatnot));
     }
 

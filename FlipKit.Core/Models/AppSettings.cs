@@ -14,6 +14,19 @@ namespace FlipKit.Core.Models
         public string? EbayClientId { get; set; }
         public string? EbayClientSecret { get; set; }
 
+        // eBay OAuth tokens — managed by FlipKit after user authorization
+        public string? EbayAccessToken { get; set; }
+        public string? EbayRefreshToken { get; set; }
+        public DateTime? EbayTokenExpiry { get; set; }
+
+        // RuName: Redirect URL Name from developer.ebay.com/my/keys → User Tokens
+        public string? EbayRuName { get; set; }
+
+        // Cached policy IDs fetched from eBay Account API on first connect
+        public string? EbayFulfillmentPolicyId { get; set; }
+        public string? EbayPaymentPolicyId { get; set; }
+        public string? EbayReturnPolicyId { get; set; }
+
         public bool IsEbaySeller { get; set; }
         public string DefaultShippingProfile { get; set; } = "4 oz";
         public string DefaultCondition { get; set; } = "Near Mint";
