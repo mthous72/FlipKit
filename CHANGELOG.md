@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 _Nothing yet._
 
+## [3.6.0] - 2026-05
+
+### Added
+- **Direct eBay listing creation via Sell Inventory API** — the new "Publish to eBay" page (Desktop) selects priced cards with images and publishes them directly to eBay using the Sell Inventory REST API. Each card becomes an inventory item + offer, then is published to a live listing whose ID is stored on the card.
+- **eBay OAuth Authorization Code flow in Settings** — RuName field, "Connect eBay Account" button (opens browser to eBay's auth page), and a paste-back panel that accepts either a raw authorization code or the full redirect URL from the browser's address bar. "Fetch Account Policies" loads the seller's fulfillment, payment, and return policies for use in offers.
+
+### Removed
+- **eBay CSV export** — eBay sunsetted the File Exchange CSV bulk-upload pipeline, so the eBay option has been removed from the Export page (Desktop and Web). The `ExportPlatform.eBay` enum value is retained to avoid serialization breaks. Whatnot/COMC/Generic CSV exports are unchanged.
+
 ## [3.5.0] - 2026-05
 
 ### Added

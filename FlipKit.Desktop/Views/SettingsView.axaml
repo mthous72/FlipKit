@@ -162,13 +162,19 @@
                             BorderBrush="#2196F3" BorderThickness="1"
                             CornerRadius="4" Padding="12" Margin="0,8,0,0">
                         <StackPanel Spacing="6">
-                            <TextBlock Text="Paste eBay Authorization Code" FontWeight="SemiBold"/>
-                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.8">
-                                After authorizing in the browser, eBay will display an authorization code on its success page.
-                                Copy that code (or the entire redirect URL — FlipKit extracts the code) and paste it below.
+                            <TextBlock Text="Paste eBay Authorization URL" FontWeight="SemiBold"/>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.85">
+                                <Run FontWeight="SemiBold">eBay shows "Authorization successfully completed" but doesn't display the code on the page.</Run>
+                                <LineBreak/>
+                                The code is in the browser's <Run FontWeight="SemiBold">address bar (URL)</Run>.
+                                Click in the URL bar, press <Run FontWeight="SemiBold">Ctrl+L</Run> then <Run FontWeight="SemiBold">Ctrl+C</Run>
+                                to copy the full URL, then paste it below. FlipKit will extract the code automatically.
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                The URL looks like:  https://signin.ebay.com/...?code=v%5E1.1%23i...&amp;expires_in=299
                             </TextBlock>
                             <TextBox Text="{Binding EbayAuthCode}"
-                                     Watermark="Paste authorization code or full redirect URL here"
+                                     Watermark="Paste the full URL from the browser's address bar here"
                                      AcceptsReturn="False"/>
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Button Content="Submit Code"

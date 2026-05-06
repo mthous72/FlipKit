@@ -9,11 +9,11 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 
 | Platform | Download |
 |----------|----------|
-| Windows (Installer) | `FlipKit-Setup-v3.5.0.exe` |
-| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.5.0.zip` |
-| macOS Apple Silicon (M1+) | `FlipKit-macOS-Apple-Silicon-v3.5.0.dmg` |
-| macOS Intel | `FlipKit-macOS-Intel-v3.5.0.dmg` |
-| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.5.0.zip` |
+| Windows (Installer) | `FlipKit-Setup-v3.6.0.exe` |
+| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.6.0.zip` |
+| macOS Apple Silicon (M1+) | `FlipKit-macOS-Apple-Silicon-v3.6.0.dmg` |
+| macOS Intel | `FlipKit-macOS-Intel-v3.6.0.dmg` |
+| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.6.0.zip` |
 
 ## Features
 
