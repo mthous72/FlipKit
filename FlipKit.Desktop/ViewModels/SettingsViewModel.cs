@@ -54,6 +54,8 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isTestingEbay;
         [ObservableProperty] private bool _isConnectingEbay;
         [ObservableProperty] private bool _isFetchingEbayPolicies;
+        [ObservableProperty] private bool _isAwaitingEbayCode;
+        [ObservableProperty] private string _ebayAuthCode = string.Empty;
 
         // Preferences
         [ObservableProperty] private bool _isEbaySeller;
@@ -477,7 +479,7 @@ namespace FlipKit.Desktop.ViewModels
         }
 
         [RelayCommand]
-        private async Task ConnectEbayAccountAsync()
+        private void ConnectEbayAccount()
         {
             if (_ebayPublishingService == null)
             {
@@ -492,40 +494,37 @@ namespace FlipKit.Desktop.ViewModels
             try { authUrl = _ebayPublishingService.BuildAuthorizationUrl(); }
             catch (Exception ex) { EbayConnectStatus = $"Config error: {ex.Message}"; return; }
 
-            IsConnectingEbay = true;
-            EbayConnectStatus = "Waiting for browser authorization…";
+            EbayAuthCode = string.Empty;
+            IsAwaitingEbayCode = true;
+            EbayConnectStatus = "Browser opened — authorize FlipKit, then paste the code below.";
+            _browserService.OpenUrl(authUrl);
+        }
 
+        [RelayCommand]
+        private async Task SubmitEbayAuthCodeAsync()
+        {
+            if (_ebayPublishingService == null) return;
+            if (string.IsNullOrWhiteSpace(EbayAuthCode))
+            {
+                EbayConnectStatus = "Paste the authorization code from eBay first.";
+                return;
+            }
+
+            var code = ExtractAuthCode(EbayAuthCode.Trim());
+            if (string.IsNullOrEmpty(code))
+            {
+                EbayConnectStatus = "Couldn't find an authorization code in that text.";
+                return;
+            }
+
+            IsConnectingEbay = true;
+            EbayConnectStatus = "Exchanging code for tokens…";
             try
             {
-                using var listener = new System.Net.HttpListener();
-                listener.Prefixes.Add("http://localhost:7777/");
-                listener.Start();
-
-                _browserService.OpenUrl(authUrl);
-
-                var ctx = await listener.GetContextAsync();
-                var code = ctx.Request.QueryString["code"];
-
-                // Respond so the browser tab closes cleanly
-                ctx.Response.ContentType = "text/html; charset=utf-8";
-                var html = System.Text.Encoding.UTF8.GetBytes(
-                    "<html><body style='font-family:sans-serif;padding:40px'>" +
-                    "<h2>FlipKit eBay Authorization</h2>" +
-                    "<p>Authorization complete. You can close this tab.</p></body></html>");
-                ctx.Response.ContentLength64 = html.Length;
-                await ctx.Response.OutputStream.WriteAsync(html);
-                ctx.Response.Close();
-                listener.Stop();
-
-                if (string.IsNullOrEmpty(code))
-                {
-                    EbayConnectStatus = "Authorization cancelled or no code returned.";
-                    return;
-                }
-
-                EbayConnectStatus = "Exchanging code for tokens…";
                 await _ebayPublishingService.ExchangeCodeForTokensAsync(code);
                 EbayConnectStatus = "Connected ✓";
+                IsAwaitingEbayCode = false;
+                EbayAuthCode = string.Empty;
             }
             catch (Exception ex)
             {
@@ -535,6 +534,32 @@ namespace FlipKit.Desktop.ViewModels
             {
                 IsConnectingEbay = false;
             }
+        }
+
+        // Accepts either a raw code or a full redirect URL like
+        // https://auth.ebay.com/...?code=v%5E1.1%23i...&expires_in=299
+        // and returns the URL-decoded code value.
+        private static string ExtractAuthCode(string input)
+        {
+            if (input.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                if (Uri.TryCreate(input, UriKind.Absolute, out var uri))
+                {
+                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    var c = query["code"];
+                    if (!string.IsNullOrEmpty(c)) return c;
+                }
+            }
+            // Raw paste — eBay codes are URL-encoded in the redirect, so decode any escapes.
+            return System.Web.HttpUtility.UrlDecode(input);
+        }
+
+        [RelayCommand]
+        private void CancelEbayAuth()
+        {
+            IsAwaitingEbayCode = false;
+            EbayAuthCode = string.Empty;
+            EbayConnectStatus = "Authorization cancelled.";
         }
 
         [RelayCommand]
