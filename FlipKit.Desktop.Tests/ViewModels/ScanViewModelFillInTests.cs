@@ -19,12 +19,14 @@ public class ScanViewModelFillInTests
         IScannerService scanner,
         IOpenRouterModelCatalog catalog,
         IPaidModelConsentService consent,
-        ISettingsService? settings = null)
+        ISettingsService? settings = null,
+        IAiScanConsentService? aiConsent = null)
     {
         settings ??= Substitute.For<ISettingsService>();
         settings.Load().Returns(new AppSettings
         {
             EnableVariationVerification = false,
+            AiScanConsentGiven = true,  // bypass consent gate in non-consent tests
             CustomGradingCompanies = new List<string>(),
         });
         return new ScanViewModel(
@@ -37,6 +39,7 @@ public class ScanViewModelFillInTests
             Substitute.For<IChecklistVerificationMatcher>(),
             catalog,
             consent,
+            aiConsent ?? Substitute.For<IAiScanConsentService>(),
             Substitute.For<IImageUploadService>(),
             Substitute.For<IBrowserService>(),
             Substitute.For<IWebcamCaptureDialogService>(),

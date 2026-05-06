@@ -55,6 +55,12 @@ namespace FlipKit.Web.Models
         /// Relative URL (/uploads/...) for the back image preview after a draft save.
         /// </summary>
         public string? SavedDraftBackImageUrl { get; set; }
+
+        /// <summary>
+        /// When true the view shows a consent banner and disables the scan button
+        /// until the user acknowledges that images will be sent to OpenRouter/Ximilar.
+        /// </summary>
+        public bool ConsentRequired { get; set; }
     }
 
     /// <summary>

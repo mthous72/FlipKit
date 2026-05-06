@@ -123,6 +123,7 @@ namespace FlipKit.Desktop
                 // Live model catalog from OpenRouter — single instance, app-lifetime cache
                 services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
                 services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
+                services.AddSingleton<IAiScanConsentService, FlipKit.Desktop.Services.AvaloniaAiScanConsentService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 // Webcam capture (Roadmap #2 — Docs/27-WEBCAM-CAPTURE-PLAN.md). The
                 // ICameraService probes/opens cameras via OpenCvSharp4; the dialog

@@ -23,6 +23,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IBulkScanErrorLogger _errorLogger;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
+        private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly ILogger<BulkScanViewModel> _logger;
 
@@ -82,6 +83,7 @@ namespace FlipKit.Desktop.ViewModels
             IBulkScanErrorLogger errorLogger,
             IOpenRouterModelCatalog modelCatalog,
             IPaidModelConsentService consentService,
+            IAiScanConsentService aiScanConsentService,
             IImageUploadService imageUploadService,
             ILogger<BulkScanViewModel> logger)
         {
@@ -93,6 +95,7 @@ namespace FlipKit.Desktop.ViewModels
             _errorLogger = errorLogger;
             _modelCatalog = modelCatalog;
             _consentService = consentService;
+            _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
             _logger = logger;
 
@@ -204,6 +207,25 @@ namespace FlipKit.Desktop.ViewModels
             _scanCts = new CancellationTokenSource();
 
             var settings = _settingsService.Load();
+
+            // First-run consent gate — same check as single-card ScanViewModel.
+            if (!settings.AiScanConsentGiven)
+            {
+                var consent = await _aiScanConsentService.AskAsync();
+                if (!consent.Proceed)
+                {
+                    IsScanning = false;
+                    _scanCts = null;
+                    StatusMessage = null;
+                    return;
+                }
+                if (consent.Remember)
+                {
+                    settings.AiScanConsentGiven = true;
+                    _settingsService.Save(settings);
+                }
+            }
+
             var isFreeModel = IsSelectedModelFree;
 
             // Resolve the model chain once for the whole bulk run.

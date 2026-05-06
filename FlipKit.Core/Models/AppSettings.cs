@@ -107,6 +107,11 @@ namespace FlipKit.Core.Models
         // localhost. 2 seconds covers slow startup without hanging the UI.
         public int ServerHealthCheckTimeoutSeconds { get; set; } = 2;
 
+        // First-run AI scan consent — set to true once the user acknowledges that
+        // card images are sent to OpenRouter/Ximilar. Checked before every scan;
+        // if false, a consent dialog is shown with a "remember this choice" toggle.
+        public bool AiScanConsentGiven { get; set; } = false;
+
         // Webcam capture (Roadmap #2 — Docs/27-WEBCAM-CAPTURE-PLAN.md).
         // Master toggle for the 📷 Webcam buttons on Scan / Edit. Auto-flipped to
         // false the first time ListDevicesAsync returns no cameras so the buttons

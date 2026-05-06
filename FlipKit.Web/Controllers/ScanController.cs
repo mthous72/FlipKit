@@ -59,11 +59,13 @@ namespace FlipKit.Web.Controllers
                 ? parsedMode
                 : XimilarScanMode.Standard;
 
+            var settings = _settingsService.Load();
             var viewModel = new ScanUploadViewModel
             {
                 ScanMode = scanMode,
                 XimilarMode = ximilarMode,
-                SelectedModel = WebModelOption.AutoValue
+                SelectedModel = WebModelOption.AutoValue,
+                ConsentRequired = !settings.AiScanConsentGiven
             };
 
             // If we just returned from a SaveDraft, restore image paths so the
@@ -519,6 +521,23 @@ namespace FlipKit.Web.Controllers
                 TempData["ErrorMessage"] = $"Failed to save card: {ex.Message}";
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        // POST: Scan/AcknowledgeConsent
+        // Records that the user has acknowledged AI scan data sharing.
+        // remember=true persists the flag to settings; remember=false just
+        // redirects without saving so the banner will reappear next visit.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult AcknowledgeConsent(bool remember)
+        {
+            if (remember)
+            {
+                var settings = _settingsService.Load();
+                settings.AiScanConsentGiven = true;
+                _settingsService.Save(settings);
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // POST: Scan/Discard

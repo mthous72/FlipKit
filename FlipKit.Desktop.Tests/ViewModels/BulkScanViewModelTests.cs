@@ -19,12 +19,14 @@ public class BulkScanViewModelTests
         IBulkScanErrorLogger? errorLogger = null,
         IOpenRouterModelCatalog? catalog = null,
         IPaidModelConsentService? consent = null,
+        IAiScanConsentService? aiConsent = null,
         IImageUploadService? upload = null)
     {
         settings ??= Substitute.For<ISettingsService>();
         settings.Load().Returns(new AppSettings
         {
             EnableVariationVerification = false,
+            AiScanConsentGiven = true,  // bypass consent gate in non-consent tests
             MaxConcurrentScans = 1,
             CustomGradingCompanies = new List<string>(),
         });
@@ -42,6 +44,7 @@ public class BulkScanViewModelTests
             errorLogger ?? Substitute.For<IBulkScanErrorLogger>(),
             catalog,
             consent ?? Substitute.For<IPaidModelConsentService>(),
+            aiConsent ?? Substitute.For<IAiScanConsentService>(),
             upload ?? Substitute.For<IImageUploadService>(),
             NullLogger<BulkScanViewModel>.Instance);
     }

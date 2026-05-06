@@ -24,6 +24,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IChecklistVerificationMatcher _checklistMatcher;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
+        private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
         private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
@@ -79,6 +80,7 @@ namespace FlipKit.Desktop.ViewModels
             IChecklistVerificationMatcher checklistMatcher,
             IOpenRouterModelCatalog modelCatalog,
             IPaidModelConsentService consentService,
+            IAiScanConsentService aiScanConsentService,
             IImageUploadService imageUploadService,
             IBrowserService browserService,
             IWebcamCaptureDialogService webcamCaptureDialog,
@@ -93,6 +95,7 @@ namespace FlipKit.Desktop.ViewModels
             _checklistMatcher = checklistMatcher;
             _modelCatalog = modelCatalog;
             _consentService = consentService;
+            _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
             _browserService = browserService;
             _webcamCaptureDialog = webcamCaptureDialog;
@@ -243,6 +246,23 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 var settings = _settingsService.Load();
+
+                // First-run consent: if the user hasn't yet acknowledged that images
+                // are sent to OpenRouter/Ximilar, show the dialog before scanning.
+                if (!settings.AiScanConsentGiven)
+                {
+                    var consent = await _aiScanConsentService.AskAsync();
+                    if (!consent.Proceed)
+                    {
+                        IsScanning = false;
+                        return;
+                    }
+                    if (consent.Remember)
+                    {
+                        settings.AiScanConsentGiven = true;
+                        _settingsService.Save(settings);
+                    }
+                }
 
                 // Resolve the model to use:
                 // - "Auto" (or no selection): rotate through free models, then ask consent for cheapest paid.

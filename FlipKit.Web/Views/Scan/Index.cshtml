@@ -10,6 +10,34 @@
 <div class="container mt-4">
     <h1 class="display-5 mb-4"><i class="bi bi-camera"></i> Scan Card</h1>
 
+    @if (Model.ConsentRequired)
+    {
+        <div class="alert alert-warning mb-4" id="ai-consent-banner">
+            <h5 class="alert-heading"><i class="bi bi-shield-exclamation"></i> Before your first AI scan</h5>
+            <p class="mb-2">
+                FlipKit sends card images to third-party AI services to identify your cards.
+                Your images leave your machine each time you scan.
+            </p>
+            <ul class="mb-2 small">
+                <li><strong>OpenRouter</strong> (openrouter.ai) — card image(s) as JPEG + a text prompt, routed to the AI model you select.</li>
+                <li><strong>Ximilar</strong> (api.ximilar.com) — card image(s) only, when Ximilar mode is enabled.</li>
+            </ul>
+            <p class="small mb-3">Nothing else is sent. Each provider processes images under their own privacy policy.</p>
+            <form asp-action="AcknowledgeConsent" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="remember" value="true" id="consentRemember">
+                    <label class="form-check-label small" for="consentRemember">
+                        Remember this choice — don't ask me again
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-warning btn-sm">
+                    <i class="bi bi-check-circle"></i> Got it, continue to scan
+                </button>
+            </form>
+        </div>
+    }
+
     @if (TempData["ErrorMessage"] != null)
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
