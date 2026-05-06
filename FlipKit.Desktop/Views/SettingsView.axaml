@@ -114,6 +114,24 @@
                         Optional: Card recognition via Ximilar database (checked before AI). Saves tokens when cards are in their database. Get key at: https://www.ximilar.com/
                     </TextBlock>
 
+                    <!-- eBay API Credentials -->
+                    <TextBlock Text="eBay API Credentials" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <TextBlock Text="Client ID" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
+                    <TextBox Text="{Binding EbayClientId}"
+                             PasswordChar="*" Watermark="Your eBay App ID (Client ID)"/>
+                    <TextBlock Text="Client Secret" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
+                                Command="{Binding TestEbayCommand}"
+                                IsEnabled="{Binding !IsTestingEbay}"/>
+                        <TextBox Text="{Binding EbayClientSecret}"
+                                 PasswordChar="*" Watermark="Your eBay Client Secret"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding EbayStatus}" FontSize="12" Opacity="0.7"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
+                        Required for eBay listing creation. Get credentials at: https://developer.ebay.com/my/keys
+                    </TextBlock>
+
 
                     <!-- Model Selection -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">

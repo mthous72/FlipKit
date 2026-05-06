@@ -47,9 +47,12 @@ namespace FlipKit.Web.Controllers
                 OpenRouterApiKey = string.IsNullOrEmpty(settings.OpenRouterApiKey) ? "" : "••••••••" + settings.OpenRouterApiKey[^4..],
                 ImgBBApiKey = string.IsNullOrEmpty(settings.ImgBBApiKey) ? "" : "••••••••" + settings.ImgBBApiKey[^4..],
                 XimilarApiKey = string.IsNullOrEmpty(settings.XimilarApiKey) ? "" : "••••••••" + settings.XimilarApiKey[^4..],
+                EbayClientId = string.IsNullOrEmpty(settings.EbayClientId) ? "" : "••••••••" + settings.EbayClientId[^4..],
+                EbayClientSecret = string.IsNullOrEmpty(settings.EbayClientSecret) ? "" : "••••••••" + settings.EbayClientSecret[^4..],
                 HasOpenRouterKey = !string.IsNullOrEmpty(settings.OpenRouterApiKey),
                 HasImgBBKey = !string.IsNullOrEmpty(settings.ImgBBApiKey),
                 HasXimilarKey = !string.IsNullOrEmpty(settings.XimilarApiKey),
+                HasEbayCredentials = !string.IsNullOrEmpty(settings.EbayClientId) && !string.IsNullOrEmpty(settings.EbayClientSecret),
                 WhatnotFeePercent = settings.WhatnotFeePercent,
                 EbayFeePercent = settings.EbayFeePercent,
                 DefaultShippingCostPwe = settings.DefaultShippingCostPwe,
@@ -120,6 +123,16 @@ namespace FlipKit.Web.Controllers
                 if (!string.IsNullOrEmpty(model.XimilarApiKey) && !model.XimilarApiKey.StartsWith("••••"))
                 {
                     settings.XimilarApiKey = model.XimilarApiKey.Trim();
+                }
+
+                if (!string.IsNullOrEmpty(model.EbayClientId) && !model.EbayClientId.StartsWith("••••"))
+                {
+                    settings.EbayClientId = model.EbayClientId.Trim();
+                }
+
+                if (!string.IsNullOrEmpty(model.EbayClientSecret) && !model.EbayClientSecret.StartsWith("••••"))
+                {
+                    settings.EbayClientSecret = model.EbayClientSecret.Trim();
                 }
 
                 // Update other settings

@@ -11,5 +11,6 @@ namespace FlipKit.Core.Services
         Task<bool> TestOpenRouterConnectionAsync(string apiKey);
         Task<bool> TestImgBBConnectionAsync(string apiKey);
         Task<bool> TestXimilarConnectionAsync(string apiKey);
+        Task<bool> TestEbayConnectionAsync(string clientId, string clientSecret);
     }
 }

@@ -11,6 +11,8 @@ namespace FlipKit.Core.Models
         public string? OpenRouterApiKey { get; set; }
         public string? ImgBBApiKey { get; set; }
         public string? XimilarApiKey { get; set; }
+        public string? EbayClientId { get; set; }
+        public string? EbayClientSecret { get; set; }
 
         public bool IsEbaySeller { get; set; }
         public string DefaultShippingProfile { get; set; } = "4 oz";
