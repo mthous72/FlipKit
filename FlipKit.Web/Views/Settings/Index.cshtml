@@ -223,6 +223,96 @@
                                 }
                             </div>
                         </div>
+
+                        <!-- eBay API Credentials -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">eBay Client ID</label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" asp-for="EbayClientId" class="form-control"
+                                               placeholder="@(Model.HasEbayCredentials ? "Enter new Client ID to update" : "Your eBay App ID (Client ID)")">
+                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="input-group-text">
+                                            @if (Model.HasEbayCredentials)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="input-group">
+                                        <input type="text" class="form-control"
+                                               value="@(Model.HasEbayCredentials ? "••••••••••••••••••••" : "Not configured")"
+                                               readonly>
+                                        <span class="input-group-text">
+                                            @if (Model.HasEbayCredentials)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">eBay Client Secret</label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" asp-for="EbayClientSecret" class="form-control"
+                                               placeholder="@(Model.HasEbayCredentials ? "Enter new Client Secret to update" : "Your eBay Client Secret")">
+                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="input-group-text">
+                                            @if (Model.HasEbayCredentials)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Required for eBay listing creation. <a href="https://developer.ebay.com/my/keys" target="_blank">Get credentials</a></small>
+                                }
+                                else
+                                {
+                                    <div class="input-group">
+                                        <input type="text" class="form-control"
+                                               value="@(Model.HasEbayCredentials ? "••••••••••••••••••••" : "Not configured")"
+                                               readonly>
+                                        <span class="input-group-text">
+                                            @if (Model.HasEbayCredentials)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Required for eBay listing creation</small>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
 

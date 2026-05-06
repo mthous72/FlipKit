@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 _Nothing yet._
 
+## [3.5.0] - 2026-05
+
+### Added
+- **eBay API credentials in Settings** — Client ID (App ID) and Client Secret fields added to the Settings page in both Desktop and Web. Credentials are stored in `config.json` alongside other API keys and validated against the eBay OAuth token endpoint via the **Test** button. Prepares the app for direct eBay listing creation via the Sell Inventory API.
+
 ## [3.4.0] - 2026-05
 
 ### Added

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
@@ -122,6 +123,33 @@ namespace FlipKit.Web.Services
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/details/");
                 request.Headers.Add("Authorization", $"Token {apiKey}");
+
+                var response = await _httpClient.SendAsync(request);
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> TestEbayConnectionAsync(string clientId, string clientSecret)
+        {
+            if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+                return false;
+
+            try
+            {
+                var credentials = Convert.ToBase64String(
+                    System.Text.Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.ebay.com/identity/v1/oauth2/token");
+                request.Headers.Add("Authorization", $"Basic {credentials}");
+                request.Content = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                    new KeyValuePair<string, string>("scope", "https://api.ebay.com/oauth/api_scope")
+                });
 
                 var response = await _httpClient.SendAsync(request);
                 return response.IsSuccessStatusCode;
