@@ -514,6 +514,10 @@
             <Button Content="Scan Card" Command="{Binding ScanCardCommand}"
                     IsEnabled="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                     Classes="accent" Padding="20,10"/>
+            <Button Content="Save Draft" Command="{Binding SaveDraftCommand}"
+                    IsEnabled="{Binding ImagePath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    ToolTip.Tip="Save photos now — fill in card details later"
+                    Padding="20,10"/>
             <Button Content="Enter Manually" Command="{Binding EnterManuallyCommand}"
                     Padding="20,10"/>
             <Button Content="Save to My Cards" Command="{Binding SaveCardCommand}"

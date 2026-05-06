@@ -163,12 +163,23 @@
                             </small>
                         </div>
 
-                        <!-- Submit Button -->
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                        <!-- Submit / Save Draft Buttons -->
+                        <div class="d-grid gap-2 d-sm-flex">
+                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1" id="submitBtn">
                                 <i class="bi bi-magic"></i> Scan Card with AI
                             </button>
+                            <button type="button" class="btn btn-outline-secondary btn-lg" id="saveDraftBtn"
+                                    title="Save photos now — fill in card details later">
+                                <i class="bi bi-floppy"></i> Save Draft
+                            </button>
                         </div>
+                    </form>
+
+                    <!-- Hidden form for Save Draft (shares image inputs with the scan form) -->
+                    <form asp-action="SaveDraft" method="post" enctype="multipart/form-data" id="saveDraftForm" style="display:none;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="frontImagePath" id="draftFrontImagePath" />
+                        <input type="hidden" name="backImagePath"  id="draftBackImagePath"  />
                     </form>
                 </div>
             </div>
@@ -274,5 +285,89 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Scanning... This may take up to 60 seconds';
         });
+
+        // Save Draft: copy image files/paths into the hidden draft form and submit it.
+        document.getElementById('saveDraftBtn').addEventListener('click', function () {
+            const frontFile = document.getElementById('frontImage');
+            const frontPath = document.getElementById('frontImagePath');
+            const hasFile = frontFile?.files?.length > 0;
+            const hasPath = !!frontPath?.value;
+
+            if (!hasFile && !hasPath) {
+                alert('Please upload or capture a front image before saving a draft.');
+                return;
+            }
+
+            const draftForm = document.getElementById('saveDraftForm');
+
+            // For file-based uploads we need to copy the FileList into a real input.
+            // Simplest approach: temporarily move the file inputs into the draft form,
+            // submit, then move them back (the form POST takes a snapshot of the files).
+            if (hasFile) {
+                const frontInput = document.createElement('input');
+                frontInput.type = 'file';
+                frontInput.name = 'frontImage';
+                // We can't programmatically set .files, so we clone the input's file list
+                // by appending the original input to the draft form and renaming it.
+                const originalFront = document.getElementById('frontImage');
+                const placeholder = document.createElement('input');
+                placeholder.type = 'file';
+                placeholder.id = 'frontImage';
+                placeholder.name = 'frontImage';
+                placeholder.className = originalFront.className;
+                originalFront.parentNode.replaceChild(placeholder, originalFront);
+                originalFront.id = '';
+                draftForm.appendChild(originalFront);
+
+                const backFile = document.getElementById('backImage');
+                if (backFile?.files?.length > 0) {
+                    const originalBack = document.getElementById('backImage');
+                    const placeholderBack = document.createElement('input');
+                    placeholderBack.type = 'file';
+                    placeholderBack.id = 'backImage';
+                    placeholderBack.name = 'backImage';
+                    placeholderBack.className = originalBack.className;
+                    originalBack.parentNode.replaceChild(placeholderBack, originalBack);
+                    originalBack.id = '';
+                    draftForm.appendChild(originalBack);
+                }
+            } else {
+                // Webcam-captured paths: populate the hidden inputs.
+                document.getElementById('draftFrontImagePath').value = frontPath?.value || '';
+                const backPath = document.getElementById('backImagePath');
+                document.getElementById('draftBackImagePath').value = backPath?.value || '';
+            }
+
+            draftForm.submit();
+        });
+
+        // Pre-populate image previews when returning after a draft save so the
+        // user can immediately hit Scan Again without re-uploading.
+        @if (Model.SavedDraftFrontImageUrl != null)
+        {
+            <text>
+            (function() {
+                const frontPath = document.getElementById('frontImagePath');
+                const frontPreview = document.getElementById('frontPreview');
+                if (frontPath) frontPath.value = '@Model.SavedDraftFrontImagePath?.Replace("\\", "\\\\")';
+                if (frontPreview) {
+                    frontPreview.querySelector('img').src = '@Model.SavedDraftFrontImageUrl';
+                    frontPreview.style.display = 'block';
+                }
+                @if (Model.SavedDraftBackImageUrl != null)
+                {
+                    <text>
+                const backPath = document.getElementById('backImagePath');
+                const backPreview = document.getElementById('backPreview');
+                if (backPath) backPath.value = '@Model.SavedDraftBackImagePath?.Replace("\\", "\\\\")';
+                if (backPreview) {
+                    backPreview.querySelector('img').src = '@Model.SavedDraftBackImageUrl';
+                    backPreview.style.display = 'block';
+                }
+                    </text>
+                }
+            })();
+            </text>
+        }
     </script>
 }

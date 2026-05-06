@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 _Nothing yet._
 
+## [3.4.0] - 2026-05
+
+### Added
+- **Save Draft from Scan page** — capture card photos and save as a sequentially-named draft (Draft 1, Draft 2, …) before or after an AI scan attempt. Photos are immediately uploaded to ImgBB so the draft is accessible remotely via Tailscale/API. The scan page retains the loaded images after saving so you can retry the scan without re-uploading, or click Clear to move to the next card. Available in both Desktop and Web.
+- **Model catalog in Web Settings** — the Settings page (Docker/remote mode) now shows available OpenRouter free and paid vision models alongside API key management, matching the Desktop scan model selector.
+
 ## [3.3.6] - 2026-05
 
 ### Notes

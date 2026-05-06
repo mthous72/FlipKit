@@ -33,6 +33,28 @@ namespace FlipKit.Web.Models
         /// Controls how Ximilar recognition is used. Persisted in session.
         /// </summary>
         public XimilarScanMode XimilarMode { get; set; } = XimilarScanMode.Standard;
+
+        /// <summary>
+        /// Server-side path of the front image from a just-saved draft. Non-null means
+        /// the page should pre-populate the image preview so the user can re-scan without
+        /// re-uploading.
+        /// </summary>
+        public string? SavedDraftFrontImagePath { get; set; }
+
+        /// <summary>
+        /// Server-side path of the back image from a just-saved draft (optional).
+        /// </summary>
+        public string? SavedDraftBackImagePath { get; set; }
+
+        /// <summary>
+        /// Relative URL (/uploads/...) for the front image preview after a draft save.
+        /// </summary>
+        public string? SavedDraftFrontImageUrl { get; set; }
+
+        /// <summary>
+        /// Relative URL (/uploads/...) for the back image preview after a draft save.
+        /// </summary>
+        public string? SavedDraftBackImageUrl { get; set; }
     }
 
     /// <summary>

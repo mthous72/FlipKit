@@ -17,5 +17,6 @@ namespace FlipKit.Core.Services
         Task<List<Card>> GetStaleCardsAsync(int thresholdDays);
         Task AddPriceHistoryAsync(PriceHistory history);
         Task<int> GetCardCountAsync();
+        Task<string> GetNextDraftNameAsync();
     }
 }
