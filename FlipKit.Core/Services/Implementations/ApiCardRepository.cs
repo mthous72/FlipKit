@@ -227,6 +227,30 @@ namespace FlipKit.Core.Services
             }
         }
 
+        public async Task<string> GetNextDraftNameAsync()
+        {
+            try
+            {
+                var draftCards = await _httpClient.GetFromJsonAsync<List<Card>>($"{_baseUrl}/api/cards?status=Draft");
+                var maxNumber = (draftCards ?? new List<Card>())
+                    .Select(c => c.PlayerName)
+                    .Where(n => n.StartsWith("Draft "))
+                    .Select(n =>
+                    {
+                        var suffix = n["Draft ".Length..];
+                        return int.TryParse(suffix, out var num) ? num : 0;
+                    })
+                    .DefaultIfEmpty(0)
+                    .Max();
+                return $"Draft {maxNumber + 1}";
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to get next draft name via API");
+                throw;
+            }
+        }
+
         private class SoldCardsResponse
         {
             public List<Card> Cards { get; set; } = new();

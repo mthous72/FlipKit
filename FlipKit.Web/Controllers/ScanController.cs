@@ -66,6 +66,21 @@ namespace FlipKit.Web.Controllers
                 SelectedModel = WebModelOption.AutoValue
             };
 
+            // If we just returned from a SaveDraft, restore image paths so the
+            // user can scan again without re-uploading.
+            var savedFront = TempData["DraftFrontImagePath"] as string;
+            var savedBack  = TempData["DraftBackImagePath"]  as string;
+            if (!string.IsNullOrEmpty(savedFront) && System.IO.File.Exists(savedFront))
+            {
+                viewModel.SavedDraftFrontImagePath = savedFront;
+                viewModel.SavedDraftFrontImageUrl  = "/uploads/" + Path.GetFileName(savedFront);
+            }
+            if (!string.IsNullOrEmpty(savedBack) && System.IO.File.Exists(savedBack))
+            {
+                viewModel.SavedDraftBackImagePath = savedBack;
+                viewModel.SavedDraftBackImageUrl  = "/uploads/" + Path.GetFileName(savedBack);
+            }
+
             try
             {
                 var catalog = await _modelCatalog.GetAsync();
@@ -330,6 +345,78 @@ namespace FlipKit.Web.Controllers
             {
                 _logger.LogError(ex, "Error saving scanned card");
                 TempData["ErrorMessage"] = $"Failed to save card: {ex.Message}";
+                return RedirectToAction(nameof(Index));
+            }
+        }
+
+        // POST: Scan/SaveDraft
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveDraft(
+            IFormFile? frontImage,
+            IFormFile? backImage,
+            string? frontImagePath,
+            string? backImagePath)
+        {
+            var hasFrontFile = frontImage is { Length: > 0 };
+            var hasFrontPath = !string.IsNullOrEmpty(frontImagePath) && System.IO.File.Exists(frontImagePath);
+
+            if (!hasFrontFile && !hasFrontPath)
+            {
+                TempData["ErrorMessage"] = "Please upload or capture a front image before saving a draft.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads");
+                Directory.CreateDirectory(uploadsPath);
+
+                if (hasFrontFile)
+                {
+                    frontImagePath = Path.Combine(uploadsPath, $"{Guid.NewGuid()}_{frontImage!.FileName}");
+                    using var stream = new FileStream(frontImagePath, FileMode.Create);
+                    await frontImage.CopyToAsync(stream);
+                }
+
+                var hasBackFile = backImage is { Length: > 0 };
+                var hasBackPath = !string.IsNullOrEmpty(backImagePath) && System.IO.File.Exists(backImagePath);
+                if (hasBackFile)
+                {
+                    backImagePath = Path.Combine(uploadsPath, $"{Guid.NewGuid()}_{backImage!.FileName}");
+                    using var stream = new FileStream(backImagePath, FileMode.Create);
+                    await backImage.CopyToAsync(stream);
+                }
+                else if (!hasBackPath)
+                {
+                    backImagePath = null;
+                }
+
+                var draftName = await _cardRepository.GetNextDraftNameAsync();
+                var card = new Card
+                {
+                    PlayerName = draftName,
+                    ImagePathFront = frontImagePath,
+                    ImagePathBack = backImagePath,
+                    Status = CardStatus.Draft
+                };
+
+                await TryUploadMissingUrlsAsync(card);
+                await _cardRepository.InsertCardAsync(card);
+
+                _logger.LogInformation("Draft saved as '{DraftName}'", draftName);
+
+                // Pass image paths back so the Index page can pre-populate previews
+                // for "scan again" without requiring the user to re-upload.
+                TempData["SuccessMessage"] = $"Saved as '{draftName}' — scan again or clear for next card.";
+                TempData["DraftFrontImagePath"] = frontImagePath;
+                TempData["DraftBackImagePath"] = backImagePath;
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving draft");
+                TempData["ErrorMessage"] = $"Save draft failed: {ex.Message}";
                 return RedirectToAction(nameof(Index));
             }
         }

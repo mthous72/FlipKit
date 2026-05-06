@@ -118,5 +118,24 @@ namespace FlipKit.Core.Services
         {
             return await _db.Cards.CountAsync();
         }
+
+        public async Task<string> GetNextDraftNameAsync()
+        {
+            var draftNames = await _db.Cards
+                .Where(c => c.PlayerName.StartsWith("Draft "))
+                .Select(c => c.PlayerName)
+                .ToListAsync();
+
+            var maxNumber = draftNames
+                .Select(n =>
+                {
+                    var suffix = n["Draft ".Length..];
+                    return int.TryParse(suffix, out var num) ? num : 0;
+                })
+                .DefaultIfEmpty(0)
+                .Max();
+
+            return $"Draft {maxNumber + 1}";
+        }
     }
 }

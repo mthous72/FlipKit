@@ -239,12 +239,41 @@
                             @if (isEditable)
                             {
                                 <select asp-for="DefaultModel" class="form-select">
-                                    <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B (Free - Best)</option>
-                                    <option value="google/gemma-4-26b-a4b-it:free">Google Gemma 4 26B (Free)</option>
-                                    <option value="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free">Nvidia Nemotron 3 Omni 30B (Free)</option>
-                                    <option value="nvidia/nemotron-nano-12b-v2-vl:free">Nvidia Nemotron Nano 12B (Free)</option>
-                                    <option value="google/gemma-3-27b-it:free">Google Gemma 3 27B (Free)</option>
+                                    <optgroup label="Recommended">
+                                        <option value="@FlipKit.Web.Models.WebModelOption.AutoValue"
+                                                selected="@(Model.DefaultModel == FlipKit.Web.Models.WebModelOption.AutoValue)">
+                                            @FlipKit.Web.Models.WebModelOption.AutoLabel
+                                        </option>
+                                    </optgroup>
+                                    @if (Model.FreeModels.Count > 0)
+                                    {
+                                        <optgroup label="Free Models">
+                                            @foreach (var m in Model.FreeModels)
+                                            {
+                                                <option value="@m.Id" selected="@(m.Id == Model.DefaultModel)">
+                                                    @FlipKit.Core.Services.Scanning.ModelCostFormatter.FormatDropdownLabel(m)
+                                                </option>
+                                            }
+                                        </optgroup>
+                                    }
+                                    @if (Model.PaidModels.Count > 0)
+                                    {
+                                        <optgroup label="Paid Models (cheapest first)">
+                                            @foreach (var m in Model.PaidModels)
+                                            {
+                                                <option value="@m.Id" selected="@(m.Id == Model.DefaultModel)">
+                                                    @FlipKit.Core.Services.Scanning.ModelCostFormatter.FormatDropdownLabel(m)
+                                                </option>
+                                            }
+                                        </optgroup>
+                                    }
                                 </select>
+                                @if (!string.IsNullOrEmpty(Model.CatalogError))
+                                {
+                                    <small class="text-warning d-block mt-1">
+                                        <i class="bi bi-exclamation-triangle"></i> @Model.CatalogError
+                                    </small>
+                                }
                             }
                             else
                             {

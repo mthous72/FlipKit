@@ -463,6 +463,37 @@ namespace FlipKit.Desktop.ViewModels
             }
         }
 
+        [RelayCommand]
+        private async Task SaveDraftAsync()
+        {
+            if (string.IsNullOrEmpty(ImagePath))
+                return;
+
+            ErrorMessage = null;
+
+            try
+            {
+                var draftName = await _cardRepository.GetNextDraftNameAsync();
+                var card = new Card
+                {
+                    PlayerName = draftName,
+                    ImagePathFront = ImagePath,
+                    ImagePathBack = ImagePathBack,
+                    Status = CardStatus.Draft
+                };
+                ApplyAdditionalPhotosToCard(card);
+                await TryUploadMissingUrlsAsync(card);
+                await _cardRepository.InsertCardAsync(card);
+
+                SuccessMessage = $"Saved as '{draftName}' — scan again or clear for next card.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Save draft failed");
+                ErrorMessage = $"Save draft failed: {ex.Message}";
+            }
+        }
+
         private void MergeCustomGradingCompanies(CardDetailViewModel vm)
         {
             var settings = _settingsService.Load();
