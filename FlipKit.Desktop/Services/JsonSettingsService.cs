@@ -99,7 +99,7 @@ namespace FlipKit.Desktop.Services
 
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/status");
+                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/details/");
                 request.Headers.Add("Authorization", $"Token {apiKey}");
 
                 var response = await _httpClient.SendAsync(request);

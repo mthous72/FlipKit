@@ -120,18 +120,14 @@ namespace FlipKit.Web.Services
 
             try
             {
-                // Use the account details endpoint to verify API key
                 using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/details/");
                 request.Headers.Add("Authorization", $"Token {apiKey}");
 
                 var response = await _httpClient.SendAsync(request);
-                var content = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Ximilar test response: {response.StatusCode} - {content}");
                 return response.IsSuccessStatusCode;
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine($"Ximilar test exception: {ex.Message}");
                 return false;
             }
         }
