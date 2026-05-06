@@ -27,13 +27,17 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Tests passed. Proceeding with build." -ForegroundColor Green
 Write-Host ""
 
-# Clean old releases
-Write-Host "Cleaning old release folder..." -ForegroundColor Yellow
-if (Test-Path ".\releases") {
-    Remove-Item ".\releases" -Recurse -Force
+# Clean old releases — only the items we regenerate, so locked subdirs survive
+Write-Host "Cleaning old release artifacts..." -ForegroundColor Yellow
+if (-not (Test-Path ".\releases")) {
+    New-Item -ItemType Directory -Path ".\releases" | Out-Null
 }
-New-Item -ItemType Directory -Path ".\releases" | Out-Null
-New-Item -ItemType Directory -Path ".\releases\temp" | Out-Null
+if (Test-Path ".\releases\temp") {
+    Remove-Item ".\releases\temp" -Recurse -Force
+}
+Get-ChildItem ".\releases" -File -Filter "FlipKit-Hub-*.zip" -ErrorAction SilentlyContinue | Remove-Item -Force
+Get-ChildItem ".\releases" -File -Filter "FlipKit-Setup-*.exe" -ErrorAction SilentlyContinue | Remove-Item -Force
+New-Item -ItemType Directory -Path ".\releases\temp" -Force | Out-Null
 
 # Hub targets
 $hubTargets = @(
