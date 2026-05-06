@@ -151,7 +151,7 @@ git show 713e045 --stat
 5. ✅ ImgBBUploadService
 6. ✅ VariationVerifierService
 7. ✅ ChecklistLearningService
-8. ✅ Point130SoldPriceService
+8. ✅ ~~Sold-price service~~ (since removed)
 9. ✅ TitleTemplateService
 10. ✅ MockScannerService
 

@@ -94,7 +94,7 @@ These are real production issues uncovered by Phase 1 audit + Phase 4 test work.
 
 These are ways the plan was wrong and has since been corrected. Future-you should trust the latest plan, not the original commit.
 
-- **Phase 5.1 DI lifetime fix scope** — originally expanded to 4 services (Point130, Pricer, CsvExport, VariationVerifier). Phase 4b found that `PricerService` and `CsvExportService` don't actually take `FlipKitDbContext` (Web's `// Depends on DbContext` comments are stale). **Real scope is 2 services** (Point130, VariationVerifier). To be corrected in plan during Phase 5 implementation.
+- **Phase 5.1 DI lifetime fix scope** — originally expanded to 4 services (shelved sold-price service, Pricer, CsvExport, VariationVerifier). Phase 4b found that `PricerService` and `CsvExportService` don't actually take `FlipKitDbContext` (Web's `// Depends on DbContext` comments are stale). **Real scope is 2 services** (shelved sold-price service, VariationVerifier). To be corrected in plan during Phase 5 implementation.
 - **Phase 4a scope** — `SkuGenerator` was originally listed under "stateless services" but takes `FlipKitDbContext`. Moved to Phase 4b. `BulkScanErrorLogger` calls `Environment.GetFolderPath(LocalApplicationData)` at construction; deferred to Phase 5 with a constructor refactor.
 - **Phase 5.2 OpenRouter magic-string fix** — originally framed as introducing a single `DefaultFreeModelId` constant. Reality is a multi-model fallback catalog. Scope expanded to consolidate live + fallback catalog into `OpenRouterModelCatalog` (closes D4 as a side effect).
 
@@ -129,7 +129,7 @@ Phase 4 is now complete (§coverage targets met or carryovers documented). Phase
 
 Subsections from plan §7 (full reference):
 
-- **§7.1** DI lifetime fixes — 2 services (Point130, VariationVerifier), per the corrected scope above
+- **§7.1** DI lifetime fixes — 2 services (shelved sold-price service, VariationVerifier), per the corrected scope above
 - **§7.2** OpenRouter catalog consolidation — closes D2 indirectly + closes D4 as a side effect
 - **§7.3** HttpClient timeout configuration centralization
 - **§7.4** ViewModel decomposition — extract helper services from `SettingsViewModel` (803 lines), `BulkScanViewModel` (585), `InventoryViewModel` (556), `ScanViewModel` (546), `ExportViewModel` (299). Re-enables Phase 4c tests against the new shape.
@@ -146,7 +146,7 @@ After Phase 5: re-run the full test suite + manual regression checklist. Anythin
 Branch: `refactor/phase-6-roadmap-revamp`.
 
 Delivered:
-- `Docs/17-FUTURE-ROADMAP.md` re-baselined against post-Phase-5 code. Roadmap #4 (Tests) marked DONE — delivered by Phase 4. Roadmap #1 (Checklist Insider) effort cut 4-5wk → 3-4wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering the shelved `Point130SoldPriceService`. Roadmap #5 (COMC) flagged for downgrade or drop pending demand signal.
+- `Docs/17-FUTURE-ROADMAP.md` re-baselined against post-Phase-5 code. Roadmap #4 (Tests) marked DONE — delivered by Phase 4. Roadmap #1 (Checklist Insider) effort cut 4-5wk → 3-4wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering the shelved sold-price service (which was subsequently removed in 2026-05-05). Roadmap #5 (COMC) flagged for downgrade or drop pending demand signal.
 - `Docs/07-CLAUDE-CODE-GUIDE.md` rewritten from a single-project guide to a 4-project orientation + LLM-agent contributor guide. Closes plan §7.5.
 - Stale-reference sweep across `Docs/01-PROJECT-PLAN.md`, `Docs/10-GUI-ARCHITECTURE.md`, `Docs/26-CSV-EXPORT-IMPLEMENTATION-PLAN.md` — removed/annotated dead converter and `CardListerDbContext` references. Forward-looking plans (27/28) needed no edits.
 - VM split fate recorded in roadmap: `BulkScanViewModel` 5d skipped permanently; `Inventory/Scan/Export` deferred indefinitely (all ≥80% covered, no concrete decomposition opportunity).

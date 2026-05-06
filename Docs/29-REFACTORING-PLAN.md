@@ -111,8 +111,8 @@ Earlier phases are intentionally lowest-risk and produce permanent artifacts (ma
 
 | Item | Path | Roadmap reason |
 |---|---|---|
-| `Point130SoldPriceService` + `ISoldPriceService` | `FlipKit.Core/Services/Implementations/Point130SoldPriceService.cs` | Comment in `PricingViewModel.cs:19` says "SHELVED ... kept for potential future use" — directly maps to roadmap #3 Automated Price Scraping. |
-| `HtmlAgilityPack` package ref | `FlipKit.Core.csproj`, `FlipKit.Desktop.csproj` | Only consumer is `Point130SoldPriceService` (above). Roadmap #3. |
+| ~~Shelved sold-price service + `ISoldPriceService`~~ | ~~(removed 2026-05-05; see Roadmap §3)~~ | ~~Comment in `PricingViewModel.cs:19` flagged it as "SHELVED ... kept for potential future use" — mapped to roadmap #3 Automated Price Scraping.~~ Service and interface deleted; row retained for historical context. |
+| ~~`HtmlAgilityPack` package ref~~ | ~~`FlipKit.Core.csproj`, `FlipKit.Desktop.csproj`~~ | ~~Only consumer was the shelved sold-price service (above).~~ Package removed alongside the service. |
 | `ChecklistLearningService`, `MissingChecklist`, `IChecklistLearningService` | `FlipKit.Core/...` | Roadmap #1 Checklist Insider import — these are the learning-from-scans surface. |
 | `XimilarService` + all `XimilarScanMode` plumbing | Core + Web + Desktop | Active in `CompositeScannerService` — used in production scan path with the `XimilarScanMode.Standard/Magic/Disabled` switch in the UI. NOT roadmap-only, currently shipping. |
 | COMC enum value | `ExportPlatform.cs` | Roadmap #5 Finish COMC Exporter. |
@@ -409,7 +409,7 @@ The plan originally flagged a single Singleton+DbContext bug. Phase 1 audit foun
 
 | Service | Desktop (`App.axaml.cs`) | Web (`Program.cs`) | Fix |
 |---|---|---|---|
-| `ISoldPriceService` (Point130SoldPriceService) | Singleton (line 135) | Scoped (line 82) | Change to Scoped — **catastrophic captive-dependency bug** |
+| `ISoldPriceService` (shelved sold-price service) | Singleton (line 135) | Scoped (line 82) | Change to Scoped — **catastrophic captive-dependency bug** |
 | `IPricerService` (PricerService) | Transient (line 123) | Scoped (line 70, comment: "Depends on DbContext via repositories") | Change to Scoped |
 | `IExportService` (CsvExportService) | Transient (line 132) | Scoped (line 78, comment: "Depends on DbContext") | Change to Scoped |
 | `IVariationVerifier` (VariationVerifierService) | Transient (line 133) | Scoped (line 80, comment: "Depends on DbContext") | Change to Scoped |
@@ -583,7 +583,7 @@ Open `Docs/17-FUTURE-ROADMAP.md` and, for each item, ask the same questions agai
 |---|---|
 | #1 Checklist Insider Import | Does Phase 5.4's `ChecklistManagerViewModel` extraction make the import view easier to add? Update effort estimate. |
 | #2 Webcam Capture | Avalonia 11.3 webcam APIs — confirm latest support; reconfirm or drop. |
-| #3 Automated Price Scraping | `Point130SoldPriceService` is still shelved. Decision time: revive it (eBay Finding API per §17 Option A) or delete it. |
+| #3 Automated Price Scraping | Sold-price service is still shelved. Decision time: revive it (eBay Finding API per §17 Option A) or delete it. |
 | #4 Tests | **Strike from roadmap** — fully delivered by Phase 4 per §10 Q7. |
 | #5 COMC Exporter | If no concrete signal of demand, consider dropping this and removing the `COMC` enum value. |
 | #6 Inventory virtualization | Inventory is now smaller after Phase 5.4 split — re-measure threshold (still 500 cards?). |

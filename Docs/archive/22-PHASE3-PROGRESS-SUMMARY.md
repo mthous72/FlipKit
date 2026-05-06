@@ -24,11 +24,11 @@ The application was crashing on startup due to incorrect dependency injection se
 **Changes Made:**
 ```csharp
 // BEFORE (Caused startup crash)
-builder.Services.AddSingleton<ISoldPriceService, Point130SoldPriceService>(); // ❌
+builder.Services.AddSingleton<ISoldPriceService, SoldPriceService>(); // ❌  (service since removed)
 builder.Services.AddTransient<ICardRepository, CardRepository>(); // ❌
 
 // AFTER (Fixed)
-builder.Services.AddScoped<ISoldPriceService, Point130SoldPriceService>(); // ✅
+builder.Services.AddScoped<ISoldPriceService, SoldPriceService>(); // ✅  (service since removed)
 builder.Services.AddScoped<ICardRepository, CardRepository>(); // ✅
 ```
 
