@@ -524,6 +524,83 @@
 
             </form>
 
+            <!-- Privacy & Data Handling -->
+            <div class="card mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-shield-lock"></i> Privacy &amp; Data Handling
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        FlipKit stores your inventory locally in a SQLite database. The features below contact third-party services only when you use them — and only with the data listed. Nothing else leaves your machine.
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless mb-3">
+                            <thead class="small text-muted">
+                                <tr>
+                                    <th style="width: 22%;">Service</th>
+                                    <th style="width: 28%;">Data sent</th>
+                                    <th>Triggered by</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                <tr>
+                                    <td>
+                                        <strong>OpenRouter</strong><br>
+                                        <span class="text-muted">openrouter.ai</span>
+                                    </td>
+                                    <td>Card images (JPEG, base64) + text prompt; or listing titles (text only) for eBay CSV enrichment.</td>
+                                    <td>Scan, Bulk Scan, Import eBay listings. OpenRouter routes each request to the model provider you select (Google, OpenAI, Anthropic, etc.).</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Ximilar</strong><br>
+                                        <span class="text-muted">api.ximilar.com</span>
+                                    </td>
+                                    <td>Card images only.</td>
+                                    <td>First-pass scanner when Ximilar mode is enabled in scan settings (disabled by default).</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>ImgBB</strong><br>
+                                        <span class="text-muted">api.imgbb.com</span>
+                                    </td>
+                                    <td>Card images only.</td>
+                                    <td>CSV export with public-photo-URL upload (Whatnot, COMC). Skipped if no ImgBB key is configured.</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>eBay API</strong><br>
+                                        <span class="text-muted">api.ebay.com, auth.ebay.com</span>
+                                    </td>
+                                    <td>Listing data (title, description, price, condition, category, photo URLs) + OAuth credentials.</td>
+                                    <td>"Publish to eBay" actions. Only contacted when eBay credentials are configured and you initiate a publish.</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>eBay / Terapeak deeplinks</strong><br>
+                                        <span class="text-muted">www.ebay.com</span>
+                                    </td>
+                                    <td>Search keywords in URL (sent by your browser, not by FlipKit).</td>
+                                    <td>"Pricing research" buttons open search URLs in your default browser.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-warning small mb-0 py-2">
+                        <strong>No telemetry, analytics, or crash reporting.</strong>
+                        FlipKit does not call home, does not collect usage data, and has no advertising integrations. API keys are stored locally and only sent to the service that owns them.
+                    </div>
+
+                    <p class="text-muted small mt-3 mb-0">
+                        Draft v1 — last reviewed 2026-05-06. Each provider has its own terms; review them on the provider sites listed above.
+                    </p>
+                </div>
+            </div>
+
             <!-- Legal Disclaimer -->
             <div class="card border-warning mt-4">
                 <div class="card-header bg-warning">

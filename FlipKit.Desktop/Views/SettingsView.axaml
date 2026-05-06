@@ -739,6 +739,69 @@
                            Foreground="Green" FontSize="14"/>
             </StackPanel>
 
+            <!-- Privacy & Data Handling -->
+            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                    CornerRadius="8" Padding="20">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="🔒 Privacy &amp; Data Handling" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
+                        FlipKit stores your inventory locally in a SQLite database. The features below contact third-party services only when you use them — and only with the data listed. Nothing else leaves your machine.
+                    </TextBlock>
+
+                    <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="0,1,0,0" Margin="0,4,0,0" Padding="0,10,0,0">
+                        <StackPanel Spacing="14">
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="OpenRouter — openrouter.ai" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                    AI card identification. Sends card images (front/back, JPEG, base64-encoded) and a text prompt on each scan. Also sends listing titles (text only, no images) when importing an eBay CSV with title enrichment. Triggered by: Scan, Bulk Scan, Import eBay listings. OpenRouter forwards each request to the underlying model provider you select (Google, OpenAI, Anthropic, etc.).
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Ximilar — api.ximilar.com" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                    Alternate card identifier (sport / TCG / slab grading). Sends card images only. Used as the first-pass scanner when Ximilar mode is enabled in scan settings; disabled by default.
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="ImgBB — api.imgbb.com" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                    Image hosting for CSV exports that need public photo URLs (Whatnot/COMC). Sends card images only. Triggered by: CSV export with image upload enabled. Skipped if no ImgBB key is configured.
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="eBay — api.ebay.com, auth.ebay.com" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                    Direct listing publishing. Sends listing data (title, description, price, condition, category, photo URLs) and OAuth credentials. Triggered by: "Publish to eBay" actions. Only contacted when eBay credentials are configured and you initiate a publish.
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="eBay / Terapeak deeplinks — www.ebay.com" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
+                                    Pricing research opens search URLs in your default browser. FlipKit itself sends nothing — your browser performs the request, including any card-search keywords in the URL.
+                                </TextBlock>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#FFF3E0" CornerRadius="4" Padding="10" Margin="0,8,0,0">
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#212121">
+                            <Run FontWeight="Bold">No telemetry, analytics, or crash reporting.</Run>
+                            FlipKit does not call home, does not collect usage data, and has no advertising integrations. API keys are stored locally and only sent to the service that owns them.
+                        </TextBlock>
+                    </Border>
+
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7" Margin="0,4,0,0">
+                        Draft v1 — last reviewed 2026-05-06. Each provider has its own terms; review them on the provider sites linked under "Quick Start" above.
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
             <!-- Legal Disclaimer -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                     CornerRadius="8" Padding="20"
