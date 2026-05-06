@@ -24,10 +24,12 @@ namespace FlipKit.Desktop.Services
         };
 
         private readonly HttpClient _httpClient;
+        private readonly ISecretEncryption _encryption;
 
-        public JsonSettingsService(HttpClient httpClient)
+        public JsonSettingsService(HttpClient httpClient, ISecretEncryption encryption)
         {
             _httpClient = httpClient;
+            _encryption = encryption;
         }
 
         public AppSettings Load()
@@ -36,14 +38,46 @@ namespace FlipKit.Desktop.Services
                 return new AppSettings();
 
             var json = File.ReadAllText(ConfigPath);
-            return JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
+            DecryptSecrets(settings);
+            return settings;
         }
 
         public void Save(AppSettings settings)
         {
             Directory.CreateDirectory(ConfigFolder);
-            var json = JsonSerializer.Serialize(settings, JsonOptions);
+            var encrypted = EncryptedCopy(settings);
+            var json = JsonSerializer.Serialize(encrypted, JsonOptions);
             File.WriteAllText(ConfigPath, json);
+        }
+
+        // Returns a serializable copy with secrets encrypted. Does not mutate the
+        // live AppSettings object so in-memory values remain plaintext for use.
+        private AppSettings EncryptedCopy(AppSettings src)
+        {
+            var json = JsonSerializer.Serialize(src, JsonOptions);
+            var copy = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions)!;
+            copy.OpenRouterApiKey  = _encryption.Protect(src.OpenRouterApiKey);
+            copy.ImgBBApiKey       = _encryption.Protect(src.ImgBBApiKey);
+            copy.XimilarApiKey     = _encryption.Protect(src.XimilarApiKey);
+            copy.EbayClientId      = _encryption.Protect(src.EbayClientId);
+            copy.EbayClientSecret  = _encryption.Protect(src.EbayClientSecret);
+            copy.EbayAccessToken   = _encryption.Protect(src.EbayAccessToken);
+            copy.EbayRefreshToken  = _encryption.Protect(src.EbayRefreshToken);
+            copy.EbayRuName        = _encryption.Protect(src.EbayRuName);
+            return copy;
+        }
+
+        private void DecryptSecrets(AppSettings s)
+        {
+            s.OpenRouterApiKey = _encryption.Unprotect(s.OpenRouterApiKey);
+            s.ImgBBApiKey      = _encryption.Unprotect(s.ImgBBApiKey);
+            s.XimilarApiKey    = _encryption.Unprotect(s.XimilarApiKey);
+            s.EbayClientId     = _encryption.Unprotect(s.EbayClientId);
+            s.EbayClientSecret = _encryption.Unprotect(s.EbayClientSecret);
+            s.EbayAccessToken  = _encryption.Unprotect(s.EbayAccessToken);
+            s.EbayRefreshToken = _encryption.Unprotect(s.EbayRefreshToken);
+            s.EbayRuName       = _encryption.Unprotect(s.EbayRuName);
         }
 
         public bool HasValidConfig()

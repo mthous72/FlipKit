@@ -16,6 +16,7 @@ using FlipKit.Desktop.ViewModels;
 using FlipKit.Desktop.Views;
 using FlipKit.Desktop.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -79,6 +80,17 @@ namespace FlipKit.Desktop
                     builder.ClearProviders();
                     builder.AddSerilog(dispose: true);
                 });
+
+                // Secrets encryption — DPAPI on Windows, file-protected AES key ring on
+                // Linux/macOS. Key directory shared with config so both Desktop and Web
+                // can decrypt values written by either app.
+                var keyDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "FlipKit", "DataProtection-Keys");
+                services.AddDataProtection()
+                    .PersistKeysToFileSystem(new System.IO.DirectoryInfo(keyDir))
+                    .SetApplicationName("FlipKit");
+                services.AddSingleton<ISecretEncryption, FlipKit.Core.Services.Implementations.DataProtectionSecretEncryption>();
 
                 // Services (order matters - settings service needed first)
                 services.AddSingleton<HttpClient>();

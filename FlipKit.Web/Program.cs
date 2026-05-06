@@ -1,7 +1,9 @@
 using FlipKit.Core.Data;
 using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
+using FlipKit.Core.Services.Implementations;
 using FlipKit.Web.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
@@ -26,6 +28,16 @@ builder.Services.AddHttpContextAccessor();
 
 // Add logging
 builder.Services.AddLogging();
+
+// Secrets encryption — same key directory as Desktop so both apps can decrypt
+// values written by the other. DPAPI on Windows; file-protected key ring on Linux/macOS.
+var keyDir = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "FlipKit", "DataProtection-Keys");
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keyDir))
+    .SetApplicationName("FlipKit");
+builder.Services.AddSingleton<ISecretEncryption, DataProtectionSecretEncryption>();
 
 // Settings service needed first for mode detection
 builder.Services.AddSingleton<ISettingsService, JsonSettingsService>();
