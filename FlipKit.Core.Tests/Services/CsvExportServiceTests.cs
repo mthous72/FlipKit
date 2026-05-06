@@ -105,19 +105,8 @@ public class CsvExportServiceTests
         Assert.Contains("Cert #: 12345678", desc);
     }
 
-    // ValidateBatch routes to the platform-specific validator.
-
-    [Fact]
-    public void Should_RouteToEbayRules_When_PlatformIsEbay()
-    {
-        var svc = CreateService();
-        var card = MinimalValidCard();
-        card.Sport = null; // eBay-specific failure (Whatnot doesn't require Sport).
-
-        var errors = svc.ValidateBatch(new[] { card }, ExportPlatform.eBay);
-
-        Assert.Contains(errors, e => e.Field == nameof(Card.Sport));
-    }
+    // ValidateBatch routes to the Whatnot validator. (eBay CSV export was removed
+    // in v3.6.0; eBay listings now go through the Sell Inventory REST API directly.)
 
     [Fact]
     public void Should_RouteToWhatnotRules_When_PlatformIsWhatnotOrUnknown()
