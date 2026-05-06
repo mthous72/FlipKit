@@ -41,32 +41,9 @@ public class EbayExporterTests
     private static string DescFor(Card c) => $"Description for {c.PlayerName}";
 
     // === SerializeRow ===
-
-    [Fact]
-    public void Should_SetActionAdd_When_VerifyAddIsFalse()
-    {
-        var ex = CreateExporter();
-        var template = new EbayTemplateProvider();
-        var actionCol = template.FindColumnStartingWith("*Action");
-        Assert.NotNull(actionCol);
-
-        var row = ex.SerializeRow(SampleCard(), TitleFor, DescFor, DefaultOptions());
-        Assert.Equal("Add", row[actionCol!]);
-    }
-
-    [Fact]
-    public void Should_SetActionVerifyAdd_When_VerifyAddIsTrue()
-    {
-        var ex = CreateExporter();
-        var template = new EbayTemplateProvider();
-        var actionCol = template.FindColumnStartingWith("*Action");
-        Assert.NotNull(actionCol);
-
-        var opts = DefaultOptions();
-        opts.UseVerifyAdd = true;
-        var row = ex.SerializeRow(SampleCard(), TitleFor, DescFor, opts);
-        Assert.Equal("VerifyAdd", row[actionCol!]);
-    }
+    // Note: Action / VerifyAdd column tests removed in v3.6.0 — that logic depended on
+    // EbayTemplateProvider's column lookup, which is unused now that eBay listings go
+    // through the Sell Inventory REST API instead of CSV bulk upload.
 
     [Fact]
     public void Should_FormatStartPriceToTwoDecimals_When_SerializingRow()
