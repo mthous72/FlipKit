@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 _Nothing yet._
 
+## [3.6.1] - 2026-05
+
+### Added
+- **Privacy & Data Handling section in Settings** — new section (Desktop and Web) lists every external service (OpenRouter, Ximilar, ImgBB, eBay API, eBay deeplinks), exactly what data is sent, and when it is triggered. Includes a "no telemetry" callout confirming FlipKit sends nothing automatically.
+- **First-run AI scan consent dialog** — before the first AI scan in a new installation, FlipKit shows a one-time dialog explaining that card images will be sent to OpenRouter/Ximilar. A "Remember my choice" checkbox suppresses future prompts. Available in both Desktop (Avalonia modal) and Web (inline banner with AntiForgeryToken form).
+- **Secrets encrypted at rest** — all API keys (OpenRouter, ImgBB, Ximilar, eBay Client ID/Secret, eBay OAuth tokens) are now stored as `protected:<ciphertext>` in `config.json` using `Microsoft.AspNetCore.DataProtection` (DPAPI on Windows, AES-256-GCM file key ring on Linux/macOS). Existing plaintext keys are transparently migrated to encrypted form on the next save. Desktop and Web share the same key ring (`%LOCALAPPDATA%\FlipKit\DataProtection-Keys`) and can decrypt each other's values.
+
+### Changed
+- **Expanded README disclaimer** — added explicit paragraphs covering AI accuracy risk (AI output is probabilistic, every result must be verified), financial-decision risk (pricing data is reference only, not investment advice), no professional advice, and use-at-your-own-risk statement.
+
 ## [3.6.0] - 2026-05
 
 ### Added

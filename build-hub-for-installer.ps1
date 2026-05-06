@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$Version = "3.6.0"
+$Version = "3.6.1"
 
 Write-Host "Building FlipKit Hub for Inno Setup..." -ForegroundColor Cyan
 
