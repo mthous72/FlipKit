@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -56,6 +57,11 @@ namespace FlipKit.Web.Models
         // Export Settings
         [Display(Name = "Default Export Platform")]
         public ExportPlatform ActiveExportPlatform { get; set; } = ExportPlatform.Whatnot;
+
+        // Live model catalog (populated from OpenRouter API for Docker mode Settings UI)
+        public IReadOnlyList<OpenRouterModel> FreeModels { get; set; } = new List<OpenRouterModel>();
+        public IReadOnlyList<OpenRouterModel> PaidModels { get; set; } = new List<OpenRouterModel>();
+        public string? CatalogError { get; set; }
 
         // Status flags (read-only for display)
         public bool HasOpenRouterKey { get; set; }

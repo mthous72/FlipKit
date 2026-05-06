@@ -13,11 +13,13 @@ namespace FlipKit.Web.Controllers
     public class SettingsController : Controller
     {
         private readonly ISettingsService _settingsService;
+        private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly ILogger<SettingsController> _logger;
 
-        public SettingsController(ISettingsService settingsService, ILogger<SettingsController> logger)
+        public SettingsController(ISettingsService settingsService, IOpenRouterModelCatalog modelCatalog, ILogger<SettingsController> logger)
         {
             _settingsService = settingsService;
+            _modelCatalog = modelCatalog;
             _logger = logger;
         }
 
@@ -28,7 +30,7 @@ namespace FlipKit.Web.Controllers
             return !string.IsNullOrEmpty(dbPath) && dbPath.StartsWith("/data");
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             // In non-Docker mode, redirect to Desktop app
             if (!IsDockerEnvironment())
@@ -61,6 +63,20 @@ namespace FlipKit.Web.Controllers
                 IsDockerEnvironment = true
             };
 
+            try
+            {
+                var catalog = await _modelCatalog.GetAsync();
+                viewModel.FreeModels = catalog.FreeVisionModels;
+                viewModel.PaidModels = catalog.PaidVisionModels;
+                if (catalog.IsFallback)
+                    viewModel.CatalogError = "Couldn't reach OpenRouter for the live model list — showing cached fallback models.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Catalog fetch failed on Settings/Index GET");
+                viewModel.CatalogError = $"Model catalog failed to load: {ex.Message}";
+            }
+
             return View(viewModel);
         }
 
@@ -76,6 +92,13 @@ namespace FlipKit.Web.Controllers
             if (!ModelState.IsValid)
             {
                 model.IsDockerEnvironment = true;
+                try
+                {
+                    var catalog = await _modelCatalog.GetAsync();
+                    model.FreeModels = catalog.FreeVisionModels;
+                    model.PaidModels = catalog.PaidVisionModels;
+                }
+                catch { /* catalog failure is non-fatal on validation error re-render */ }
                 return View("Index", model);
             }
 

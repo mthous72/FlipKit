@@ -26,22 +26,26 @@ public class SettingsControllerTests : IDisposable
         Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", _originalDbPath);
     }
 
-    private static SettingsController Create(ISettingsService? settings = null)
+    private static SettingsController Create(ISettingsService? settings = null, IOpenRouterModelCatalog? catalog = null)
     {
+        var defaultCatalog = catalog ?? Substitute.For<IOpenRouterModelCatalog>();
+        defaultCatalog.GetAsync(default).ReturnsForAnyArgs(
+            new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow));
         var controller = new SettingsController(
             settings ?? Substitute.For<ISettingsService>(),
+            defaultCatalog,
             NullLogger<SettingsController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;
     }
 
     [Fact]
-    public void Should_RedirectToScan_When_NotInDockerEnvironment()
+    public async Task Should_RedirectToScan_When_NotInDockerEnvironment()
     {
         Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", null);
         var controller = Create();
 
-        var result = controller.Index();
+        var result = await controller.Index();
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Scan", redirect.ControllerName);
@@ -49,7 +53,7 @@ public class SettingsControllerTests : IDisposable
     }
 
     [Fact]
-    public void Should_ReturnSettingsView_When_InDockerEnvironment()
+    public async Task Should_ReturnSettingsView_When_InDockerEnvironment()
     {
         Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", "/data/cards.db");
         var settings = Substitute.For<ISettingsService>();
@@ -61,7 +65,7 @@ public class SettingsControllerTests : IDisposable
         });
         var controller = Create(settings: settings);
 
-        var result = controller.Index();
+        var result = await controller.Index();
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<SettingsViewModel>(view.Model);
@@ -72,14 +76,14 @@ public class SettingsControllerTests : IDisposable
     }
 
     [Fact]
-    public void Should_NotShowKey_When_ApiKeyIsEmpty()
+    public async Task Should_NotShowKey_When_ApiKeyIsEmpty()
     {
         Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", "/data/cards.db");
         var settings = Substitute.For<ISettingsService>();
         settings.Load().Returns(new AppSettings { OpenRouterApiKey = "", ImgBBApiKey = "" });
         var controller = Create(settings: settings);
 
-        var result = controller.Index();
+        var result = await controller.Index();
 
         var view = Assert.IsType<ViewResult>(result);
         var model = Assert.IsType<SettingsViewModel>(view.Model);
