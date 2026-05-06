@@ -33,6 +33,7 @@ namespace FlipKit.Desktop.Services
                 "Inventory" => _services.GetRequiredService<InventoryViewModel>(),
                 "Pricing" => _services.GetRequiredService<PricingViewModel>(),
                 "Export" => _services.GetRequiredService<ExportViewModel>(),
+                "EbayPublish" => _services.GetRequiredService<EbayPublishViewModel>(),
                 "Reports" => _services.GetRequiredService<ReportsViewModel>(),
                 "SalesReport" => _services.GetRequiredService<ReportsViewModel>(), // Placeholder for future split
                 "FinancialReport" => _services.GetRequiredService<ReportsViewModel>(), // Placeholder for future split

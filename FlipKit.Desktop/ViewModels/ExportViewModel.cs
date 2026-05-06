@@ -43,7 +43,9 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private DateTimeOffset? _addedTo;
         [ObservableProperty] private string _searchText = string.Empty;
 
-        public List<ExportPlatform> ExportPlatformOptions { get; } = Enum.GetValues<ExportPlatform>().ToList();
+        // eBay CSV export is removed — direct API publishing lives on the Publish to eBay page.
+        public List<ExportPlatform> ExportPlatformOptions { get; } = Enum.GetValues<ExportPlatform>()
+            .Where(p => p != ExportPlatform.eBay).ToList();
 
         public const string AllSportsLabel = "All sports";
         public List<string> SportFilterOptions { get; } = new List<string> { AllSportsLabel }

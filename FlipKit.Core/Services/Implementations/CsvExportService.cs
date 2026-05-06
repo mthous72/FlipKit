@@ -13,32 +13,24 @@ using CsvHelper.Configuration;
 namespace FlipKit.Core.Services
 {
     /// <summary>
-    /// Per-platform CSV export dispatcher. Validates the input cards via
-    /// <see cref="ExportValidator"/>, then routes to the platform-specific exporter
-    /// (currently <see cref="WhatnotExporter"/>; eBay lands in the next step).
-    ///
-    /// Title/description generation lives here because both exporters take callbacks
-    /// for those — this keeps the dispatcher as the single owner of the platform-aware
-    /// title-template logic without the exporters needing to know about
-    /// <see cref="ISettingsService"/>.
+    /// CSV export dispatcher. Validates the input cards via <see cref="ExportValidator"/>
+    /// then routes to the platform-specific exporter (Whatnot/COMC/Generic).
+    /// eBay listing creation is handled by <see cref="EbayPublishingService"/> instead.
     /// </summary>
     public class CsvExportService : IExportService
     {
         private readonly ISettingsService _settingsService;
         private readonly TitleTemplateService _titleTemplateService;
         private readonly WhatnotExporter _whatnotExporter;
-        private readonly EbayExporter _ebayExporter;
         private readonly ExportValidator _validator;
 
         public CsvExportService(
             ISettingsService settingsService,
             WhatnotExporter whatnotExporter,
-            EbayExporter ebayExporter,
             ExportValidator validator)
         {
             _settingsService = settingsService;
             _whatnotExporter = whatnotExporter;
-            _ebayExporter = ebayExporter;
             _validator = validator;
             _titleTemplateService = new TitleTemplateService();
         }
@@ -131,9 +123,7 @@ namespace FlipKit.Core.Services
 
         public IReadOnlyList<ExportRowError> ValidateBatch(IList<Card> cards, ExportPlatform platform)
         {
-            return platform == ExportPlatform.eBay
-                ? _validator.ValidateForEbay(cards)
-                : _validator.ValidateForWhatnot(cards);
+            return _validator.ValidateForWhatnot(cards);
         }
 
         public async Task ExportCsvAsync(List<Card> cards, string outputPath)
@@ -144,43 +134,15 @@ namespace FlipKit.Core.Services
 
         public async Task ExportCsvAsync(List<Card> cards, string outputPath, ExportPlatform platform)
         {
-            // 1. Pre-flight validation. Blocking errors throw; warnings are silently
-            //    accepted (the caller can re-run the validator directly to surface them).
-            var errors = platform == ExportPlatform.eBay
-                ? _validator.ValidateForEbay(cards)
-                : _validator.ValidateForWhatnot(cards);
+            var errors = _validator.ValidateForWhatnot(cards);
             var blockers = errors.Where(e => e.Severity == ExportErrorSeverity.Error).ToList();
             if (blockers.Count > 0)
                 throw new ExportValidationException(blockers);
 
-            // 2. Dispatch to the platform-specific exporter.
-            //    eBay lands in the next step; for now, only Whatnot writes a real file
-            //    while Generic / COMC fall through to the Whatnot writer (matches the
-            //    pre-refactor behavior — those platforms always produced Whatnot-style
-            //    CSVs but with platform-specific titles).
-            var settings = _settingsService.Load();
             var titleFor = (Card c) => GenerateTitle(c, platform);
             var descFor = (Card c) => GenerateDescription(c);
 
-            switch (platform)
-            {
-                case ExportPlatform.eBay:
-                    await _ebayExporter.WriteAsync(cards, outputPath, titleFor, descFor, new EbayExportOptions
-                    {
-                        CategoryId      = "261328",
-                        Duration        = "GTC",
-                        SellerLocation  = settings.EbaySellerLocation,
-                        DispatchTimeMax = settings.EbayDispatchTimeMax,
-                        ReturnsAccepted = settings.EbayReturnsAccepted,
-                        UseVerifyAdd    = settings.EbayUseVerifyAdd,
-                    });
-                    break;
-
-                default:
-                    await _whatnotExporter.WriteAsync(
-                        cards, outputPath, titleFor, descFor, new WhatnotExportOptions());
-                    break;
-            }
+            await _whatnotExporter.WriteAsync(cards, outputPath, titleFor, descFor, new WhatnotExportOptions());
         }
 
         public async Task ExportTaxCsvAsync(List<Card> soldCards, string outputPath)

@@ -119,11 +119,14 @@
                     <!-- eBay API Credentials -->
                     <TextBlock Text="eBay API Credentials (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7" Margin="0,2,0,6">
-                        Needed only for direct eBay listing creation. CSV export works without these.
+                        Required for direct eBay listing creation via the Publish to eBay page.
+                        Enter your App ID and Client Secret, then authorize your account with Connect.
                     </TextBlock>
+
                     <TextBlock Text="App ID (Client ID)" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                     <TextBox Text="{Binding EbayClientId}"
                              PasswordChar="*" Watermark="e.g. YourApp-12345-Prod-xxxxxxxx-xxxxxxxx"/>
+
                     <TextBlock Text="Client Secret" FontSize="12" Opacity="0.7" Margin="0,4,0,0"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
@@ -133,10 +136,31 @@
                                  PasswordChar="*" Watermark="PRD-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/>
                     </DockPanel>
                     <TextBlock Text="{Binding EbayStatus}" FontSize="12" Opacity="0.7"/>
+
+                    <TextBlock Text="RuName (Redirect URL Name)" FontSize="12" Opacity="0.7" Margin="0,8,0,0"/>
+                    <TextBox Text="{Binding EbayRuName}"
+                             Watermark="YourApp-AppID-PRD-xxxxxxxx-xxxxxxxx"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,2,0,0">
+                        Find your RuName at developer.ebay.com/my/keys → User Tokens → your app's Redirect URL Name.
+                        The redirect URL must point to http://localhost:7777/
+                    </TextBlock>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+                        <TextBlock Grid.Column="0" Text="{Binding EbayConnectStatus}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Connect eBay Account"
+                                Command="{Binding ConnectEbayAccountCommand}"
+                                IsEnabled="{Binding !IsConnectingEbay}"
+                                Margin="0,0,8,0"/>
+                        <Button Grid.Column="2" Content="Fetch Account Policies"
+                                Command="{Binding FetchEbayPoliciesCommand}"
+                                IsEnabled="{Binding !IsFetchingEbayPolicies}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding EbayPoliciesStatus}" FontSize="12" Opacity="0.7"/>
+
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,4,0,0">
                         Get credentials: developer.ebay.com/my/keys → sign in → Get a Production Keyset.
-                        eBay may require a one-time production approval — submit a support ticket at
-                        developer.ebay.com/support if the Test button returns "Connection failed".
+                        After entering credentials, click Connect eBay Account to authorize FlipKit via your browser.
+                        Then click Fetch Account Policies to load your fulfillment, payment, and return policies.
                     </TextBlock>
 
 

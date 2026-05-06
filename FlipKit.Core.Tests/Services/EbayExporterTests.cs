@@ -8,9 +8,8 @@ public class EbayExporterTests
 {
     private static EbayExporter CreateExporter()
     {
-        var template = new EbayTemplateProvider();
         var shipping = new ShippingProfileNormalizer(new WhatnotValuesProvider());
-        return new EbayExporter(template, shipping);
+        return new EbayExporter(shipping);
     }
 
     private static EbayExportOptions DefaultOptions() => new()
