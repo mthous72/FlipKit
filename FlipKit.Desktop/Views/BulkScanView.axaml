@@ -256,6 +256,71 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Enhance ticker — shows live AI-enhance state with image, OCR text, and model -->
+                    <Border IsVisible="{Binding IsEnhancing}"
+                            Background="#FFF8E1" CornerRadius="6" Padding="14"
+                            BorderBrush="#FFB300" BorderThickness="1">
+                        <StackPanel Spacing="10" x:CompileBindings="False">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="🔍" FontSize="20" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                    <TextBlock FontWeight="SemiBold" FontSize="14">
+                                        <Run Text="Enhancing card"/>
+                                        <Run Text="{Binding EnhanceProgress}"/>
+                                        <Run Text="of"/>
+                                        <Run Text="{Binding EnhanceTotal}"/>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding CurrentEnhanceItem.DisplayName}"
+                                               FontSize="13" Opacity="0.85"/>
+                                    <TextBlock FontSize="11" Opacity="0.7">
+                                        <Run Text="Model:"/>
+                                        <Run Text="{Binding CurrentEnhanceModel}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8"
+                                  IsVisible="{Binding CurrentEnhanceItem, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Image Grid.Column="0" Height="120" Stretch="Uniform"
+                                       Source="{Binding CurrentEnhanceItem.FrontImagePath, Converter={StaticResource FilePathToBitmapConverter}}"/>
+                                <Image Grid.Column="1" Height="120" Stretch="Uniform"
+                                       Source="{Binding CurrentEnhanceItem.BackImagePath, Converter={StaticResource FilePathToBitmapConverter}}"/>
+                            </Grid>
+
+                            <StackPanel Spacing="4"
+                                        IsVisible="{Binding CurrentEnhanceItem.CardDetail, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="OCR-extracted hints sent to AI:" FontSize="11" FontWeight="SemiBold" Opacity="0.75"/>
+                                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+                                      ColumnSpacing="8" RowSpacing="2">
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Player:" FontSize="11" Opacity="0.7"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentEnhanceItem.CardDetail.PlayerName}" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Year:" FontSize="11" Opacity="0.7"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CurrentEnhanceItem.CardDetail.Year}" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Card #:" FontSize="11" Opacity="0.7"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CurrentEnhanceItem.CardDetail.CardNumber}" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Manufacturer:" FontSize="11" Opacity="0.7"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CurrentEnhanceItem.CardDetail.Manufacturer}" FontSize="11"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Brand:" FontSize="11" Opacity="0.7"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding CurrentEnhanceItem.CardDetail.Brand}" FontSize="11"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Set:" FontSize="11" Opacity="0.7"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding CurrentEnhanceItem.CardDetail.SetName}" FontSize="11"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2"
+                                        IsVisible="{Binding CurrentEnhanceItem.OcrTextPreview, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Raw OCR text:" FontSize="11" FontWeight="SemiBold" Opacity="0.75"/>
+                                <Border Background="White" CornerRadius="3" Padding="6" MaxHeight="100">
+                                    <ScrollViewer>
+                                        <TextBlock Text="{Binding CurrentEnhanceItem.OcrTextPreview}"
+                                                   FontFamily="Consolas, Courier New" FontSize="10"
+                                                   TextWrapping="Wrap"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Empty state when no item is selected or no items scanned -->
                     <StackPanel IsVisible="{Binding SelectedCard, Converter={x:Static ObjectConverters.IsNull}}"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -278,6 +343,9 @@
                     IsVisible="{Binding IsScanning}" Padding="20,10"/>
             <Button Content="Save All" Command="{Binding SaveAllCommand}"
                     Padding="20,10"/>
+            <Button Content="Rescan Selected" Command="{Binding RescanSelectedCommand}"
+                    IsVisible="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Padding="20,10"/>
             <!-- Enhance buttons (OCR mode) -->
             <Button Content="Enhance All with AI" Command="{Binding EnhanceAllCommand}"
                     IsVisible="{Binding HasOcrScannedItems}"
@@ -290,8 +358,18 @@
             <!-- Enhance progress -->
             <StackPanel IsVisible="{Binding IsEnhancing}" Orientation="Horizontal"
                         Spacing="8" VerticalAlignment="Center">
-                <ProgressBar IsIndeterminate="True" Width="80" Height="8" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                <ProgressBar Minimum="0" Maximum="{Binding EnhanceTotal}" Value="{Binding EnhanceProgress}"
+                             Width="120" Height="8" VerticalAlignment="Center"/>
+                <TextBlock FontSize="12" Opacity="0.8" VerticalAlignment="Center">
+                    <Run Text="Enhancing"/>
+                    <Run Text="{Binding EnhanceProgress}"/>
+                    <Run Text="of"/>
+                    <Run Text="{Binding EnhanceTotal}"/>
+                </TextBlock>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"
+                           IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <Button Content="Cancel Enhance" Command="{Binding CancelEnhanceCommand}"
+                        Padding="10,4" VerticalAlignment="Center"/>
             </StackPanel>
             <Button Content="Remove Selected" Command="{Binding RemoveSelectedCommand}"
                     Padding="20,10"/>

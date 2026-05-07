@@ -31,6 +31,15 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty]
         private bool _isWindowVisible = true;
 
+        private BulkScanViewModel? _bulkScanVm;
+
+        /// <summary>
+        /// Singleton bulk-scan view model exposed for the persistent global status bar.
+        /// Lazy-resolved so the model catalog HTTP call doesn't fire on app launch —
+        /// only when the status bar binding first reads it (after navigation occurs).
+        /// </summary>
+        public BulkScanViewModel BulkScanVm => _bulkScanVm ??= _services.GetRequiredService<BulkScanViewModel>();
+
         public MainWindowViewModel(IServiceProvider services, ISettingsService settingsService,
             IServerManagementService serverManagement)
         {
