@@ -88,6 +88,11 @@ namespace FlipKit.Core.Models
         // For paid models (with credits), use 3-4 for optimal performance
         public int MaxConcurrentScans { get; set; } = 1;
 
+        // Preferred model for bulk scans (null = same as DefaultModel).
+        // Stored separately so the user can keep a fast/cheap model for bulk lots
+        // while using a more thorough model for individual card scans.
+        public string? PreferredBulkScanModel { get; set; }
+
         // Data Access Mode - Auto-detected based on API URL
         // If empty/localhost: Uses local SQLite database (fast, direct access)
         // If Tailscale IP: Uses remote API (network access via FlipKit.Api)

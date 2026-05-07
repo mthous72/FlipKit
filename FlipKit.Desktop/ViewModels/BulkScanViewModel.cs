@@ -10,6 +10,7 @@ using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using FlipKit.Core.Helpers;
 
 namespace FlipKit.Desktop.ViewModels
 {
@@ -17,6 +18,7 @@ namespace FlipKit.Desktop.ViewModels
     {
         private readonly IScannerService _scannerService;
         private readonly ICardRepository _cardRepository;
+        private readonly ISurpriseSetRepository _surpriseSetRepository;
         private readonly IFileDialogService _fileDialogService;
         private readonly ISettingsService _settingsService;
         private readonly IVariationVerifier _variationVerifier;
@@ -50,6 +52,15 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isLoadingModels;
         [ObservableProperty] private string? _modelLoadError;
 
+        // Surprise Set destination
+        [ObservableProperty] private BulkScanDestination _destination = BulkScanDestination.Inventory;
+        [ObservableProperty] private int? _destinationSurpriseSetId;
+        [ObservableProperty] private ScanDepth _scanDepth = ScanDepth.Standard;
+
+        // Rate-limit banners
+        [ObservableProperty] private bool _isRateLimitPaused;
+        [ObservableProperty] private string? _rateLimitBannerMessage;
+
         public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
         // Treats Auto and any explicit free pick as "free": forces concurrency = 1 to
@@ -59,10 +70,26 @@ namespace FlipKit.Desktop.ViewModels
             || SelectedModel.IsAuto
             || (SelectedModel.Model?.IsFree ?? SelectedModel.Value.Contains(":free"));
 
+        // Show the free-model info banner when not already paused on a rate limit.
+        public bool ShowFreeModelBanner => IsSelectedModelFree && !IsRateLimitPaused;
+
         partial void OnSelectedModelChanged(ModelOption? value)
         {
             OnPropertyChanged(nameof(IsSelectedModelFree));
+            OnPropertyChanged(nameof(ShowFreeModelBanner));
             if (IsSelectedModelFree) MaxConcurrentScans = 1;
+        }
+
+        partial void OnIsRateLimitPausedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowFreeModelBanner));
+        }
+
+        partial void OnDestinationChanged(BulkScanDestination value)
+        {
+            // Surprise Set bulk scans default to Quick depth — just enough to label each slot.
+            // The user can override after the fact from the Inventory view.
+            ScanDepth = value == BulkScanDestination.SurpriseSet ? ScanDepth.Quick : ScanDepth.Standard;
         }
 
         public ObservableCollection<BulkScanItem> Items { get; } = new();
@@ -77,6 +104,7 @@ namespace FlipKit.Desktop.ViewModels
         public BulkScanViewModel(
             IScannerService scannerService,
             ICardRepository cardRepository,
+            ISurpriseSetRepository surpriseSetRepository,
             IFileDialogService fileDialogService,
             ISettingsService settingsService,
             IVariationVerifier variationVerifier,
@@ -89,6 +117,7 @@ namespace FlipKit.Desktop.ViewModels
         {
             _scannerService = scannerService;
             _cardRepository = cardRepository;
+            _surpriseSetRepository = surpriseSetRepository;
             _fileDialogService = fileDialogService;
             _settingsService = settingsService;
             _variationVerifier = variationVerifier;
@@ -199,6 +228,8 @@ namespace FlipKit.Desktop.ViewModels
                 return;
 
             IsScanning = true;
+            IsRateLimitPaused = false;
+            RateLimitBannerMessage = null;
             ErrorMessage = null;
             SuccessMessage = null;
             ScanProgress = 0;
@@ -268,7 +299,8 @@ namespace FlipKit.Desktop.ViewModels
             // nullable _scanCts field (eliminates the CS8602 suppression that
             // used to wrap the whole method body).
             var cts = _scanCts;
-            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel, cts));
+            var currentScanDepth = ScanDepth;
+            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel, currentScanDepth, cts));
 
             try
             {
@@ -281,6 +313,7 @@ namespace FlipKit.Desktop.ViewModels
 
             var scanned = Items.Count(i => i.Status == BulkScanStatus.Scanned);
             var errors = Items.Count(i => i.Status == BulkScanStatus.Error);
+            var rateLimited = Items.Count(i => i.Status == BulkScanStatus.RateLimited);
 
             // Get log path BEFORE ending session (which clears the path)
             var logPath = _errorLogger.GetCurrentLogFilePath();
@@ -292,16 +325,17 @@ namespace FlipKit.Desktop.ViewModels
             _scanCts = null;
             StatusMessage = null;
 
-            if (errors > 0)
+            if (IsRateLimitPaused)
+            {
+                ErrorMessage = $"Scanned {scanned} cards, then hit the daily OpenRouter rate limit. " +
+                               $"{rateLimited} card(s) pending. Add credits at openrouter.ai, then click Resume.";
+            }
+            else if (errors > 0)
             {
                 if (!string.IsNullOrEmpty(logPath))
-                {
                     ErrorMessage = $"Scanned {scanned} cards, {errors} failed.\n\nError log saved to:\n{logPath}";
-                }
                 else
-                {
                     ErrorMessage = $"Scanned {scanned} cards, {errors} failed";
-                }
             }
             else
                 SuccessMessage = $"Scanned {scanned} cards successfully";
@@ -350,6 +384,7 @@ namespace FlipKit.Desktop.ViewModels
             AppSettings settings,
             IReadOnlyList<string> modelChain,
             bool isFreeModel,
+            ScanDepth scanDepth,
             CancellationTokenSource cts)
         {
             // Wait for semaphore slot (rate limiting)
@@ -368,6 +403,7 @@ namespace FlipKit.Desktop.ViewModels
                 {
                     // Walk the model chain — first model that succeeds wins. If every model
                     // throws, the outer catch records the final error.
+                    // AccountPerDay rate limits are re-thrown so the outer catch can pause.
                     ScanResult? scanResult = null;
                     Exception? lastError = null;
                     string usedModel = modelChain[0];
@@ -376,9 +412,15 @@ namespace FlipKit.Desktop.ViewModels
                         try
                         {
                             scanResult = await _scannerService.ScanCardAsync(
-                                item.FrontImagePath, item.BackImagePath, modelId);
+                                item.FrontImagePath, item.BackImagePath, modelId,
+                                scanDepth: scanDepth);
                             usedModel = modelId;
                             break;
+                        }
+                        catch (OpenRouterRateLimitException rlEx)
+                            when (rlEx.Scope == RateLimitScope.AccountPerDay)
+                        {
+                            throw; // propagate to outer catch — pauses the whole run
                         }
                         catch (Exception ex)
                         {
@@ -441,6 +483,17 @@ namespace FlipKit.Desktop.ViewModels
                     // Log success for tracking
                     _errorLogger.LogSuccess(item.Index, item.FrontImagePath, item.DisplayName);
                 }
+                catch (OpenRouterRateLimitException rlEx)
+                    when (rlEx.Scope == RateLimitScope.AccountPerDay)
+                {
+                    _logger.LogError("Daily OpenRouter rate limit reached on card {Index}. Pausing bulk scan.", item.Index);
+                    item.Status = BulkScanStatus.RateLimited;
+                    item.ErrorMessage = "Daily OpenRouter rate limit reached. Add credits, then click Resume.";
+                    IsRateLimitPaused = true;
+                    RateLimitBannerMessage =
+                        "Daily OpenRouter rate limit reached. Add credits at openrouter.ai, then click Resume to continue.";
+                    cts.Cancel(); // stop remaining pending items
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to scan card {Index}: {Path}", item.Index, item.FrontImagePath);
@@ -480,6 +533,22 @@ namespace FlipKit.Desktop.ViewModels
             _scanCts?.Cancel();
         }
 
+        /// <summary>
+        /// Resets rate-limited items to Pending and restarts the scan.
+        /// Called after the user adds OpenRouter credits or waits for the daily reset.
+        /// </summary>
+        [RelayCommand]
+        private async Task ResumeBulkScanAsync()
+        {
+            foreach (var item in Items.Where(i => i.Status == BulkScanStatus.RateLimited))
+                item.Status = BulkScanStatus.Pending;
+
+            IsRateLimitPaused = false;
+            RateLimitBannerMessage = null;
+
+            await ScanAllAsync();
+        }
+
         [RelayCommand]
         private async Task SaveAllAsync()
         {
@@ -492,6 +561,9 @@ namespace FlipKit.Desktop.ViewModels
             SuccessMessage = null;
             int saved = 0;
 
+            var isSurpriseSetDestination =
+                Destination == BulkScanDestination.SurpriseSet && DestinationSurpriseSetId.HasValue;
+
             foreach (var item in ready)
             {
                 try
@@ -500,16 +572,21 @@ namespace FlipKit.Desktop.ViewModels
                     card.ImagePathFront = item.FrontImagePath;
                     card.ImagePathBack = item.BackImagePath;
 
-                    // Auto-fill Whatnot category/subcategory from Sport when blank.
-                    FlipKit.Core.Helpers.WhatnotCategoryDefaulter.ApplyDefaults(card);
-
-                    // Auto-upload any local images that don't yet have a hosted URL.
+                    WhatnotCategoryDefaulter.ApplyDefaults(card);
                     await TryUploadMissingUrlsAsync(card);
 
-                    // Auto-status: Ready when both images and price are present; Draft otherwise.
-                    card.Status = FlipKit.Core.Helpers.CardStatusEvaluator.Evaluate(card);
-
-                    await _cardRepository.InsertCardAsync(card);
+                    if (isSurpriseSetDestination)
+                    {
+                        // Skip individual-listing price evaluation — the set handles revenue allocation.
+                        card.Status = CardStatus.ReservedForSet;
+                        await _cardRepository.InsertCardAsync(card);
+                        await _surpriseSetRepository.AddCardAsync(DestinationSurpriseSetId!.Value, card);
+                    }
+                    else
+                    {
+                        card.Status = CardStatusEvaluator.Evaluate(card);
+                        await _cardRepository.InsertCardAsync(card);
+                    }
 
                     item.Status = BulkScanStatus.Saved;
                     saved++;
@@ -522,7 +599,9 @@ namespace FlipKit.Desktop.ViewModels
             }
 
             IsSaving = false;
-            SuccessMessage = $"Saved {saved} cards to My Cards!";
+            SuccessMessage = isSurpriseSetDestination
+                ? $"Added {saved} cards to Surprise Set!"
+                : $"Saved {saved} cards to My Cards!";
         }
 
         /// <summary>
@@ -603,7 +682,14 @@ namespace FlipKit.Desktop.ViewModels
         Scanning,
         Scanned,
         Saved,
-        Error
+        Error,
+        RateLimited, // Daily limit hit — reset to Pending via ResumeBulkScan
+    }
+
+    public enum BulkScanDestination
+    {
+        Inventory,   // Save as standalone cards in My Cards (default)
+        SurpriseSet, // Add directly to a specific Surprise Set
     }
 
     public partial class BulkScanItem : ObservableObject

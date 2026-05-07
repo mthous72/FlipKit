@@ -13,6 +13,7 @@ public class BulkScanViewModelTests
     private static BulkScanViewModel Create(
         IScannerService? scanner = null,
         ICardRepository? repo = null,
+        ISurpriseSetRepository? setRepo = null,
         IFileDialogService? dialog = null,
         ISettingsService? settings = null,
         IVariationVerifier? verifier = null,
@@ -38,6 +39,7 @@ public class BulkScanViewModelTests
         return new BulkScanViewModel(
             scanner ?? Substitute.For<IScannerService>(),
             repo ?? Substitute.For<ICardRepository>(),
+            setRepo ?? Substitute.For<ISurpriseSetRepository>(),
             dialog ?? Substitute.For<IFileDialogService>(),
             settings,
             verifier ?? Substitute.For<IVariationVerifier>(),
