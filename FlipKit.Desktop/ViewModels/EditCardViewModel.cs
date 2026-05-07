@@ -23,6 +23,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
         private readonly ISettingsService _settingsService;
         private readonly IScannerService _scannerService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<EditCardViewModel> _logger;
 
         private Card? _originalCard;
@@ -68,7 +69,8 @@ namespace FlipKit.Desktop.ViewModels
             IWebcamCaptureDialogService webcamCaptureDialog,
             ISettingsService settingsService,
             IScannerService scannerService,
-            ILogger<EditCardViewModel> logger)
+            ILogger<EditCardViewModel> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
             _navigationService = navigationService;
@@ -77,6 +79,7 @@ namespace FlipKit.Desktop.ViewModels
             _webcamCaptureDialog = webcamCaptureDialog;
             _settingsService = settingsService;
             _scannerService = scannerService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
 
             IsWebcamEnabled = settingsService.Load().WebcamCaptureEnabled;
@@ -257,8 +260,17 @@ namespace FlipKit.Desktop.ViewModels
 
             try
             {
+                // Reconstruct verified-fields hint from the saved Card by
+                // re-querying the directory. Falls back to the legacy 6-field
+                // soft hint when the directory isn't ready (fresh install,
+                // pre-seed). Cards that weren't OCR-sourced still benefit —
+                // any directory-anchored field gets locked.
                 OcrHint? hint = null;
-                if (_originalCard.DataSource == CardDataSource.Ocr)
+                if (_playerDirectory?.IsReady == true)
+                {
+                    hint = _playerDirectory.BuildHintFromCard(CardDetail.ToCard());
+                }
+                else if (_originalCard.DataSource == CardDataSource.Ocr)
                 {
                     hint = new OcrHint
                     {

@@ -836,6 +836,54 @@ namespace FlipKit.Desktop.ViewModels
             _enhanceCts.Cancel();
         }
 
+        /// <summary>
+        /// Builds the OCR hint sent to the LLM during Enhance. Catalog-anchored
+        /// fields (player name matched against the checklist, brand normalized,
+        /// sport inferred from team, year validated, etc.) are marked
+        /// "verified" so the LLM echoes them verbatim and spends its token
+        /// budget on visual-pattern fields it actually has to look at the image
+        /// for (parallel pattern, refractor type, foil, border, etc.). Other
+        /// populated fields ride along as soft suggestions the LLM can override.
+        /// </summary>
+        private static OcrHint BuildEnhanceHint(BulkScanItem item)
+        {
+            var d = item.CardDetail;
+            var hint = new OcrHint
+            {
+                PlayerName = d?.PlayerName,
+                Year = d?.Year,
+                CardNumber = d?.CardNumber,
+                Manufacturer = d?.Manufacturer,
+                Brand = d?.Brand,
+                SetName = d?.SetName,
+                Team = d?.Team,
+                Sport = d?.Sport?.ToString(),
+                ParallelName = d?.ParallelName,
+                SerialNumbered = d?.SerialNumbered,
+                IsRookie = d?.IsRookie,
+                IsAuto = d?.IsAuto,
+                IsRelic = d?.IsRelic,
+                IsGraded = d?.IsGraded,
+                GradeCompany = d?.GradeCompany,
+                GradeValue = d?.GradeValue,
+                AllVisibleText = item.OcrText.ToList(),
+            };
+
+            // Promote any High/Medium-confidence field from the OCR scan to
+            // "verified" status — the LLM will echo these. Low-confidence
+            // values stay as suggestive (LLM may override). Field names match
+            // the JSON schema keys the prompt uses.
+            foreach (var conf in item.Confidences)
+            {
+                if (conf.Confidence == VerificationConfidence.High
+                    || conf.Confidence == VerificationConfidence.Medium)
+                {
+                    hint.VerifiedFieldNames.Add(conf.FieldName);
+                }
+            }
+            return hint;
+        }
+
         private async Task RunBulkEnhanceAsync(List<BulkScanItem> items)
         {
             if (items.Count == 0) return;
@@ -871,15 +919,14 @@ namespace FlipKit.Desktop.ViewModels
 
                     try
                     {
-                        var hint = new OcrHint
-                        {
-                            PlayerName = item.CardDetail.PlayerName,
-                            Year = item.CardDetail.Year,
-                            CardNumber = item.CardDetail.CardNumber,
-                            Manufacturer = item.CardDetail.Manufacturer,
-                            Brand = item.CardDetail.Brand,
-                            SetName = item.CardDetail.SetName,
-                        };
+                        // Build a rich OcrHint from the post-validation Card. The
+                        // OCR pass already wrote High/Medium-confidence values for
+                        // catalog-anchored fields (player matched against checklist,
+                        // brand normalized, sport inferred from team, etc.); marking
+                        // those as "verified" tells the LLM to echo them rather than
+                        // re-derive from the image. Low-confidence values are still
+                        // sent as suggestions so the LLM has context.
+                        var hint = BuildEnhanceHint(item);
 
                         ScanResult? result = null;
                         foreach (var modelId in freeChain)

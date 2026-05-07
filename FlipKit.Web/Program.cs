@@ -89,6 +89,10 @@ builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on Db
 builder.Services.AddSingleton<IImageUploadService, ImgBBUploadService>();
 builder.Services.AddScoped<IVariationVerifier, VariationVerifierService>(); // Depends on DbContext
 builder.Services.AddSingleton<IChecklistLearningService, ChecklistLearningService>(); // Uses IServiceProvider to create scopes
+// Directory for OCR / Enhance fuzzy lookups against imported checklists +
+// reference seed. Singleton so the cache is hot across requests; refresh on
+// app start and after every checklist import.
+builder.Services.AddSingleton<IPlayerNameDirectory, PlayerNameDirectory>();
 // Phase 1 of the Checklist Insider import work — parser + service that turn user-supplied
 // .xlsx files into SetChecklist rows. Singleton because nothing here owns DbContext directly;
 // the service resolves a scoped DbContext per commit via IServiceProvider.

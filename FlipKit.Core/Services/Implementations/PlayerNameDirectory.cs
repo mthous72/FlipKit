@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FlipKit.Core.Data;
+using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
+using System.Text.RegularExpressions;
 using FuzzySharp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -315,6 +317,106 @@ namespace FlipKit.Core.Services
             if (result == null) return (null, 0);
             if (result.Score < minScore) return (null, 0);
             return (result.Value, result.Score);
+        }
+
+        // Matches "12/99" or "/99" — both are valid SerialNumbered shapes.
+        private static readonly Regex SerialNumberedShape = new(@"^\d*/\d+$", RegexOptions.Compiled);
+
+        public OcrHint BuildHintFromCard(Card card)
+        {
+            var hint = new OcrHint
+            {
+                PlayerName     = card.PlayerName,
+                Year           = card.Year,
+                CardNumber     = card.CardNumber,
+                Manufacturer   = card.Manufacturer,
+                Brand          = card.Brand,
+                SetName        = card.SetName,
+                Team           = card.Team,
+                Sport          = card.Sport?.ToString(),
+                ParallelName   = card.ParallelName,
+                SerialNumbered = card.SerialNumbered,
+                IsRookie       = card.IsRookie,
+                IsAuto         = card.IsAuto,
+                IsRelic        = card.IsRelic,
+                IsGraded       = card.IsGraded,
+                GradeCompany   = card.GradeCompany,
+                GradeValue     = card.GradeValue,
+                // AllVisibleText stays empty — saved cards don't carry raw OCR.
+            };
+
+            if (!_ready) return hint;
+
+            // Player name: directory fuzzy match at the standard threshold.
+            if (!string.IsNullOrWhiteSpace(card.PlayerName)
+                && FindBestMatch(card.PlayerName) is not null)
+            {
+                hint.VerifiedFieldNames.Add("player_name");
+            }
+
+            // Brand: directory fuzzy match (any score above its threshold).
+            if (!string.IsNullOrWhiteSpace(card.Brand)
+                && FindBrand(card.Brand) is not null)
+            {
+                hint.VerifiedFieldNames.Add("brand");
+            }
+
+            // Manufacturer: exact case-insensitive membership.
+            if (!string.IsNullOrWhiteSpace(card.Manufacturer)
+                && _manufacturers.Contains(card.Manufacturer))
+            {
+                hint.VerifiedFieldNames.Add("manufacturer");
+            }
+
+            // Year: present in any imported checklist.
+            if (card.Year.HasValue && IsKnownYear(card.Year.Value))
+                hint.VerifiedFieldNames.Add("year");
+
+            // Team + sport go together — if we recognize the team, we trust the
+            // sport that's bound to it. Saved cards may carry a Sport that
+            // differs from the team's expected sport (rare, but possible if
+            // the user edited it); we still anchor sport in that case because
+            // the sport string was either set by us at scan time or by the
+            // user — both are intentional.
+            if (!string.IsNullOrWhiteSpace(card.Team)
+                && GetSportForTeam(card.Team) is not null)
+            {
+                hint.VerifiedFieldNames.Add("team");
+                hint.VerifiedFieldNames.Add("sport");
+            }
+
+            // ParallelName: exact case-insensitive membership in seeded universe.
+            if (!string.IsNullOrWhiteSpace(card.ParallelName)
+                && _parallels.Contains(card.ParallelName, StringComparer.OrdinalIgnoreCase))
+            {
+                hint.VerifiedFieldNames.Add("parallel_name");
+            }
+
+            // SerialNumbered: shape-validated.
+            if (!string.IsNullOrWhiteSpace(card.SerialNumbered)
+                && SerialNumberedShape.IsMatch(card.SerialNumbered))
+            {
+                hint.VerifiedFieldNames.Add("serial_numbered");
+            }
+
+            // GradeCompany: in the seeded authority list.
+            if (!string.IsNullOrWhiteSpace(card.GradeCompany)
+                && _gradingAuthorityCodes.Contains(card.GradeCompany, StringComparer.OrdinalIgnoreCase))
+            {
+                hint.VerifiedFieldNames.Add("grade_company");
+            }
+
+            // Bool flags: only "verified" when true. False is the default and
+            // would over-anchor the LLM (it might never report a true even
+            // when it should). is_graded follows the grading-company logic
+            // since the two are bound — if we trust the company, we trust
+            // is_graded.
+            if (card.IsGraded) hint.VerifiedFieldNames.Add("is_graded");
+            if (card.IsRookie) hint.VerifiedFieldNames.Add("is_rookie");
+            if (card.IsAuto)   hint.VerifiedFieldNames.Add("is_auto");
+            if (card.IsRelic)  hint.VerifiedFieldNames.Add("is_relic");
+
+            return hint;
         }
     }
 }

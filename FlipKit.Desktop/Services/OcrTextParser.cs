@@ -349,9 +349,11 @@ namespace FlipKit.Desktop.Services
                 // Reject team / city words sourced from imported checklists.
                 if (words.Any(w => context.TeamTokens.Contains(w))) continue;
 
-                // Each word must be alpha-only with proper capitalization.
-                // (Allows hyphens and apostrophes for names like "Smith-Njigba" or "O'Neal".)
-                if (!words.All(w => Regex.IsMatch(w, @"^[A-Z][a-zA-Z'\-]*$"))) continue;
+                // Each word must look like a name token: alpha with proper
+                // capitalization (allowing hyphens / apostrophes for names like
+                // "Smith-Njigba" / "O'Neal"), OR an all-caps initials run
+                // ("C.J.", "J.P.").
+                if (!words.All(IsLikelyNameWord)) continue;
 
                 // Prefer 2-word names, then 3, then 4. Shorter wins.
                 int score = 100 - (words.Length * 10);
@@ -402,6 +404,18 @@ namespace FlipKit.Desktop.Services
 
         private static readonly Regex InitialsPattern =
             new("^([A-Z]\\.)+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        private static readonly Regex AlphaNameWordPattern =
+            new(@"^[A-Z][a-zA-Z'\-]*$", RegexOptions.Compiled);
+
+        /// <summary>
+        /// True when <paramref name="word"/> looks like one token of a player
+        /// name — either a regular alpha word (with hyphen / apostrophe for
+        /// compound surnames) or an all-caps initials run like "C.J." or
+        /// "J.P." that title-casing would mangle.
+        /// </summary>
+        private static bool IsLikelyNameWord(string word) =>
+            AlphaNameWordPattern.IsMatch(word) || InitialsPattern.IsMatch(word);
 
         private static string NormalizeNameWord(string word)
         {
@@ -519,7 +533,7 @@ namespace FlipKit.Desktop.Services
             if (words.Any(w => ConditionWords.Contains(w))) return false;
             if (words.Any(w => context.TeamTokens.Contains(w))) return false;
 
-            if (!words.All(w => Regex.IsMatch(w, @"^[A-Z][a-zA-Z'\-]*$"))) return false;
+            if (!words.All(IsLikelyNameWord)) return false;
 
             return true;
         }

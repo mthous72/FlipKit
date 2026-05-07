@@ -25,6 +25,7 @@ namespace FlipKit.Web.Controllers
         private readonly IMemoryCache _previewCache;
         private readonly IScannerService _scannerService;
         private readonly ISettingsService _settingsService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryController> _logger;
 
         public InventoryController(
@@ -35,7 +36,8 @@ namespace FlipKit.Web.Controllers
             IMemoryCache previewCache,
             IScannerService scannerService,
             ISettingsService settingsService,
-            ILogger<InventoryController> logger)
+            ILogger<InventoryController> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
             _env = env;
@@ -44,6 +46,7 @@ namespace FlipKit.Web.Controllers
             _previewCache = previewCache;
             _scannerService = scannerService;
             _settingsService = settingsService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
         }
 
@@ -231,8 +234,16 @@ namespace FlipKit.Web.Controllers
 
             try
             {
+                // Reconstruct verified-fields hint from the saved Card —
+                // re-querying the directory at Enhance time recovers the
+                // catalog-anchored fields. Falls back to the legacy 6-field
+                // soft hint when the directory isn't ready.
                 OcrHint? hint = null;
-                if (card.DataSource == CardDataSource.Ocr)
+                if (_playerDirectory?.IsReady == true)
+                {
+                    hint = _playerDirectory.BuildHintFromCard(card);
+                }
+                else if (card.DataSource == CardDataSource.Ocr)
                 {
                     hint = new OcrHint
                     {

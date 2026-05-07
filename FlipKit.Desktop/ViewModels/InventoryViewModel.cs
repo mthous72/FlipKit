@@ -31,6 +31,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly INavigationService _navigationService;
         private readonly IServiceProvider _serviceProvider;
         private readonly IScannerService _scannerService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryViewModel> _logger;
 
         private List<Card> _allCards = new();
@@ -101,7 +102,8 @@ namespace FlipKit.Desktop.ViewModels
             INavigationService navigationService,
             IServiceProvider serviceProvider,
             IScannerService scannerService,
-            ILogger<InventoryViewModel> logger)
+            ILogger<InventoryViewModel> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
             _settingsService = settingsService;
@@ -112,6 +114,7 @@ namespace FlipKit.Desktop.ViewModels
             _browserService = browserService;
             _serviceProvider = serviceProvider;
             _scannerService = scannerService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
 
             LoadCardsAsync();
@@ -498,15 +501,21 @@ namespace FlipKit.Desktop.ViewModels
                 {
                     _enhanceCts.Token.ThrowIfCancellationRequested();
 
-                    var hint = new OcrHint
-                    {
-                        PlayerName = card.PlayerName,
-                        Year = card.Year,
-                        CardNumber = card.CardNumber,
-                        Manufacturer = card.Manufacturer,
-                        Brand = card.Brand,
-                        SetName = card.SetName,
-                    };
+                    // Reconstruct verified-fields hint from the saved Card —
+                    // re-querying the directory at Enhance time recovers the
+                    // catalog-anchored fields (player, brand, sport-by-team,
+                    // year, etc.) that the LLM should echo verbatim.
+                    var hint = _playerDirectory?.IsReady == true
+                        ? _playerDirectory.BuildHintFromCard(card)
+                        : new OcrHint
+                        {
+                            PlayerName = card.PlayerName,
+                            Year = card.Year,
+                            CardNumber = card.CardNumber,
+                            Manufacturer = card.Manufacturer,
+                            Brand = card.Brand,
+                            SetName = card.SetName,
+                        };
 
                     var result = await _scannerService.ScanCardAsync(
                         card.ImagePathFront!,

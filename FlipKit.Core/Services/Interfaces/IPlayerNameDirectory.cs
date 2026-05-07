@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using FlipKit.Core.Models;
 
 namespace FlipKit.Core.Services
 {
@@ -140,6 +141,18 @@ namespace FlipKit.Core.Services
         /// Returned as <see cref="IReadOnlySet{T}"/> so contains-checks stay O(1).
         /// </summary>
         IReadOnlySet<string> TeamTokens { get; }
+
+        /// <summary>
+        /// Reconstructs an <see cref="OcrHint"/> from a persisted Card by
+        /// re-querying the directory for each field. Used by the Enhance
+        /// flow on saved Cards (My Cards / Edit / Surprise Set / Web) where
+        /// the original FieldConfidence list has been dropped during DB
+        /// persistence. Fields that still resolve to a directory match land
+        /// in <see cref="OcrHint.VerifiedFieldNames"/> so the LLM is asked
+        /// to echo them verbatim. Returns an empty hint with no verified
+        /// fields when the directory hasn't loaded yet.
+        /// </summary>
+        OcrHint BuildHintFromCard(Card card);
     }
 
     public record PlayerNameMatch(string Name, int Score);

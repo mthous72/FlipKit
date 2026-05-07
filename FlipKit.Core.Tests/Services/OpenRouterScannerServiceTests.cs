@@ -253,4 +253,163 @@ public class OpenRouterScannerServiceTests
 
         Assert.Equal("Just some free-text answer.", result);
     }
+
+    // ============================================================
+    // OcrHint preamble + drift guard
+    // ============================================================
+
+    [Fact]
+    public void BuildSoftHintPreamble_Used_When_VerifiedFieldNames_Empty()
+    {
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            Year = 2024,
+            Brand = "Mosaic",
+        };
+
+        var preamble = OpenRouterScannerService.BuildOcrHintPreamble(hint);
+
+        Assert.Contains("PRELIMINARY OCR DATA", preamble);
+        Assert.DoesNotContain("CONFIRMED FIELDS", preamble);
+        Assert.Contains("Justin Herbert", preamble);
+    }
+
+    [Fact]
+    public void BuildLockedHintPreamble_Used_When_AnyField_IsVerified()
+    {
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            Year = 2024,
+            Brand = "Mosaic",
+            CardNumber = "12",   // populated but unverified
+            VerifiedFieldNames = { "player_name", "year", "brand" },
+        };
+
+        var preamble = OpenRouterScannerService.BuildOcrHintPreamble(hint);
+
+        // CONFIRMED section lists the verified fields with JSON-key labels
+        Assert.Contains("CONFIRMED FIELDS", preamble);
+        Assert.Contains("player_name: \"Justin Herbert\"", preamble);
+        Assert.Contains("year: 2024", preamble);
+        Assert.Contains("brand: \"Mosaic\"", preamble);
+        // UNVERIFIED section captures populated-but-not-verified fields
+        Assert.Contains("UNVERIFIED OCR HINTS", preamble);
+        Assert.Contains("card_number: \"12\" (unverified)", preamble);
+        // Soft-hint preamble should NOT also be appended
+        Assert.DoesNotContain("PRELIMINARY OCR DATA", preamble);
+    }
+
+    [Fact]
+    public void BuildLockedHintPreamble_IncludesRawOcrText_WhenPresent()
+    {
+        var hint = new OcrHint
+        {
+            PlayerName = "X",
+            VerifiedFieldNames = { "player_name" },
+            AllVisibleText = { "TOPPS CHROME 2024", "Aaron Judge", "New York Yankees" },
+        };
+
+        var preamble = OpenRouterScannerService.BuildOcrHintPreamble(hint);
+
+        Assert.Contains("RAW OCR TEXT", preamble);
+        Assert.Contains("TOPPS CHROME 2024", preamble);
+        Assert.Contains("Aaron Judge", preamble);
+        Assert.Contains("New York Yankees", preamble);
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_Restores_PlayerName_When_LlmDrifts()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}"); // unused
+        var svc = CreateService(handler);
+
+        var card = new Card { PlayerName = "Justin Herburt" }; // LLM mistyped
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            VerifiedFieldNames = { "player_name" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal("Justin Herbert", card.PlayerName);
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_DoesNotModify_When_LlmEchoedCorrectly()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        var card = new Card { PlayerName = "Justin Herbert" };
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            VerifiedFieldNames = { "player_name" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal("Justin Herbert", card.PlayerName); // unchanged
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_LeavesUnverifiedFields_Untouched()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        // ParallelName is populated on the hint but NOT in VerifiedFieldNames.
+        // The LLM was free to override it; the drift guard should not restore.
+        var card = new Card { PlayerName = "Justin Herbert", ParallelName = "Disco Prizm" };
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            ParallelName = "Silver",
+            VerifiedFieldNames = { "player_name" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal("Justin Herbert", card.PlayerName);
+        Assert.Equal("Disco Prizm", card.ParallelName); // LLM's value kept
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_Restores_Year_When_LlmDrifts()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        var card = new Card { Year = 2023 }; // LLM picked the wrong year
+        var hint = new OcrHint
+        {
+            Year = 2024,
+            VerifiedFieldNames = { "year" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal(2024, card.Year);
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_Restores_Sport_FromString_To_Enum()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        var card = new Card { Sport = Sport.Baseball }; // LLM said wrong sport
+        var hint = new OcrHint
+        {
+            Sport = "Football",
+            VerifiedFieldNames = { "sport" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal(Sport.Football, card.Sport);
+    }
 }
