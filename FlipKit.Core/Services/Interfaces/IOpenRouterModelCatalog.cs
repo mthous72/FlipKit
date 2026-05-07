@@ -79,7 +79,6 @@ namespace FlipKit.Core.Services
             "google/gemma-4-26b-a4b-it:free",                         // 26B, strong vision
             "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",     // 30B, reasoning model
             "nvidia/nemotron-nano-12b-v2-vl:free",                    // 12B (DefaultFreeModelId)
-            "google/gemma-3-27b-it:free",                             // 27B, reliable fallback
         };
 
         /// <summary>
@@ -89,7 +88,6 @@ namespace FlipKit.Core.Services
         /// </summary>
         public static readonly string[] FallbackPaidModelIds = new[]
         {
-            "google/gemma-3-27b-it",                          // Cheapest paid Gemma — first in line
             "openai/gpt-4o-mini",                             // Cheap GPT-4o variant
             "google/gemini-2.0-flash-lite-001",               // Gemini lite, good value
             "meta-llama/llama-3.2-11b-vision-instruct",       // ~$0.05/M, decent quality

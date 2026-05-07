@@ -57,6 +57,35 @@
                         Paid models: Use 3-4 for best speed
                     </TextBlock>
 
+                    <!-- Destination -->
+                    <TextBlock Text="Save To" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <ComboBox ItemsSource="{Binding DestinationOptions}"
+                              SelectedItem="{Binding SelectedDestinationOption}"
+                              DisplayMemberBinding="{Binding Label}"
+                              HorizontalAlignment="Stretch"/>
+
+                    <!-- Scan Depth -->
+                    <TextBlock Text="Scan Depth" FontSize="12" FontWeight="SemiBold"/>
+                    <ComboBox ItemsSource="{Binding ScanDepthOptions}"
+                              SelectedItem="{Binding SelectedScanDepthOption}"
+                              DisplayMemberBinding="{Binding Label}"
+                              HorizontalAlignment="Stretch"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6">
+                        Quick uses a minimal prompt — faster and cheaper for surprise set lots
+                    </TextBlock>
+
+                    <!-- Rate-limit banner -->
+                    <Border Background="#FFF3E0" CornerRadius="4" Padding="10,8"
+                            IsVisible="{Binding IsRateLimitPaused}">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{Binding RateLimitBannerMessage}"
+                                       TextWrapping="Wrap" FontSize="12" Foreground="#5D4037"/>
+                            <Button Content="Resume Scan"
+                                    Command="{Binding ResumeBulkScanCommand}"
+                                    Padding="12,6" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+
                     <Button Content="Select Images" Command="{Binding SelectImagesCommand}"
                             HorizontalAlignment="Stretch" Classes="accent" Padding="12,8" Margin="0,8,0,0"/>
                     <CheckBox IsChecked="{Binding ImagesArePairs}"

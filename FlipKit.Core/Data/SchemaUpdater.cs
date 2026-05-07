@@ -46,6 +46,75 @@ namespace FlipKit.Core.Data
             await EnsureExportColumnsAsync(db);
             await EnsureCardVerificationColumnsAsync(db);
             await EnsureEbayImportColumnsAsync(db);
+            await EnsureSurpriseSetTablesAsync(db);
+            await EnsureSurpriseSetCardColumnsAsync(db);
+        }
+
+        public static async Task EnsureSurpriseSetTablesAsync(FlipKitDbContext db)
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS surprise_sets (
+                    Id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name                        TEXT    NOT NULL DEFAULT '',
+                    ShowName                    TEXT,
+                    Notes                       TEXT,
+                    State                       TEXT    NOT NULL DEFAULT 'Draft',
+                    CreatedAt                   TEXT    NOT NULL,
+                    UpdatedAt                   TEXT    NOT NULL,
+                    ExportedAt                  TEXT,
+                    LiveAt                      TEXT,
+                    CompletedAt                 TEXT,
+                    CancelledAt                 TEXT,
+                    Title                       TEXT    NOT NULL DEFAULT '',
+                    SharedListingType           TEXT    NOT NULL DEFAULT 'Buy it Now',
+                    SpotPrice                   REAL    NOT NULL DEFAULT 0,
+                    SharedCondition             TEXT    NOT NULL DEFAULT '',
+                    SharedShippingProfile       TEXT    NOT NULL DEFAULT '',
+                    SharedWhatnotCategory       TEXT    NOT NULL DEFAULT 'Sports Trading Cards',
+                    SharedWhatnotSubcategory    TEXT,
+                    Offerable                   INTEGER NOT NULL DEFAULT 0,
+                    SharedImageUrl1             TEXT,
+                    SharedImageUrl2             TEXT,
+                    SharedImageUrl3             TEXT,
+                    SharedImageUrl4             TEXT,
+                    SharedImageUrl5             TEXT,
+                    SharedImageUrl6             TEXT,
+                    SharedImageUrl7             TEXT,
+                    SharedImageUrl8             TEXT,
+                    AllocationMethod            TEXT    NOT NULL DEFAULT 'EqualSplit',
+                    LotCostBasis                REAL,
+                    SpotsSold                   INTEGER,
+                    GrossRevenue                REAL,
+                    TotalFees                   REAL,
+                    TotalShipping               REAL
+                );");
+        }
+
+        public static async Task EnsureSurpriseSetCardColumnsAsync(FlipKitDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(cards)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+
+                if (!columns.Contains("SurpriseSetId"))
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE cards ADD COLUMN SurpriseSetId INTEGER REFERENCES surprise_sets(Id)");
+
+                if (!columns.Contains("SurpriseSetSlot"))
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE cards ADD COLUMN SurpriseSetSlot INTEGER");
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
         }
 
         // eBay Seller Hub CSV import — EbayItemId is the upsert key on re-import,

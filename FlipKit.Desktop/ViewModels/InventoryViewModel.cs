@@ -582,7 +582,9 @@ namespace FlipKit.Desktop.ViewModels
             TotalValue = _allCards.Where(c => c.ListingPrice.HasValue).Sum(c => c.ListingPrice!.Value);
             StaleCardCount = _allCards.Count(c =>
                 c.Status != CardStatus.Sold &&
+                c.Status != CardStatus.SoldInSet &&
                 c.Status != CardStatus.Draft &&
+                c.Status != CardStatus.ReservedForSet &&
                 c.PriceDate.HasValue &&
                 c.PriceDate.Value < threshold);
         }

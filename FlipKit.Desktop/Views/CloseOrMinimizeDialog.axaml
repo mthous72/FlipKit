@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="FlipKit.Desktop.Views.CloseOrMinimizeDialog"
+        Title="Close FlipKit?"
+        Width="420"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+
+    <Border Padding="28" Background="{DynamicResource SystemRegionBrush}">
+        <StackPanel Spacing="16">
+
+            <TextBlock Text="What would you like to do?"
+                       FontSize="16" FontWeight="SemiBold"/>
+
+            <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.75">
+                <Run FontWeight="SemiBold">Close Everything</Run> stops all servers and removes FlipKit from memory and the system tray.
+            </TextBlock>
+            <TextBlock TextWrapping="Wrap" FontSize="13" Opacity="0.75">
+                <Run FontWeight="SemiBold">Minimize to Tray</Run> hides the window but keeps servers running and the tray icon active.
+            </TextBlock>
+
+            <StackPanel Orientation="Horizontal" Spacing="8"
+                        HorizontalAlignment="Right" Margin="0,8,0,0">
+                <Button x:Name="MinimizeButton" Content="Minimize to Tray" Padding="20,8"/>
+                <Button x:Name="CloseAllButton" Content="Close Everything"
+                        Classes="accent" Padding="20,8"/>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</Window>

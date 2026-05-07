@@ -75,6 +75,12 @@
                             Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=EbayPublish}">
                         <TextBlock Text="Publish to eBay" FontSize="14"/>
                     </Button>
+                    <Button Command="{Binding NavigateToCommand}" CommandParameter="SurpriseSets"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Padding="12,10" Classes="nav"
+                            Classes.active="{Binding CurrentPageName, Converter={StaticResource EqualityConverter}, ConverterParameter=SurpriseSets}">
+                        <TextBlock Text="Surprise Sets" FontSize="14"/>
+                    </Button>
                     <Button Command="{Binding NavigateToCommand}" CommandParameter="Checklists"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Padding="12,10" Classes="nav"

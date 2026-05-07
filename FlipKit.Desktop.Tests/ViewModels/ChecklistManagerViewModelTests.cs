@@ -17,6 +17,7 @@ public class ChecklistManagerViewModelTests
         new(svc ?? Substitute.For<IChecklistLearningService>(),
             dialog ?? Substitute.For<IFileDialogService>(),
             excel ?? Substitute.For<IChecklistImportService>(),
+            Substitute.For<IBrowserService>(),
             provider ?? new ServiceCollection().BuildServiceProvider(),
             NullLogger<ChecklistManagerViewModel>.Instance);
 

@@ -100,7 +100,9 @@ namespace FlipKit.Core.Services
             return await _db.Cards
                 .Where(c =>
                     c.Status != CardStatus.Sold &&
+                    c.Status != CardStatus.SoldInSet &&
                     c.Status != CardStatus.Draft &&
+                    c.Status != CardStatus.ReservedForSet &&
                     c.PriceDate.HasValue &&
                     c.PriceDate.Value < threshold)
                 .OrderBy(c => c.PriceDate)

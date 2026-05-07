@@ -1,5 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -59,10 +61,11 @@ namespace FlipKit.Desktop.ViewModels
 
         partial void OnCurrentPageChanging(ViewModelBase value)
         {
-            // Dispose old page if it implements IDisposable
-            // Note: Intentionally using backing field here since this is called before property change
+            // Dispose old page if it implements IDisposable — but skip IKeepAliveViewModel
+            // singletons (e.g. BulkScanViewModel) so in-flight scans survive tab switches.
+            // The DI container disposes singletons correctly on app shutdown.
 #pragma warning disable MVVMTK0034
-            if (_currentPage is IDisposable disposable)
+            if (_currentPage is IDisposable disposable && _currentPage is not IKeepAliveViewModel)
             {
                 disposable.Dispose();
             }
@@ -146,15 +149,19 @@ namespace FlipKit.Desktop.ViewModels
         [RelayCommand]
         private async Task ExitApplication()
         {
-            // Stop servers before exiting
+            // Cancel any active scans FIRST so in-flight HTTP requests abort
+            // before the server processes and HttpClient are torn down.
+            if (_services.GetService<BulkScanViewModel>() is { } bulkScanVm)
+                bulkScanVm.Dispose();
+
+            // Stop servers before triggering shutdown
             await _serverManagement.StopWebServerAsync();
             await _serverManagement.StopApiServerAsync();
 
-            // Small delay to ensure servers are fully stopped
-            await Task.Delay(300);
-
-            // Now exit the application
-            System.Environment.Exit(0);
+            // Use Avalonia's shutdown so ShutdownRequested fires and the DI
+            // container is disposed cleanly, rather than a hard process exit.
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime appLifetime)
+                appLifetime.Shutdown();
         }
 
         private void UpdateTrayTooltip()
@@ -167,11 +174,13 @@ namespace FlipKit.Desktop.ViewModels
 
         public void Dispose()
         {
-            // Dispose the current page on window close
+            // Explicitly cancel the BulkScanViewModel singleton so its in-flight scans
+            // abort even when it is not the current page.
+            if (_services.GetService<BulkScanViewModel>() is IDisposable bulkScanDisposable)
+                bulkScanDisposable.Dispose();
+
             if (CurrentPage is IDisposable disposable)
-            {
                 disposable.Dispose();
-            }
         }
     }
 }

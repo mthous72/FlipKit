@@ -1,0 +1,216 @@
+@model FlipKit.Web.Models.SurpriseSetBulkScanViewModel
+@{
+    ViewData["Title"] = $"Scan Cards — {Model.Set.Name}";
+}
+
+<div class="container-fluid py-4">
+    <a asp-action="Detail" asp-route-id="@Model.Set.Id" class="btn btn-sm btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Back to Set
+    </a>
+    <h2 class="mb-1"><i class="bi bi-camera"></i> Scan Cards into "@Model.Set.Name"</h2>
+    <p class="text-muted mb-4">Select card images — each image is scanned with Quick mode and saved to the set.</p>
+
+    <!-- Upload panel -->
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <label class="form-label fw-semibold">Card Images</label>
+                    <input type="file" id="imageInput" class="form-control mb-3"
+                           accept="image/*" multiple/>
+
+                    <div id="fileList" class="mb-3"></div>
+
+                    <button id="scanBtn" class="btn btn-primary w-100" disabled>
+                        <i class="bi bi-play-fill"></i> Start Scan
+                    </button>
+
+                    <div id="progressSection" class="mt-3 d-none">
+                        <div class="progress mb-2" style="height:8px">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar" style="width:0%"></div>
+                        </div>
+                        <div id="progressText" class="small text-muted"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results table -->
+        <div class="col-lg-7">
+            <div id="resultsSection" class="d-none">
+                <div class="card shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">Scan Results</span>
+                        <button id="saveAllBtn" class="btn btn-sm btn-success d-none">
+                            <i class="bi bi-check-lg"></i> Save All to Set
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Status</th>
+                                    <th>Player</th>
+                                    <th>Year</th>
+                                    <th>Brand</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="saveStatus" class="mt-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const setId = @Model.Set.Id;
+    const imageInput = document.getElementById('imageInput');
+    const fileList   = document.getElementById('fileList');
+    const scanBtn    = document.getElementById('scanBtn');
+    const progressSection = document.getElementById('progressSection');
+    const progressBar     = document.getElementById('progressBar');
+    const progressText    = document.getElementById('progressText');
+    const resultsSection  = document.getElementById('resultsSection');
+    const resultsBody     = document.getElementById('resultsBody');
+    const saveAllBtn      = document.getElementById('saveAllBtn');
+    const saveStatus      = document.getElementById('saveStatus');
+
+    let currentJobId = null;
+    let scanResults  = [];
+
+    imageInput.addEventListener('change', () => {
+        const files = Array.from(imageInput.files);
+        scanBtn.disabled = files.length === 0;
+        fileList.innerHTML = files.length === 0 ? '' :
+            `<div class="small text-muted">${files.length} image${files.length !== 1 ? 's' : ''} selected</div>
+             <ul class="list-unstyled small mb-0 mt-1">
+               ${files.slice(0, 8).map(f => `<li><i class="bi bi-image text-muted"></i> ${f.name}</li>`).join('')}
+               ${files.length > 8 ? `<li class="text-muted">…and ${files.length - 8} more</li>` : ''}
+             </ul>`;
+    });
+
+    scanBtn.addEventListener('click', async () => {
+        const files = Array.from(imageInput.files);
+        if (files.length === 0) return;
+
+        scanBtn.disabled = true;
+        scanResults = [];
+        resultsBody.innerHTML = '';
+        saveAllBtn.classList.add('d-none');
+        saveStatus.innerHTML = '';
+        progressSection.classList.remove('d-none');
+        resultsSection.classList.remove('d-none');
+        progressText.textContent = 'Uploading images…';
+
+        // Upload all images
+        const formData = new FormData();
+        files.forEach(f => formData.append('images', f));
+
+        let uploadResp;
+        try {
+            const r = await fetch(`/SurpriseSet/BulkScanUpload/${setId}`, {
+                method: 'POST', body: formData,
+            });
+            if (!r.ok) throw new Error(`Upload failed (${r.status})`);
+            uploadResp = await r.json();
+        } catch (err) {
+            progressText.textContent = `Upload error: ${err.message}`;
+            scanBtn.disabled = false;
+            return;
+        }
+
+        currentJobId = uploadResp.jobId;
+        progressText.textContent = 'Starting scan…';
+
+        // Open SSE stream
+        const source = new EventSource(`/SurpriseSet/BulkScanStream/${currentJobId}`);
+
+        source.addEventListener('progress', e => {
+            const d = JSON.parse(e.data);
+            const pct = Math.round((d.index / d.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = `Scanning ${d.index + 1} of ${d.total}…`;
+        });
+
+        source.addEventListener('result', e => {
+            const d = JSON.parse(e.data);
+            scanResults.push(d);
+            addResultRow(d);
+        });
+
+        source.addEventListener('error', e => {
+            const d = JSON.parse(e.data);
+            progressText.textContent = `Error: ${d.message}`;
+            source.close();
+            scanBtn.disabled = false;
+        });
+
+        source.addEventListener('complete', e => {
+            const d = JSON.parse(e.data);
+            progressBar.style.width = '100%';
+            progressBar.classList.remove('progress-bar-animated');
+            progressText.textContent = `Done — ${d.scanned} of ${d.total} scanned`;
+            source.close();
+            scanBtn.disabled = false;
+            if (scanResults.some(r => r.success)) {
+                saveAllBtn.classList.remove('d-none');
+            }
+        });
+
+        source.onerror = () => {
+            if (source.readyState === EventSource.CLOSED) return;
+            progressText.textContent = 'Connection lost.';
+            source.close();
+            scanBtn.disabled = false;
+        };
+    });
+
+    function addResultRow(d) {
+        const tr = document.createElement('tr');
+        if (!d.success) {
+            tr.innerHTML = `
+                <td>${d.index + 1}</td>
+                <td><span class="badge bg-danger">Error</span></td>
+                <td colspan="3" class="text-muted small">${d.error ?? 'Scan failed'}</td>`;
+        } else {
+            tr.innerHTML = `
+                <td>${d.index + 1}</td>
+                <td><span class="badge bg-success">OK</span></td>
+                <td>${d.playerName ?? '—'}</td>
+                <td>${d.year ?? '—'}</td>
+                <td>${[d.manufacturer, d.brand].filter(Boolean).join(' / ') || '—'}</td>`;
+        }
+        resultsBody.appendChild(tr);
+    }
+
+    saveAllBtn.addEventListener('click', async () => {
+        saveAllBtn.disabled = true;
+        saveStatus.innerHTML = '<span class="text-muted small">Saving…</span>';
+
+        try {
+            const r = await fetch(`/SurpriseSet/BulkScanSave/${setId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jobId: currentJobId }),
+            });
+            const d = await r.json();
+            if (r.ok) {
+                saveStatus.innerHTML = `<span class="text-success small"><i class="bi bi-check"></i> Saved ${d.saved} card${d.saved !== 1 ? 's' : ''} to the set.</span>`;
+                setTimeout(() => { window.location.href = d.redirectUrl; }, 1200);
+            } else {
+                saveStatus.innerHTML = `<span class="text-danger small">Save failed: ${d.error}</span>`;
+                saveAllBtn.disabled = false;
+            }
+        } catch (err) {
+            saveStatus.innerHTML = `<span class="text-danger small">Error: ${err.message}</span>`;
+            saveAllBtn.disabled = false;
+        }
+    });
+})();
+</script>

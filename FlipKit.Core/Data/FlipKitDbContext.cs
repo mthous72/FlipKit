@@ -16,6 +16,7 @@ namespace FlipKit.Core.Data
         public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
         public DbSet<SetChecklist> SetChecklists => Set<SetChecklist>();
         public DbSet<MissingChecklist> MissingChecklists => Set<MissingChecklist>();
+        public DbSet<SurpriseSet> SurpriseSets => Set<SurpriseSet>();
 
         public FlipKitDbContext(DbContextOptions<FlipKitDbContext> options)
             : base(options)
@@ -141,6 +142,29 @@ namespace FlipKit.Core.Data
             missingChecklist.HasIndex(m => new { m.Manufacturer, m.Brand, m.Year, m.Sport })
                 .IsUnique();
 
+            // SurpriseSet configuration
+            var surpriseSet = modelBuilder.Entity<SurpriseSet>();
+
+            surpriseSet.ToTable("surprise_sets");
+            surpriseSet.HasKey(s => s.Id);
+
+            surpriseSet.Property(s => s.State).HasConversion<string>().HasDefaultValue(SurpriseSetState.Draft);
+            surpriseSet.Property(s => s.AllocationMethod).HasConversion<string>().HasDefaultValue(RevenueAllocationMethod.EqualSplit);
+            surpriseSet.Property(s => s.SpotPrice).HasColumnType("decimal(10,2)");
+            surpriseSet.Property(s => s.LotCostBasis).HasColumnType("decimal(10,2)");
+            surpriseSet.Property(s => s.GrossRevenue).HasColumnType("decimal(10,2)");
+            surpriseSet.Property(s => s.TotalFees).HasColumnType("decimal(10,2)");
+            surpriseSet.Property(s => s.TotalShipping).HasColumnType("decimal(10,2)");
+
+            // Card → SurpriseSet: Restrict so EF doesn't auto-cascade.
+            // SurpriseSetRepository.DeleteAsync handles the cascade explicitly
+            // in a transaction (cards deleted first, then the set).
+            card.HasOne(c => c.SurpriseSet)
+                .WithMany(s => s.Cards)
+                .HasForeignKey(c => c.SurpriseSetId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            card.HasIndex(c => c.SurpriseSetId);
         }
     }
 }

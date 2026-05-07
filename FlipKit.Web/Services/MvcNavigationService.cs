@@ -104,6 +104,18 @@ namespace FlipKit.Web.Services
                 "MVC navigation is controller-based. Use: return RedirectToAction(\"Index\", \"Reprice\");");
         }
 
+        public Task NavigateToSurpriseSetsAsync()
+        {
+            throw new NotSupportedException(
+                "MVC navigation is controller-based. Use: return RedirectToAction(\"Index\", \"SurpriseSet\");");
+        }
+
+        public Task NavigateToSurpriseSetDetailAsync(int setId)
+        {
+            throw new NotSupportedException(
+                "MVC navigation is controller-based. Use: return RedirectToAction(\"Detail\", \"SurpriseSet\", new { id = setId });");
+        }
+
         public Task GoBackAsync()
         {
             throw new NotSupportedException(

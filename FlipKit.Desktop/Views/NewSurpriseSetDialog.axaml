@@ -1,0 +1,84 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FlipKit.Desktop.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="480"
+        x:Class="FlipKit.Desktop.Views.NewSurpriseSetDialog"
+        x:DataType="vm:NewSurpriseSetViewModel"
+        Width="520" Height="480"
+        WindowStartupLocation="CenterOwner"
+        Title="New Surprise Set">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24,20,24,24">
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="New Surprise Set"
+                   FontSize="20" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <!-- Form -->
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="10">
+
+                <TextBlock Text="Set Name" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding Name}"
+                         Watermark="Internal name (e.g. May Baseball Lot)"
+                         MaxLength="120"/>
+
+                <TextBlock Text="Show Name (optional)" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding ShowName}"
+                         Watermark="Name displayed on stream (leave blank to use Set Name)"
+                         MaxLength="120"/>
+
+                <TextBlock Text="Whatnot Listing Title" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding Title}"
+                         Watermark="Buyers see this (max 80 chars shown)"
+                         MaxLength="80"/>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="4">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Spot Price ($)" FontWeight="SemiBold" FontSize="12"/>
+                    <NumericUpDown Grid.Row="1" Grid.Column="0"
+                                   Value="{Binding SpotPrice}"
+                                   Minimum="0" Maximum="9999" Increment="1"
+                                   FormatString="F2"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Condition" FontWeight="SemiBold" FontSize="12"/>
+                    <ComboBox Grid.Row="1" Grid.Column="1"
+                              SelectedItem="{Binding SharedCondition}"
+                              HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="Near Mint"/>
+                        <ComboBoxItem Content="Like New"/>
+                        <ComboBoxItem Content="Very Good"/>
+                        <ComboBoxItem Content="Good"/>
+                        <ComboBoxItem Content="Acceptable"/>
+                    </ComboBox>
+                </Grid>
+
+                <TextBlock Text="Shipping Profile" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding SharedShippingProfile}"
+                         Watermark="e.g. Standard, PWE, 4 oz"/>
+
+                <TextBlock Text="Whatnot Category" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding SharedWhatnotCategory}"
+                         Watermark="Sports Trading Cards"/>
+
+                <TextBlock Text="Notes (optional)" FontWeight="SemiBold" FontSize="12"/>
+                <TextBox Text="{Binding Notes}"
+                         Watermark="Visible to buyers in the listing description"
+                         AcceptsReturn="True" MinHeight="60"/>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,16,0,0">
+            <Button Grid.Column="1" Content="Cancel"
+                    Click="OnCancelClick"
+                    Padding="20,8" Margin="0,0,8,0"/>
+            <Button Grid.Column="2" Content="Create"
+                    Click="OnCreateClick"
+                    Classes="accent"
+                    Padding="24,8"
+                    IsEnabled="{Binding IsValid}"/>
+        </Grid>
+    </Grid>
+</Window>

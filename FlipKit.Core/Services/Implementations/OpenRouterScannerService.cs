@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services.ApiModels;
+using FlipKit.Core.Services.Implementations;
 using Microsoft.Extensions.Logging;
 
 namespace FlipKit.Core.Services
@@ -92,6 +95,25 @@ Identification tips:
 
 Return ONLY the JSON, no other text or markdown.";
 
+        // Lightweight prompt for Surprise Set lot-scanning — just enough to identify
+        // and label a card without the full extraction cost.
+        private const string QuickScanPromptBody = @"
+Return ONLY a JSON object identifying this sports card. Use null for unknown values:
+
+{
+  ""player_name"": ""Full player name"",
+  ""year"": 2024,
+  ""manufacturer"": ""Panini|Topps|Upper Deck|Leaf or null"",
+  ""brand"": ""Prizm|Chrome|Donruss etc. or null"",
+  ""set_name"": ""Set name if visible or null"",
+  ""card_number"": ""Card number without # or null"",
+  ""is_graded"": true or false,
+  ""grade_company"": ""PSA|BGS|CGC|SGC or null"",
+  ""grade_value"": ""Numeric grade or null""
+}
+
+Return ONLY the JSON, no other text.";
+
         private readonly HttpClient _httpClient;
         private readonly ISettingsService _settingsService;
         private readonly ILogger<OpenRouterScannerService> _logger;
@@ -107,22 +129,24 @@ Return ONLY the JSON, no other text or markdown.";
             string imagePath,
             string? backImagePath = null,
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
-            XimilarScanMode ximilarMode = XimilarScanMode.Standard)
+            XimilarScanMode ximilarMode = XimilarScanMode.Standard,
+            ScanDepth scanDepth = ScanDepth.Standard,
+            CancellationToken ct = default)
         {
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
 
+            var promptBody = scanDepth == ScanDepth.Quick ? QuickScanPromptBody : ScanPromptBody;
             string prompt;
             if (!string.IsNullOrEmpty(backImagePath) && File.Exists(backImagePath))
             {
                 dataUrls.Add(await EncodeImageToDataUrl(backImagePath));
-                prompt = "You are given the FRONT and BACK images of the same sports card. The first image is the FRONT, the second is the BACK. Analyze BOTH images together to extract all identifying information. The back often contains the card number, set name, manufacturer, and serial number." + ScanPromptBody;
+                prompt = "You are given the FRONT and BACK images of the same sports card. The first image is the FRONT, the second is the BACK. Analyze BOTH images together to extract all identifying information. The back often contains the card number, set name, manufacturer, and serial number." + promptBody;
             }
             else
             {
-                prompt = "Analyze this sports card image and extract all identifying information." + ScanPromptBody;
+                prompt = "Analyze this sports card image and extract all identifying information." + promptBody;
             }
 
-            // Build fallback chain and try each model until one succeeds
             var settings = _settingsService.Load();
             var apiKey = settings.OpenRouterApiKey;
 
@@ -137,70 +161,144 @@ Return ONLY the JSON, no other text or markdown.";
             {
                 try
                 {
-                    _logger.LogInformation("Attempting scan with model {Model}...", currentModel);
+                    _logger.LogInformation("Attempting scan with model {Model} (depth: {Depth})...", currentModel, scanDepth);
 
-                    // Send request
-                    var content = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey);
-                    content = StripCodeBlocks(content);
+                    var rawContent = await TryScanModelAsync(dataUrls, prompt, currentModel, apiKey, ct);
+                    var content = StripCodeBlocks(rawContent);
 
-                    // Parse JSON response
                     var scannedData = JsonSerializer.Deserialize<ScannedCardData>(content);
                     if (scannedData == null)
                         throw new JsonException("Deserialized to null");
 
                     _logger.LogInformation("Scan succeeded with model {Model}", currentModel);
 
-                    // Build result
                     var card = MapToCard(scannedData, imagePath);
                     if (!string.IsNullOrEmpty(backImagePath))
                         card.ImagePathBack = backImagePath;
 
-                    var visualCues = MapToVisualCues(scannedData.VisualCues);
-                    var confidences = MapToConfidences(scannedData.Confidence);
-
                     return new ScanResult
                     {
                         Card = card,
-                        VisualCues = visualCues,
+                        VisualCues = MapToVisualCues(scannedData.VisualCues),
                         AllVisibleText = scannedData.AllVisibleText ?? new List<string>(),
-                        Confidences = confidences
+                        Confidences = MapToConfidences(scannedData.Confidence)
                     };
                 }
-                catch (HttpRequestException ex) when (IsRetryableHttpError(ex))
+                catch (OpenRouterRateLimitException rlEx)
                 {
-                    _logger.LogWarning("Model {Model} failed: {Error}. Trying next model...", currentModel, ex.Message);
+                    lastException = rlEx;
+                    if (rlEx.Scope == RateLimitScope.AccountPerDay)
+                    {
+                        _logger.LogError("Daily account rate limit hit on {Model}. Aborting chain.", currentModel);
+                        throw; // propagate — don't walk the chain
+                    }
+                    if (rlEx.Scope == RateLimitScope.AccountPerMinute)
+                    {
+                        var waitMs = (rlEx.RetryAfterSeconds ?? 60) * 1000;
+                        _logger.LogWarning("Per-minute rate limit on {Model}. Waiting {Wait}ms before walking chain.", currentModel, waitMs);
+                        await Task.Delay(waitMs, ct);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Rate limit [{Scope}] on {Model}. Walking chain.", rlEx.Scope, currentModel);
+                    }
                     failedModels.Add(currentModel);
-                    lastException = ex;
-                    continue;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    // User clicked Cancel — stop immediately, don't walk the chain.
+                    _logger.LogInformation("Scan cancelled by user on model {Model}.", currentModel);
+                    throw;
                 }
                 catch (TaskCanceledException ex)
                 {
-                    _logger.LogWarning("Model {Model} timed out. Trying next model...", currentModel);
+                    // HttpClient timeout — model took too long to respond.
+                    _logger.LogWarning("Model {Model} timed out (server too slow). Walking chain.", currentModel);
                     failedModels.Add(currentModel);
-                    lastException = ex;
-                    continue;
+                    lastException = new TimeoutException(
+                        $"Model {currentModel} timed out — the AI server took too long to respond.", ex);
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogWarning("Model {Model} returned invalid JSON: {Error}. Trying next model...", currentModel, ex.Message);
+                    _logger.LogWarning("Model {Model} returned invalid JSON. Walking chain.", currentModel);
                     failedModels.Add(currentModel);
                     lastException = ex;
-                    continue;
                 }
                 catch (InvalidOperationException ex) when (ex.Message.Contains("No response content"))
                 {
-                    _logger.LogWarning("Model {Model} returned no content. Trying next model...", currentModel);
+                    _logger.LogWarning("Model {Model} returned no content. Walking chain.", currentModel);
                     failedModels.Add(currentModel);
                     lastException = ex;
-                    continue;
+                }
+                catch (HttpRequestException ex) when (IsWalkableHttpError(ex))
+                {
+                    _logger.LogWarning("Model {Model} failed ({Error}). Walking chain.", currentModel, ex.Message);
+                    failedModels.Add(currentModel);
+                    lastException = ex;
                 }
             }
 
-            // All models failed
-            _logger.LogError(lastException, "All {Count} models failed: {Models}", modelsToTry.Count, string.Join(", ", failedModels));
+            _logger.LogError(lastException, "Model {Model} failed: {Error}", modelsToTry[0], lastException?.Message);
             throw new InvalidOperationException(
-                $"Scan failed: All {modelsToTry.Count} AI models failed. Last error: {lastException?.Message}. " +
-                "Please try again later or check your network connection.", lastException);
+                lastException?.Message ?? $"Model {modelsToTry[0]} failed — please try again or check your network connection.",
+                lastException);
+        }
+
+        /// <summary>
+        /// Sends a single scan request with exponential backoff on 5xx errors
+        /// (2s, 4s, 8s, 16s, 32s before giving up and letting the caller walk the chain).
+        /// Also retries up to 2 times on connection-level timeouts (TaskCanceledException
+        /// where the user did not cancel) — these are typically stale-connection resets or
+        /// transient upstream drops, not real 5-minute waits.
+        /// 429s are converted to <see cref="OpenRouterRateLimitException"/> and re-thrown.
+        /// </summary>
+        private async Task<string> TryScanModelAsync(
+            List<string> dataUrls, string prompt, string modelId, string apiKey, CancellationToken ct)
+        {
+            var backoffDelaysMs = new[] { 2000, 4000, 8000, 16000, 32000 };
+            var attempt = 0;
+            var timeoutAttempt = 0;
+
+            while (true)
+            {
+                try
+                {
+                    return await SendSingleRequestAsync(dataUrls, prompt, modelId, apiKey, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw; // user cancelled — propagate immediately
+                }
+                catch (TaskCanceledException) when (timeoutAttempt < 2)
+                {
+                    // Transient connection timeout (not user-cancelled). Retry before giving up.
+                    timeoutAttempt++;
+                    _logger.LogWarning(
+                        "Model {Model} connection dropped on attempt {N} (transient). Retrying in 10s.",
+                        modelId, timeoutAttempt);
+                    await Task.Delay(10_000, ct);
+                }
+                catch (OpenRouterRateLimitException)
+                {
+                    throw; // 429 — caller decides per-scope behavior
+                }
+                catch (HttpRequestException ex) when (Is5xxError(ex))
+                {
+                    if (attempt < backoffDelaysMs.Length)
+                    {
+                        _logger.LogWarning(
+                            "Model {Model} returned 5xx on attempt {N}. Retrying in {Delay}ms.",
+                            modelId, attempt + 1, backoffDelaysMs[attempt]);
+                        await Task.Delay(backoffDelaysMs[attempt], ct);
+                        attempt++;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Model {Model} exhausted 5xx retries. Walking chain.", modelId);
+                        throw; // let caller walk chain
+                    }
+                }
+            }
         }
 
         public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = OpenRouterModelDefaults.DefaultFreeModelId)
@@ -245,7 +343,7 @@ Return ONLY the JSON, no other text or markdown.";
                 try
                 {
                     _logger.LogDebug("Trying model {Model}", currentModel);
-                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey);
+                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey, CancellationToken.None);
                     _logger.LogInformation("Scan succeeded with model {Model}", currentModel);
                     return result;
                 }
@@ -274,7 +372,7 @@ Return ONLY the JSON, no other text or markdown.";
                 $"All models failed. Last error: {lastException?.Message}", lastException);
         }
 
-        private async Task<string> SendSingleRequestAsync(List<string> dataUrls, string prompt, string model, string apiKey)
+        private async Task<string> SendSingleRequestAsync(List<string> dataUrls, string prompt, string model, string apiKey, CancellationToken ct)
         {
             var contentParts = new List<OpenRouterContentPart>();
             foreach (var dataUrl in dataUrls)
@@ -305,14 +403,21 @@ Return ONLY the JSON, no other text or markdown.";
             httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
             httpRequest.Headers.Add("X-Title", "FlipKit");
 
-            var response = await _httpClient.SendAsync(httpRequest);
+            var response = await _httpClient.SendAsync(httpRequest, ct);
             var responseBody = await response.Content.ReadAsStringAsync();
 
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                // Parse scope and Retry-After before throwing so the caller can act on them.
+                response.Headers.TryGetValues("Retry-After", out var retryAfterValues);
+                var retryAfterHeader = retryAfterValues?.FirstOrDefault();
+                throw OpenRouterRateLimitParser.Parse(responseBody, retryAfterHeader, model);
+            }
+
             if (!response.IsSuccessStatusCode)
-                // Include both integer status code and enum name in the message — IsRetryableHttpError
-                // looks for digit substrings ("500", "429") so the integer must be present for fallback
-                // to trigger on 5xx / 429. Pre-Phase 5a, only "404" and the literal "NotFound" worked.
-                // See AUDIT-2026-05 §5.9 for the original bug diagnosis.
+                // Include integer status code so Is5xxError / IsWalkableHttpError can detect
+                // the status by digit substring. Pre-Phase 5a only "404"/"NotFound" worked;
+                // see AUDIT-2026-05 §5.9 for the original bug.
                 throw new HttpRequestException($"OpenRouter API error ({(int)response.StatusCode} {response.StatusCode}): {responseBody}");
 
             var apiResponse = JsonSerializer.Deserialize<OpenRouterResponse>(responseBody);
@@ -336,24 +441,34 @@ Return ONLY the JSON, no other text or markdown.";
 
         private static List<string> GetFallbackChain(string startModel)
         {
-            // Reads from the consolidated defaults (Phase 5b). Same shape as before:
-            // if startModel is a known free model, walk from it to the end of the list;
-            // otherwise (custom or paid model) try it alone, then walk all free models.
-            var index = Array.IndexOf(OpenRouterModelDefaults.FallbackFreeModelIds, startModel);
-            if (index >= 0)
-                return OpenRouterModelDefaults.FallbackFreeModelIds.Skip(index).ToList();
-
-            var chain = new List<string> { startModel };
-            chain.AddRange(OpenRouterModelDefaults.FallbackFreeModelIds);
-            return chain;
+            // Always try exactly the requested model. Multi-model rotation is the
+            // caller's responsibility (ScanWithAutoRotationAsync, BulkScan loop, Web
+            // auto-rotation). Silently substituting a different model for an explicit
+            // pick would confuse users (and potentially use a deprecated model).
+            return new List<string> { startModel };
         }
 
+        // 429 is now converted to OpenRouterRateLimitException in SendSingleRequestAsync,
+        // so this helper only needs to handle 5xx (handled with backoff in TryScanModelAsync)
+        // and 404 / model-not-found (walk chain immediately).
+        private static bool Is5xxError(HttpRequestException ex)
+        {
+            var msg = ex.Message;
+            return msg.Contains("500") || msg.Contains("502") || msg.Contains("503") || msg.Contains("504");
+        }
+
+        private static bool IsWalkableHttpError(HttpRequestException ex)
+        {
+            var msg = ex.Message;
+            return msg.Contains("404") || msg.Contains("NotFound");
+        }
+
+        // Kept for SendVisionRequestAsync (custom prompts) which still uses the old pattern.
         private static bool IsRetryableHttpError(HttpRequestException ex)
         {
             var msg = ex.Message;
-            // Retry on: model not found (404), rate limit (429), or server errors (5xx)
             return msg.Contains("404") || msg.Contains("NotFound")
-                || msg.Contains("429") || msg.Contains("500") || msg.Contains("502")
+                || msg.Contains("500") || msg.Contains("502")
                 || msg.Contains("503") || msg.Contains("504");
         }
 
