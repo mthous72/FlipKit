@@ -59,23 +59,18 @@
 
                     <!-- Destination -->
                     <TextBlock Text="Save To" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                    <ComboBox SelectedItem="{Binding Destination}"
-                              HorizontalAlignment="Stretch">
-                        <ComboBoxItem Content="Inventory" Tag="Inventory"/>
-                        <ComboBoxItem Content="Surprise Set" Tag="SurpriseSet"/>
-                    </ComboBox>
+                    <ComboBox ItemsSource="{Binding DestinationOptions}"
+                              SelectedItem="{Binding SelectedDestinationOption}"
+                              DisplayMemberBinding="{Binding Label}"
+                              HorizontalAlignment="Stretch"/>
 
-                    <!-- Scan Depth (visible when Surprise Set is selected) -->
-                    <TextBlock Text="Scan Depth" FontSize="12" FontWeight="SemiBold"
-                               IsVisible="{Binding Destination, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                    <ComboBox SelectedItem="{Binding ScanDepth}"
-                              HorizontalAlignment="Stretch"
-                              IsVisible="{Binding Destination, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <ComboBoxItem Content="Quick (lot scanning)" Tag="Quick"/>
-                        <ComboBoxItem Content="Standard (full detail)" Tag="Standard"/>
-                    </ComboBox>
-                    <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6"
-                               IsVisible="{Binding Destination, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <!-- Scan Depth -->
+                    <TextBlock Text="Scan Depth" FontSize="12" FontWeight="SemiBold"/>
+                    <ComboBox ItemsSource="{Binding ScanDepthOptions}"
+                              SelectedItem="{Binding SelectedScanDepthOption}"
+                              DisplayMemberBinding="{Binding Label}"
+                              HorizontalAlignment="Stretch"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6">
                         Quick uses a minimal prompt — faster and cheaper for surprise set lots
                     </TextBlock>
 

@@ -63,6 +63,31 @@ namespace FlipKit.Desktop.ViewModels
 
         public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
+        // Typed option lists so ComboBox SelectedItem binds correctly (avoids ComboBoxItem cast exception).
+        public static IReadOnlyList<DestinationOption> DestinationOptions { get; } = new[]
+        {
+            new DestinationOption(BulkScanDestination.Inventory, "Inventory"),
+            new DestinationOption(BulkScanDestination.SurpriseSet, "Surprise Set"),
+        };
+
+        public static IReadOnlyList<ScanDepthOption> ScanDepthOptions { get; } = new[]
+        {
+            new ScanDepthOption(ScanDepth.Quick, "Quick (lot scanning)"),
+            new ScanDepthOption(ScanDepth.Standard, "Standard (full detail)"),
+        };
+
+        public DestinationOption SelectedDestinationOption
+        {
+            get => DestinationOptions.First(o => o.Value == Destination);
+            set => Destination = value.Value;
+        }
+
+        public ScanDepthOption SelectedScanDepthOption
+        {
+            get => ScanDepthOptions.First(o => o.Value == ScanDepth);
+            set => ScanDepth = value.Value;
+        }
+
         // Treats Auto and any explicit free pick as "free": forces concurrency = 1 to
         // avoid hammering rate limits.
         public bool IsSelectedModelFree =>
@@ -90,6 +115,12 @@ namespace FlipKit.Desktop.ViewModels
             // Surprise Set bulk scans default to Quick depth — just enough to label each slot.
             // The user can override after the fact from the Inventory view.
             ScanDepth = value == BulkScanDestination.SurpriseSet ? ScanDepth.Quick : ScanDepth.Standard;
+            OnPropertyChanged(nameof(SelectedDestinationOption));
+        }
+
+        partial void OnScanDepthChanged(ScanDepth value)
+        {
+            OnPropertyChanged(nameof(SelectedScanDepthOption));
         }
 
         public ObservableCollection<BulkScanItem> Items { get; } = new();
@@ -691,6 +722,9 @@ namespace FlipKit.Desktop.ViewModels
         Inventory,   // Save as standalone cards in My Cards (default)
         SurpriseSet, // Add directly to a specific Surprise Set
     }
+
+    public record DestinationOption(BulkScanDestination Value, string Label);
+    public record ScanDepthOption(ScanDepth Value, string Label);
 
     public partial class BulkScanItem : ObservableObject
     {
