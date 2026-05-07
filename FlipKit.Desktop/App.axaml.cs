@@ -175,6 +175,10 @@ namespace FlipKit.Desktop
                 services.AddSingleton<ICameraService, OpenCvCameraService>();
                 services.AddSingleton<IWebcamCaptureDialogService, WebcamCaptureDialogService>();
                 services.AddSingleton<IOcrService, WindowsOcrService>();
+                // Fuzzy-matches OCR-extracted player-name candidates against the
+                // checklist DB. Shared singleton: the cache is hot across scans
+                // and refreshed after each checklist import.
+                services.AddSingleton<IPlayerNameDirectory, PlayerNameDirectory>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 // Export pipeline — registered unconditionally (no DbContext dependency).
@@ -265,8 +269,24 @@ namespace FlipKit.Desktop
                             SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
                             Log.Debug("Running checklist seeder");
                             ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
+                            Log.Debug("Running reference-data seeder (teams / manufacturers / brands)");
+                            ReferenceDataSeeder.SeedIfMissingAsync(db).GetAwaiter().GetResult();
                             Log.Information("Database initialization complete");
                         });
+
+                        // Warm the player-name directory cache so OCR scans can
+                        // fuzzy-match candidates against the checklist on the
+                        // first scan, not the second. Failure here is non-fatal:
+                        // the directory falls back to "not ready" → no override.
+                        try
+                        {
+                            var directory = _services.GetRequiredService<IPlayerNameDirectory>();
+                            await directory.RefreshAsync();
+                        }
+                        catch (Exception dirEx)
+                        {
+                            Log.Warning(dirEx, "Player-name directory initial refresh failed");
+                        }
                     }
                     catch (Exception ex)
                     {

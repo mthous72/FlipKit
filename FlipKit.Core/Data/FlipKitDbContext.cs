@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Models.ReferenceData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 
@@ -17,6 +18,15 @@ namespace FlipKit.Core.Data
         public DbSet<SetChecklist> SetChecklists => Set<SetChecklist>();
         public DbSet<MissingChecklist> MissingChecklists => Set<MissingChecklist>();
         public DbSet<SurpriseSet> SurpriseSets => Set<SurpriseSet>();
+
+        // Reference data — bootstrap catalog seeded from JSON resources at first
+        // run (see ReferenceDataSeeder). Drives OCR sport inference + catalog gates.
+        public DbSet<LeagueTeam> LeagueTeams => Set<LeagueTeam>();
+        public DbSet<KnownManufacturer> KnownManufacturers => Set<KnownManufacturer>();
+        public DbSet<KnownBrand> KnownBrands => Set<KnownBrand>();
+        public DbSet<KnownVariation> KnownVariations => Set<KnownVariation>();
+        public DbSet<GradingAuthority> GradingAuthorities => Set<GradingAuthority>();
+        public DbSet<LeagueAcronym> LeagueAcronyms => Set<LeagueAcronym>();
 
         public FlipKitDbContext(DbContextOptions<FlipKitDbContext> options)
             : base(options)
@@ -169,6 +179,83 @@ namespace FlipKit.Core.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             card.HasIndex(c => c.SurpriseSetId);
+
+            // Reference data — LeagueTeam / KnownManufacturer / KnownBrand.
+            // Aliases / SportsActive / Sports are List<string> serialized to JSON
+            // with the same ValueComparer pattern used for SetChecklist.Cards
+            // (otherwise EF compares by reference and misses list mutations).
+            var leagueTeam = modelBuilder.Entity<LeagueTeam>();
+            leagueTeam.ToTable("league_teams");
+            leagueTeam.HasKey(t => t.Id);
+            leagueTeam.HasIndex(t => new { t.Sport, t.TeamName }).IsUnique();
+            leagueTeam.Property(t => t.Aliases)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    new ValueComparer<List<string>>(
+                        (l, r) => l != null && r != null && l.SequenceEqual(r),
+                        l => l == null ? 0 : l.Aggregate(0, (h, s) => HashCode.Combine(h, s)),
+                        l => l.ToList()));
+
+            var knownManufacturer = modelBuilder.Entity<KnownManufacturer>();
+            knownManufacturer.ToTable("known_manufacturers");
+            knownManufacturer.HasKey(m => m.Id);
+            knownManufacturer.HasIndex(m => m.Name).IsUnique();
+            knownManufacturer.Property(m => m.SportsActive)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    new ValueComparer<List<string>>(
+                        (l, r) => l != null && r != null && l.SequenceEqual(r),
+                        l => l == null ? 0 : l.Aggregate(0, (h, s) => HashCode.Combine(h, s)),
+                        l => l.ToList()));
+            knownManufacturer.Property(m => m.Aliases)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    new ValueComparer<List<string>>(
+                        (l, r) => l != null && r != null && l.SequenceEqual(r),
+                        l => l == null ? 0 : l.Aggregate(0, (h, s) => HashCode.Combine(h, s)),
+                        l => l.ToList()));
+
+            var knownBrand = modelBuilder.Entity<KnownBrand>();
+            knownBrand.ToTable("known_brands");
+            knownBrand.HasKey(b => b.Id);
+            knownBrand.HasIndex(b => new { b.Manufacturer, b.Name }).IsUnique();
+            knownBrand.Property(b => b.Sports)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    new ValueComparer<List<string>>(
+                        (l, r) => l != null && r != null && l.SequenceEqual(r),
+                        l => l == null ? 0 : l.Aggregate(0, (h, s) => HashCode.Combine(h, s)),
+                        l => l.ToList()));
+
+            var knownVariation = modelBuilder.Entity<KnownVariation>();
+            knownVariation.ToTable("known_variations");
+            knownVariation.HasKey(v => v.Id);
+            knownVariation.HasIndex(v => new { v.Manufacturer, v.Type, v.Name }).IsUnique();
+            knownVariation.Property(v => v.Sports)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>(),
+                    new ValueComparer<List<string>>(
+                        (l, r) => l != null && r != null && l.SequenceEqual(r),
+                        l => l == null ? 0 : l.Aggregate(0, (h, s) => HashCode.Combine(h, s)),
+                        l => l.ToList()));
+
+            var gradingAuthority = modelBuilder.Entity<GradingAuthority>();
+            gradingAuthority.ToTable("grading_authorities");
+            gradingAuthority.HasKey(g => g.Id);
+            gradingAuthority.HasIndex(g => g.Code).IsUnique();
+            gradingAuthority.Property(g => g.MinGrade).HasColumnType("decimal(4,1)");
+            gradingAuthority.Property(g => g.MaxGrade).HasColumnType("decimal(4,1)");
+            gradingAuthority.Property(g => g.GradeIncrement).HasColumnType("decimal(4,1)");
+
+            var leagueAcronym = modelBuilder.Entity<LeagueAcronym>();
+            leagueAcronym.ToTable("league_acronyms");
+            leagueAcronym.HasKey(l => l.Id);
+            leagueAcronym.HasIndex(l => l.Acronym).IsUnique();
         }
     }
 }

@@ -30,6 +30,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IAppNotificationService? _notificationService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<BulkScanViewModel> _logger;
 
         private CancellationTokenSource? _scanCts;
@@ -69,6 +70,13 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isEnhancing;
         [ObservableProperty] private int _enhanceProgress;
         [ObservableProperty] private int _enhanceTotal;
+
+        // Live ticker for the enhance pipeline — bound by the BulkScan ticker panel
+        // and the global persistent status bar in MainWindow.
+        [ObservableProperty] private BulkScanItem? _currentEnhanceItem;
+        [ObservableProperty] private string? _currentEnhanceModel;
+
+        private CancellationTokenSource? _enhanceCts;
 
         public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
@@ -174,6 +182,7 @@ namespace FlipKit.Desktop.ViewModels
         partial void OnSelectedItemChanged(BulkScanItem? value)
         {
             OnPropertyChanged(nameof(SelectedCard));
+            RescanSelectedCommand.NotifyCanExecuteChanged();
         }
 
         public BulkScanViewModel(
@@ -190,7 +199,8 @@ namespace FlipKit.Desktop.ViewModels
             IAiScanConsentService aiScanConsentService,
             IImageUploadService imageUploadService,
             ILogger<BulkScanViewModel> logger,
-            IAppNotificationService? notificationService = null)
+            IAppNotificationService? notificationService = null,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _scannerService = scannerService;
             _ocrService = ocrService;
@@ -205,6 +215,7 @@ namespace FlipKit.Desktop.ViewModels
             _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
             _notificationService = notificationService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
 
             // Initialize from settings
@@ -307,6 +318,46 @@ namespace FlipKit.Desktop.ViewModels
             var pending = Items.Where(i => i.Status == BulkScanStatus.Pending).ToList();
             if (pending.Count == 0)
                 return;
+
+            await ScanItemsAsync(pending);
+        }
+
+        /// <summary>
+        /// Re-scans just the currently selected card through the active scan mode.
+        /// Useful when a single card returned bad fields (OCR garbage, bad AI guess)
+        /// and the user wants to redo it without re-running the whole batch.
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanRescanSelected))]
+        private async Task RescanSelectedAsync()
+        {
+            if (SelectedItem == null) return;
+            var item = SelectedItem;
+            item.Status = BulkScanStatus.Pending;
+            item.ErrorMessage = null;
+            await ScanItemsAsync(new List<BulkScanItem> { item });
+        }
+
+        private bool CanRescanSelected() =>
+            SelectedItem != null && !IsScanning && !IsEnhancing;
+
+        partial void OnIsScanningChanged(bool value)
+        {
+            RescanSelectedCommand.NotifyCanExecuteChanged();
+        }
+
+        partial void OnIsEnhancingChanged(bool value)
+        {
+            RescanSelectedCommand.NotifyCanExecuteChanged();
+        }
+
+        /// <summary>
+        /// Runs the active scan mode against the supplied items. Encapsulates the
+        /// IsScanning / rate-limit / error-tracking lifecycle so callers (ScanAll
+        /// and RescanSelected) don't duplicate it.
+        /// </summary>
+        private async Task ScanItemsAsync(List<BulkScanItem> pending)
+        {
+            if (pending.Count == 0) return;
 
             IsScanning = true;
             IsRateLimitPaused = false;
@@ -726,6 +777,7 @@ namespace FlipKit.Desktop.ViewModels
                         ? item.CardDetail.PlayerName : $"Card {item.Index}";
                     item.ScanMode = ScanMode.Ocr;
                     item.Confidences = result.Confidences ?? new List<FieldConfidence>();
+                    item.OcrText = result.AllVisibleText ?? new List<string>();
                     item.Status = BulkScanStatus.Scanned;
                     _logger.LogInformation("OCR scan succeeded for card {Index}: {Name}", item.Index, item.DisplayName);
                 }
@@ -776,6 +828,14 @@ namespace FlipKit.Desktop.ViewModels
         private bool CanEnhance() => !IsEnhancing && HasOcrScannedItems;
         private bool CanEnhanceSelected() => !IsEnhancing && SelectedItem?.ScanMode == ScanMode.Ocr;
 
+        [RelayCommand]
+        private void CancelEnhance()
+        {
+            if (_enhanceCts == null || _enhanceCts.IsCancellationRequested) return;
+            StatusMessage = "Cancelling enhance — waiting for current request to finish...";
+            _enhanceCts.Cancel();
+        }
+
         private async Task RunBulkEnhanceAsync(List<BulkScanItem> items)
         {
             if (items.Count == 0) return;
@@ -784,85 +844,138 @@ namespace FlipKit.Desktop.ViewModels
             EnhanceProgress = 0;
             EnhanceTotal = items.Count;
             ErrorMessage = null;
+            SuccessMessage = null;
+            _enhanceCts = new CancellationTokenSource();
+            var ct = _enhanceCts.Token;
 
             var (freeChain, _) = await BuildFreeChainAsync();
             if (freeChain.Count == 0)
                 freeChain = new[] { OpenRouterModelDefaults.DefaultFreeModelId };
 
-            for (int i = 0; i < items.Count; i++)
+            int succeeded = 0;
+            int failed = 0;
+
+            try
             {
-                var item = items[i];
-                if (item.CardDetail == null) { EnhanceProgress++; continue; }
-
-                StatusMessage = $"Enhancing card {i + 1} of {EnhanceTotal} with AI...";
-                try
+                for (int i = 0; i < items.Count; i++)
                 {
-                    var hint = new OcrHint
-                    {
-                        PlayerName = item.CardDetail.PlayerName,
-                        Year = item.CardDetail.Year,
-                        CardNumber = item.CardDetail.CardNumber,
-                        Manufacturer = item.CardDetail.Manufacturer,
-                        Brand = item.CardDetail.Brand,
-                        SetName = item.CardDetail.SetName,
-                    };
+                    if (ct.IsCancellationRequested) break;
 
-                    ScanResult? result = null;
-                    foreach (var modelId in freeChain)
+                    var item = items[i];
+                    if (item.CardDetail == null) { EnhanceProgress++; continue; }
+
+                    item.Status = BulkScanStatus.Enhancing;
+                    CurrentEnhanceItem = item;
+                    StatusMessage = $"Enhancing \"{item.DisplayName}\"...";
+                    _logger.LogInformation("Enhancing card {Index} ({Name}) of {Total}", i + 1, item.DisplayName, EnhanceTotal);
+
+                    try
                     {
-                        try
+                        var hint = new OcrHint
                         {
-                            result = await _scannerService.ScanCardAsync(
-                                item.FrontImagePath, item.BackImagePath, modelId,
-                                scanDepth: ScanDepth.Standard, ocrHint: hint);
-                            break;
+                            PlayerName = item.CardDetail.PlayerName,
+                            Year = item.CardDetail.Year,
+                            CardNumber = item.CardDetail.CardNumber,
+                            Manufacturer = item.CardDetail.Manufacturer,
+                            Brand = item.CardDetail.Brand,
+                            SetName = item.CardDetail.SetName,
+                        };
+
+                        ScanResult? result = null;
+                        foreach (var modelId in freeChain)
+                        {
+                            if (ct.IsCancellationRequested) break;
+                            CurrentEnhanceModel = modelId;
+                            try
+                            {
+                                result = await _scannerService.ScanCardAsync(
+                                    item.FrontImagePath, item.BackImagePath, modelId,
+                                    scanDepth: ScanDepth.Standard, ocrHint: hint, ct: ct);
+                                break;
+                            }
+                            catch (OpenRouterRateLimitException rlEx)
+                                when (rlEx.Scope == RateLimitScope.AccountPerDay)
+                            {
+                                item.Status = BulkScanStatus.Scanned; // restore — still has OCR data
+                                ErrorMessage = "Daily rate limit hit during enhance. Add credits and try again.";
+                                return;
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Enhance: model {Model} failed for card {Index}, trying next.", modelId, item.Index);
+                            }
                         }
-                        catch (OpenRouterRateLimitException rlEx)
-                            when (rlEx.Scope == RateLimitScope.AccountPerDay)
+
+                        if (result != null)
                         {
-                            ErrorMessage = "Daily rate limit hit during enhance. Add credits and try again.";
-                            IsEnhancing = false;
-                            StatusMessage = null;
-                            return;
+                            result.Card.ImagePathFront = item.FrontImagePath;
+                            if (!string.IsNullOrEmpty(item.BackImagePath))
+                                result.Card.ImagePathBack = item.BackImagePath;
+                            item.CardDetail = CardDetailViewModel.FromCard(result.Card);
+                            item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
+                                ? item.CardDetail.PlayerName : $"Card {item.Index}";
+                            item.ScanMode = ScanMode.Ai;
+                            item.Confidences = result.Confidences ?? new List<FieldConfidence>();
+                            item.Status = BulkScanStatus.Scanned;
+                            item.ErrorMessage = null;
+                            succeeded++;
                         }
-                        catch (Exception ex)
+                        else
                         {
-                            _logger.LogWarning(ex, "Enhance: model {Model} failed for card {Index}, trying next.", modelId, item.Index);
+                            _logger.LogWarning("Enhance: all models exhausted for card {Index}.", item.Index);
+                            item.Status = BulkScanStatus.Scanned; // keep OCR data
+                            item.ErrorMessage = "Enhance failed — all free models exhausted.";
+                            failed++;
                         }
                     }
-
-                    if (result != null)
+                    catch (OperationCanceledException)
                     {
-                        result.Card.ImagePathFront = item.FrontImagePath;
-                        if (!string.IsNullOrEmpty(item.BackImagePath))
-                            result.Card.ImagePathBack = item.BackImagePath;
-                        item.CardDetail = CardDetailViewModel.FromCard(result.Card);
-                        item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
-                            ? item.CardDetail.PlayerName : $"Card {item.Index}";
-                        item.ScanMode = ScanMode.Ai;
-                        item.Confidences = result.Confidences ?? new List<FieldConfidence>();
+                        item.Status = BulkScanStatus.Scanned; // restore — still has OCR data
+                        throw;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _logger.LogWarning("Enhance: all models exhausted for card {Index}.", item.Index);
+                        _logger.LogError(ex, "Enhance failed for card {Index}.", item.Index);
+                        item.Status = BulkScanStatus.Scanned; // restore — still has OCR data
+                        item.ErrorMessage = $"Enhance error: {ex.Message}";
+                        failed++;
+                    }
+
+                    EnhanceProgress++;
+                    OnPropertyChanged(nameof(HasOcrScannedItems));
+
+                    if (i < items.Count - 1 && !ct.IsCancellationRequested)
+                    {
+                        try { await Task.Delay(2000, ct); }
+                        catch (OperationCanceledException) { break; }
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Enhance failed for card {Index}.", item.Index);
-                }
-
-                EnhanceProgress++;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Bulk enhance cancelled by user after {Count} of {Total}.", EnhanceProgress, EnhanceTotal);
+            }
+            finally
+            {
+                IsEnhancing = false;
+                StatusMessage = null;
+                CurrentEnhanceItem = null;
+                CurrentEnhanceModel = null;
+                _enhanceCts?.Dispose();
+                _enhanceCts = null;
                 OnPropertyChanged(nameof(HasOcrScannedItems));
-                // Brief delay between enhance calls for rate-limit safety
-                if (i < items.Count - 1)
-                    await Task.Delay(2000);
             }
 
-            IsEnhancing = false;
-            StatusMessage = null;
-            OnPropertyChanged(nameof(HasOcrScannedItems));
-            SuccessMessage = $"Enhanced {items.Count} card(s) with AI.";
+            if (ct.IsCancellationRequested)
+                ErrorMessage = $"Enhance cancelled after {succeeded} card(s). {items.Count - EnhanceProgress} skipped.";
+            else if (failed > 0)
+                ErrorMessage = $"Enhanced {succeeded} of {items.Count} card(s). {failed} failed — see card details for messages.";
+            else
+                SuccessMessage = $"Enhanced {succeeded} card(s) with AI.";
         }
 
         [RelayCommand]
@@ -919,6 +1032,15 @@ namespace FlipKit.Desktop.ViewModels
             SuccessMessage = isSurpriseSetDestination
                 ? $"Added {saved} cards to Surprise Set!"
                 : $"Saved {saved} cards to My Cards!";
+
+            // Refresh the directory cache so the newly-saved cards' player /
+            // brand / team / set / year values are immediately available to
+            // future OCR scans in the same session — the directory grows from
+            // real usage, not just bootstrap data and imports.
+            if (saved > 0 && _playerDirectory != null)
+            {
+                _ = _playerDirectory.RefreshAsync();
+            }
         }
 
         /// <summary>
@@ -990,6 +1112,10 @@ namespace FlipKit.Desktop.ViewModels
             _scanCts?.Cancel();
             _scanCts?.Dispose();
             _scanCts = null;
+
+            _enhanceCts?.Cancel();
+            _enhanceCts?.Dispose();
+            _enhanceCts = null;
         }
     }
 
@@ -1002,6 +1128,7 @@ namespace FlipKit.Desktop.ViewModels
         Error,
         FreeFailed,  // All free models exhausted — awaiting paid-consent prompt at end of phase 1
         RateLimited, // Daily limit hit — reset to Pending via ResumeBulkScan
+        Enhancing,   // OCR-scanned card currently being re-scanned through AI
     }
 
     public enum BulkScanDestination
@@ -1027,6 +1154,11 @@ namespace FlipKit.Desktop.ViewModels
 
         public ScanMode ScanMode { get; set; } = ScanMode.Ai;
         public List<FieldConfidence> Confidences { get; set; } = new();
+
+        /// <summary>Raw OCR text captured at scan time. Surfaced in the enhance ticker.</summary>
+        public List<string> OcrText { get; set; } = new();
+        public string OcrTextPreview =>
+            OcrText.Count == 0 ? string.Empty : string.Join("\n", OcrText.Take(20));
 
         public bool IsOcrScanned => ScanMode == ScanMode.Ocr && Status == BulkScanStatus.Scanned;
 

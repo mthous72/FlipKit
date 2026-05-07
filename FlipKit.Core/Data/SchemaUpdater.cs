@@ -49,6 +49,89 @@ namespace FlipKit.Core.Data
             await EnsureSurpriseSetTablesAsync(db);
             await EnsureSurpriseSetCardColumnsAsync(db);
             await EnsureCardDataSourceColumnAsync(db);
+            await EnsureReferenceDataTablesAsync(db);
+        }
+
+        /// <summary>
+        /// Creates the reference-data tables (league teams, manufacturers,
+        /// brands) that the OCR pipeline reads from. Called on every startup;
+        /// CREATE TABLE IF NOT EXISTS is idempotent. Seeding the rows is
+        /// handled separately by ReferenceDataSeeder.
+        /// </summary>
+        public static async Task EnsureReferenceDataTablesAsync(FlipKitDbContext db)
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS league_teams (
+                    Id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Sport    TEXT NOT NULL,
+                    TeamName TEXT NOT NULL,
+                    City     TEXT NOT NULL DEFAULT '',
+                    Mascot   TEXT NOT NULL DEFAULT '',
+                    Aliases  TEXT NOT NULL DEFAULT '[]'
+                );");
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_league_teams_Sport_TeamName
+                ON league_teams (Sport, TeamName);");
+
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS known_manufacturers (
+                    Id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name          TEXT NOT NULL,
+                    SportsActive  TEXT NOT NULL DEFAULT '[]',
+                    Aliases       TEXT NOT NULL DEFAULT '[]'
+                );");
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_known_manufacturers_Name
+                ON known_manufacturers (Name);");
+
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS known_brands (
+                    Id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name          TEXT NOT NULL,
+                    Manufacturer  TEXT NOT NULL DEFAULT '',
+                    Sports        TEXT NOT NULL DEFAULT '[]'
+                );");
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_known_brands_Manufacturer_Name
+                ON known_brands (Manufacturer, Name);");
+
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS known_variations (
+                    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Name         TEXT NOT NULL,
+                    Type         TEXT NOT NULL DEFAULT 'Parallel',
+                    Manufacturer TEXT NOT NULL DEFAULT '',
+                    Sports       TEXT NOT NULL DEFAULT '[]'
+                );");
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_known_variations_Manufacturer_Type_Name
+                ON known_variations (Manufacturer, Type, Name);");
+
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS grading_authorities (
+                    Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Code            TEXT NOT NULL,
+                    FullName        TEXT NOT NULL DEFAULT '',
+                    MinGrade        REAL NOT NULL DEFAULT 1,
+                    MaxGrade        REAL NOT NULL DEFAULT 10,
+                    GradeIncrement  REAL NOT NULL DEFAULT 0.5,
+                    HasSubgrades    INTEGER NOT NULL DEFAULT 0,
+                    IsActive        INTEGER NOT NULL DEFAULT 1
+                );");
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_grading_authorities_Code
+                ON grading_authorities (Code);");
+
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS league_acronyms (
+                    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Acronym   TEXT NOT NULL,
+                    Sport     TEXT NOT NULL DEFAULT '',
+                    FullName  TEXT NOT NULL DEFAULT ''
+                );");
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE UNIQUE INDEX IF NOT EXISTS IX_league_acronyms_Acronym
+                ON league_acronyms (Acronym);");
         }
 
         public static async Task EnsureSurpriseSetTablesAsync(FlipKitDbContext db)
