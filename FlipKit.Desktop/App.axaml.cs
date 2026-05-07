@@ -120,11 +120,11 @@ namespace FlipKit.Desktop
                 services.AddSingleton<ISecretEncryption, FlipKit.Core.Services.Implementations.DataProtectionSecretEncryption>();
 
                 // Services (order matters - settings service needed first)
-                // 3-minute timeout: free models (Gemma 4 31B) can take 90-120s to respond.
-                // The default 100s kills legitimate slow-but-valid responses.
+                // 5-minute timeout matches the 270s server-side timeout sent in each OpenRouter request.
+                // Free models (Gemma 4 31B) can take 90-120s; paid models can be slower under load.
                 services.AddSingleton<HttpClient>(_ => new HttpClient
                 {
-                    Timeout = TimeSpan.FromMinutes(3),
+                    Timeout = TimeSpan.FromMinutes(5),
                 });
                 services.AddSingleton<ISettingsService, JsonSettingsService>();
                 services.AddSingleton<IBrowserService, SystemBrowserService>();

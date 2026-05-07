@@ -171,7 +171,7 @@ public class OpenRouterScannerServiceTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.ScanCardAsync(image.Path));
-        Assert.Contains("models failed", ex.Message);
+        Assert.Contains("404", ex.Message); // actual API error is surfaced directly
         Assert.Equal(1, handler.Requests.Count); // only one model tried
     }
 
@@ -190,8 +190,7 @@ public class OpenRouterScannerServiceTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.ScanCardAsync(image.Path));
-        Assert.Contains("All", ex.Message);
-        Assert.Contains("models failed", ex.Message);
+        Assert.Contains("404", ex.Message); // last exception's message surfaced directly
         Assert.Equal(1, handler.Requests.Count);
     }
 
@@ -235,7 +234,7 @@ public class OpenRouterScannerServiceTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.ScanCardAsync(image.Path));
-        Assert.Contains("models failed", ex.Message);
+        Assert.Contains("not even close to JSON", ex.Message); // JsonException surfaced directly
         Assert.Equal(1, handler.Requests.Count);
     }
 

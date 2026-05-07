@@ -260,6 +260,13 @@ namespace FlipKit.Desktop.ViewModels
             if (Items.Count == 0)
                 return;
 
+            // Reset Error cards to Pending so they are retried on each scan run.
+            foreach (var failed in Items.Where(i => i.Status == BulkScanStatus.Error))
+            {
+                failed.Status = BulkScanStatus.Pending;
+                failed.ErrorMessage = null;
+            }
+
             var pending = Items.Where(i => i.Status == BulkScanStatus.Pending).ToList();
             if (pending.Count == 0)
                 return;

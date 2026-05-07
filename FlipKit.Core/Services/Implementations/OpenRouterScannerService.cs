@@ -247,6 +247,9 @@ Return ONLY the JSON, no other text.";
         /// <summary>
         /// Sends a single scan request with exponential backoff on 5xx errors
         /// (2s, 4s, 8s, 16s, 32s before giving up and letting the caller walk the chain).
+        /// Also retries up to 2 times on connection-level timeouts (TaskCanceledException
+        /// where the user did not cancel) — these are typically stale-connection resets or
+        /// transient upstream drops, not real 5-minute waits.
         /// 429s are converted to <see cref="OpenRouterRateLimitException"/> and re-thrown.
         /// </summary>
         private async Task<string> TryScanModelAsync(
@@ -254,6 +257,7 @@ Return ONLY the JSON, no other text.";
         {
             var backoffDelaysMs = new[] { 2000, 4000, 8000, 16000, 32000 };
             var attempt = 0;
+            var timeoutAttempt = 0;
 
             while (true)
             {
@@ -264,6 +268,15 @@ Return ONLY the JSON, no other text.";
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
                     throw; // user cancelled — propagate immediately
+                }
+                catch (TaskCanceledException) when (timeoutAttempt < 2)
+                {
+                    // Transient connection timeout (not user-cancelled). Retry before giving up.
+                    timeoutAttempt++;
+                    _logger.LogWarning(
+                        "Model {Model} connection dropped on attempt {N} (transient). Retrying in 10s.",
+                        modelId, timeoutAttempt);
+                    await Task.Delay(10_000, ct);
                 }
                 catch (OpenRouterRateLimitException)
                 {
