@@ -110,6 +110,15 @@ namespace FlipKit.Desktop.ViewModels
             _ = LoadModelsAsync();
         }
 
+        partial void OnSelectedModelChanged(ModelOption? value)
+        {
+            if (value == null || value.IsAuto) return;
+            var settings = _settingsService.Load();
+            if (settings.DefaultModel == value.Value) return;
+            settings.DefaultModel = value.Value;
+            _settingsService.Save(settings);
+        }
+
         private async Task LoadModelsAsync()
         {
             IsLoadingModels = true;
@@ -124,17 +133,13 @@ namespace FlipKit.Desktop.ViewModels
                 foreach (var m in catalog.PaidVisionModels)
                     ModelOptions.Add(ModelOption.FromCatalog(m));
 
-                // Pick a sensible default: saved settings if it matches; otherwise Auto.
+                // Pick a sensible default: saved settings if it's still in the live catalog;
+                // otherwise Auto. Never pre-select a stale/deprecated model — the user
+                // would unknowingly scan with it every session until they noticed.
                 var savedId = _settingsService.Load().DefaultModel;
                 ModelOption? choice = null;
                 if (!string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
                     choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
-                if (choice == null && !string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
-                {
-                    // Saved id no longer offered by OpenRouter — show as a stale stub.
-                    choice = ModelOption.Stale(savedId);
-                    ModelOptions.Add(choice);
-                }
                 SelectedModel = choice ?? ModelOptions.First();   // First() = Auto
 
                 if (catalog.IsEmpty)

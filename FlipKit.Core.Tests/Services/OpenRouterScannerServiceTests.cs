@@ -160,37 +160,26 @@ public class OpenRouterScannerServiceTests
     }
 
     [Fact]
-    public async Task Should_FallBackToNextModel_When_FirstModelReturns404()
+    public async Task Should_Throw_When_ModelReturns404()
     {
-        // The fallback chain should walk free-models in order on retryable errors.
-        // First request: 404 (model not found) → handler's 2nd response = success.
-        var responses = new Queue<HttpResponseMessage>();
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.NotFound)
-        {
-            Content = new StringContent(@"{""error"":""model not found""}"),
-        });
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(OpenRouterResponseWith(MinimalScannedCardJson)),
-        });
-
-        var handler = new StubHttpMessageHandler(_ => responses.Dequeue());
+        // GetFallbackChain now returns a single model — no silent substitution.
+        // A 404 on the explicit model should throw so the caller can handle it.
+        var handler = new StubHttpMessageHandler(HttpStatusCode.NotFound,
+            @"{""error"":""model not found""}");
         var svc = CreateService(handler);
         using var image = new TempImageFile();
 
-        var result = await svc.ScanCardAsync(image.Path);
-
-        Assert.Equal("Mike Trout", result.Card.PlayerName);
-        Assert.Equal(2, handler.Requests.Count); // proved fallback happened
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.ScanCardAsync(image.Path));
+        Assert.Contains("models failed", ex.Message);
+        Assert.Equal(1, handler.Requests.Count); // only one model tried
     }
 
     [Fact]
     public async Task Should_ThrowWithSummaryOfFailures_When_AllModelsFail()
     {
-        // Phase 5a fix landed — the throw site now includes the integer status code
-        // alongside the enum name, so 5xx / 429 fallback triggers correctly. This
-        // test still uses 404 for parity with the original test; see the new 5xx
-        // test below for explicit confirmation that the D2 fix works.
+        // GetFallbackChain returns a single model, so exactly one HTTP request is made
+        // before the scan fails. Multi-model rotation is the caller's responsibility.
         var handler = new StubHttpMessageHandler(_ =>
             new HttpResponseMessage(HttpStatusCode.NotFound)
             {
@@ -203,9 +192,7 @@ public class OpenRouterScannerServiceTests
             () => svc.ScanCardAsync(image.Path));
         Assert.Contains("All", ex.Message);
         Assert.Contains("models failed", ex.Message);
-        // Default starting model is index 3 in FreeVisionModels (nemotron 12B), so the
-        // chain walks 2 models (indices 3 and 4) before giving up.
-        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(1, handler.Requests.Count);
     }
 
     [Fact]
@@ -237,28 +224,19 @@ public class OpenRouterScannerServiceTests
     }
 
     [Fact]
-    public async Task Should_FallBackOnInvalidJson_When_ModelReturnsGarbage()
+    public async Task Should_Throw_When_ModelReturnsInvalidJson()
     {
-        // The first response is HTTP 200 but the inner content isn't valid JSON.
-        // Scanner should treat that as a JsonException and fall through to the next model.
-        var responses = new Queue<HttpResponseMessage>();
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(OpenRouterResponseWith("not even close to JSON")),
-        });
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(OpenRouterResponseWith(MinimalScannedCardJson)),
-        });
-
-        var handler = new StubHttpMessageHandler(_ => responses.Dequeue());
+        // GetFallbackChain returns a single model — invalid JSON from the chosen model
+        // surfaces as an exception rather than silently falling back to another model.
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK,
+            OpenRouterResponseWith("not even close to JSON"));
         var svc = CreateService(handler);
         using var image = new TempImageFile();
 
-        var result = await svc.ScanCardAsync(image.Path);
-
-        Assert.Equal("Mike Trout", result.Card.PlayerName);
-        Assert.Equal(2, handler.Requests.Count);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.ScanCardAsync(image.Path));
+        Assert.Contains("models failed", ex.Message);
+        Assert.Equal(1, handler.Requests.Count);
     }
 
     // === Custom prompt ===

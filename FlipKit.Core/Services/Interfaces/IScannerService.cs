@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
@@ -11,7 +12,8 @@ namespace FlipKit.Core.Services
             string? backImagePath = null,
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
             XimilarScanMode ximilarMode = XimilarScanMode.Standard,
-            ScanDepth scanDepth = ScanDepth.Standard);
+            ScanDepth scanDepth = ScanDepth.Standard,
+            CancellationToken ct = default);
 
         Task<string> SendCustomPromptAsync(
             string imagePath,

@@ -87,11 +87,36 @@ namespace FlipKit.Core.Services.Scanning
                 .Where(IsLikelyRealVisionLanguageModel)   // drop routers, sentinel pricing, music gen
                 .ToList();
 
-            var free = visionModels.Where(m => m.IsFree).ToList();
-            var paid = visionModels.Where(m => !m.IsFree)
-                                   .OrderBy(m => m.PromptPricePerMillion)
-                                   .ThenBy(m => m.CompletionPricePerMillion)
-                                   .ToList();
+            // Sort free models so our curated priority order (FallbackFreeModelIds) comes
+            // first, then any additional models the live API returns that aren't in the
+            // list. This prevents low-quality models (e.g. gemma-3-4b) from being tried
+            // first just because the API returns them alphabetically before gemma-4.
+            var preferredIds = OpenRouterModelDefaults.FallbackFreeModelIds;
+            var free = visionModels
+                .Where(m => m.IsFree)
+                .OrderBy(m =>
+                {
+                    var idx = Array.IndexOf(preferredIds, m.Id);
+                    return idx >= 0 ? idx : int.MaxValue;
+                })
+                .ThenBy(m => m.Id)
+                .ToList();
+
+            // Sort paid models by our curated preference order first (FallbackPaidModelIds),
+            // then by price for any models not in the list. This prevents cheap low-quality
+            // models (e.g. gemma-3-4b at $0.04/M) from becoming the default paid fallback
+            // just because they undercut our preferred models on price.
+            var preferredPaidIds = OpenRouterModelDefaults.FallbackPaidModelIds;
+            var paid = visionModels
+                .Where(m => !m.IsFree)
+                .OrderBy(m =>
+                {
+                    var idx = Array.IndexOf(preferredPaidIds, m.Id);
+                    return idx >= 0 ? idx : int.MaxValue;
+                })
+                .ThenBy(m => m.PromptPricePerMillion)
+                .ThenBy(m => m.CompletionPricePerMillion)
+                .ToList();
 
             _logger?.LogInformation(
                 "OpenRouter catalog: {Free} free vision models, {Paid} paid vision models (filtered from {Total} total).",

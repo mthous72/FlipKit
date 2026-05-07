@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
@@ -129,7 +130,8 @@ Return ONLY the JSON, no other text.";
             string? backImagePath = null,
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
             XimilarScanMode ximilarMode = XimilarScanMode.Standard,
-            ScanDepth scanDepth = ScanDepth.Standard)
+            ScanDepth scanDepth = ScanDepth.Standard,
+            CancellationToken ct = default)
         {
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
 
@@ -161,7 +163,7 @@ Return ONLY the JSON, no other text.";
                 {
                     _logger.LogInformation("Attempting scan with model {Model} (depth: {Depth})...", currentModel, scanDepth);
 
-                    var rawContent = await TryScanModelAsync(dataUrls, prompt, currentModel, apiKey);
+                    var rawContent = await TryScanModelAsync(dataUrls, prompt, currentModel, apiKey, ct);
                     var content = StripCodeBlocks(rawContent);
 
                     var scannedData = JsonSerializer.Deserialize<ScannedCardData>(content);
@@ -194,7 +196,7 @@ Return ONLY the JSON, no other text.";
                     {
                         var waitMs = (rlEx.RetryAfterSeconds ?? 60) * 1000;
                         _logger.LogWarning("Per-minute rate limit on {Model}. Waiting {Wait}ms before walking chain.", currentModel, waitMs);
-                        await Task.Delay(waitMs);
+                        await Task.Delay(waitMs, ct);
                     }
                     else
                     {
@@ -202,11 +204,19 @@ Return ONLY the JSON, no other text.";
                     }
                     failedModels.Add(currentModel);
                 }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    // User clicked Cancel — stop immediately, don't walk the chain.
+                    _logger.LogInformation("Scan cancelled by user on model {Model}.", currentModel);
+                    throw;
+                }
                 catch (TaskCanceledException ex)
                 {
-                    _logger.LogWarning("Model {Model} timed out. Walking chain.", currentModel);
+                    // HttpClient timeout — model took too long to respond.
+                    _logger.LogWarning("Model {Model} timed out (server too slow). Walking chain.", currentModel);
                     failedModels.Add(currentModel);
-                    lastException = ex;
+                    lastException = new TimeoutException(
+                        $"Model {currentModel} timed out — the AI server took too long to respond.", ex);
                 }
                 catch (JsonException ex)
                 {
@@ -228,10 +238,10 @@ Return ONLY the JSON, no other text.";
                 }
             }
 
-            _logger.LogError(lastException, "All {Count} models failed: {Models}", modelsToTry.Count, string.Join(", ", failedModels));
+            _logger.LogError(lastException, "Model {Model} failed: {Error}", modelsToTry[0], lastException?.Message);
             throw new InvalidOperationException(
-                $"Scan failed: All {modelsToTry.Count} AI models failed. Last error: {lastException?.Message}. " +
-                "Please try again later or check your network connection.", lastException);
+                lastException?.Message ?? $"Model {modelsToTry[0]} failed — please try again or check your network connection.",
+                lastException);
         }
 
         /// <summary>
@@ -240,7 +250,7 @@ Return ONLY the JSON, no other text.";
         /// 429s are converted to <see cref="OpenRouterRateLimitException"/> and re-thrown.
         /// </summary>
         private async Task<string> TryScanModelAsync(
-            List<string> dataUrls, string prompt, string modelId, string apiKey)
+            List<string> dataUrls, string prompt, string modelId, string apiKey, CancellationToken ct)
         {
             var backoffDelaysMs = new[] { 2000, 4000, 8000, 16000, 32000 };
             var attempt = 0;
@@ -249,7 +259,11 @@ Return ONLY the JSON, no other text.";
             {
                 try
                 {
-                    return await SendSingleRequestAsync(dataUrls, prompt, modelId, apiKey);
+                    return await SendSingleRequestAsync(dataUrls, prompt, modelId, apiKey, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw; // user cancelled — propagate immediately
                 }
                 catch (OpenRouterRateLimitException)
                 {
@@ -262,7 +276,7 @@ Return ONLY the JSON, no other text.";
                         _logger.LogWarning(
                             "Model {Model} returned 5xx on attempt {N}. Retrying in {Delay}ms.",
                             modelId, attempt + 1, backoffDelaysMs[attempt]);
-                        await Task.Delay(backoffDelaysMs[attempt]);
+                        await Task.Delay(backoffDelaysMs[attempt], ct);
                         attempt++;
                     }
                     else
@@ -316,7 +330,7 @@ Return ONLY the JSON, no other text.";
                 try
                 {
                     _logger.LogDebug("Trying model {Model}", currentModel);
-                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey);
+                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey, CancellationToken.None);
                     _logger.LogInformation("Scan succeeded with model {Model}", currentModel);
                     return result;
                 }
@@ -345,7 +359,7 @@ Return ONLY the JSON, no other text.";
                 $"All models failed. Last error: {lastException?.Message}", lastException);
         }
 
-        private async Task<string> SendSingleRequestAsync(List<string> dataUrls, string prompt, string model, string apiKey)
+        private async Task<string> SendSingleRequestAsync(List<string> dataUrls, string prompt, string model, string apiKey, CancellationToken ct)
         {
             var contentParts = new List<OpenRouterContentPart>();
             foreach (var dataUrl in dataUrls)
@@ -376,7 +390,7 @@ Return ONLY the JSON, no other text.";
             httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
             httpRequest.Headers.Add("X-Title", "FlipKit");
 
-            var response = await _httpClient.SendAsync(httpRequest);
+            var response = await _httpClient.SendAsync(httpRequest, ct);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -414,16 +428,11 @@ Return ONLY the JSON, no other text.";
 
         private static List<string> GetFallbackChain(string startModel)
         {
-            // Reads from the consolidated defaults (Phase 5b). Same shape as before:
-            // if startModel is a known free model, walk from it to the end of the list;
-            // otherwise (custom or paid model) try it alone, then walk all free models.
-            var index = Array.IndexOf(OpenRouterModelDefaults.FallbackFreeModelIds, startModel);
-            if (index >= 0)
-                return OpenRouterModelDefaults.FallbackFreeModelIds.Skip(index).ToList();
-
-            var chain = new List<string> { startModel };
-            chain.AddRange(OpenRouterModelDefaults.FallbackFreeModelIds);
-            return chain;
+            // Always try exactly the requested model. Multi-model rotation is the
+            // caller's responsibility (ScanWithAutoRotationAsync, BulkScan loop, Web
+            // auto-rotation). Silently substituting a different model for an explicit
+            // pick would confuse users (and potentially use a deprecated model).
+            return new List<string> { startModel };
         }
 
         // 429 is now converted to OpenRouterRateLimitException in SendSingleRequestAsync,

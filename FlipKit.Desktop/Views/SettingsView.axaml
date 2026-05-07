@@ -702,6 +702,12 @@
                                 <TextBlock Text="{Binding DbPath}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Button Content="Open Data Folder" Command="{Binding OpenDataFolderCommand}" HorizontalAlignment="Left"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                <Button Content="Open App Logs" Command="{Binding OpenLogFolderCommand}"
+                                        ToolTip.Tip="Opens the Serilog application log folder (flipkit-YYYYMMDD.log)"/>
+                                <Button Content="Open Scan Error Logs" Command="{Binding OpenScanLogsFolderCommand}"
+                                        ToolTip.Tip="Opens the bulk scan error log folder (%LocalAppData%\FlipKit\BulkScanLogs)"/>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Data Access Mode -->

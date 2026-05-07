@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Desktop.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -14,7 +15,7 @@ using FlipKit.Core.Helpers;
 
 namespace FlipKit.Desktop.ViewModels
 {
-    public partial class BulkScanViewModel : ViewModelBase, IDisposable
+    public partial class BulkScanViewModel : ViewModelBase, IDisposable, IKeepAliveViewModel
     {
         private readonly IScannerService _scannerService;
         private readonly ICardRepository _cardRepository;
@@ -27,6 +28,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IPaidModelConsentService _consentService;
         private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
+        private readonly IAppNotificationService? _notificationService;
         private readonly ILogger<BulkScanViewModel> _logger;
 
         private CancellationTokenSource? _scanCts;
@@ -103,6 +105,13 @@ namespace FlipKit.Desktop.ViewModels
             OnPropertyChanged(nameof(IsSelectedModelFree));
             OnPropertyChanged(nameof(ShowFreeModelBanner));
             if (IsSelectedModelFree) MaxConcurrentScans = 1;
+
+            // Persist the explicit pick so it survives navigation and restarts.
+            if (value == null || value.IsAuto) return;
+            var settings = _settingsService.Load();
+            if (settings.DefaultModel == value.Value) return;
+            settings.DefaultModel = value.Value;
+            _settingsService.Save(settings);
         }
 
         partial void OnIsRateLimitPausedChanged(bool value)
@@ -144,7 +153,8 @@ namespace FlipKit.Desktop.ViewModels
             IPaidModelConsentService consentService,
             IAiScanConsentService aiScanConsentService,
             IImageUploadService imageUploadService,
-            ILogger<BulkScanViewModel> logger)
+            ILogger<BulkScanViewModel> logger,
+            IAppNotificationService? notificationService = null)
         {
             _scannerService = scannerService;
             _cardRepository = cardRepository;
@@ -157,6 +167,7 @@ namespace FlipKit.Desktop.ViewModels
             _consentService = consentService;
             _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
+            _notificationService = notificationService;
             _logger = logger;
 
             // Initialize from settings
@@ -182,12 +193,7 @@ namespace FlipKit.Desktop.ViewModels
                 ModelOption? choice = null;
                 if (!string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
                     choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
-                if (choice == null && !string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
-                {
-                    choice = ModelOption.Stale(savedId);
-                    ModelOptions.Add(choice);
-                }
-                SelectedModel = choice ?? ModelOptions.First();
+                SelectedModel = choice ?? ModelOptions.First(); // First() = Auto when not in catalog
 
                 if (catalog.IsEmpty)
                     ModelLoadError = "Couldn't reach OpenRouter for the live model list.";
@@ -290,22 +296,12 @@ namespace FlipKit.Desktop.ViewModels
 
             var isFreeModel = IsSelectedModelFree;
 
-            // Resolve the model chain once for the whole bulk run.
-            //   • Explicit pick → single-model chain.
-            //   • Auto + paid not allowed → free-only chain.
-            //   • Auto + paid allowed → free chain + cheapest paid as final fallback.
-            var modelChain = await BuildBulkModelChainAsync();
-            if (modelChain == null)
-            {
-                // User declined paid consent; cancel cleanly.
-                IsScanning = false;
-                _scanCts = null;
-                StatusMessage = null;
-                SuccessMessage = "Bulk scan canceled — no paid model was used.";
-                return;
-            }
+            // Phase 1: scan with free models only.
+            // Explicit pick → single-element chain; Auto → all free vision models from catalog.
+            // Paid consent is never asked upfront — only after free models are actually exhausted.
+            var (freeChain, cheapestPaid) = await BuildFreeChainAsync();
 
-            if (modelChain.Count == 0)
+            if (freeChain.Count == 0)
             {
                 IsScanning = false;
                 _scanCts = null;
@@ -313,14 +309,17 @@ namespace FlipKit.Desktop.ViewModels
                 return;
             }
 
+            // Auto mode tracks per-card exhaustion; explicit picks go straight to Error on failure.
+            var freeChainOnly = SelectedModel == null || SelectedModel.IsAuto;
+
             // For free chains, force concurrency to 1 to respect rate limits.
             var maxConcurrency = isFreeModel ? 1 : MaxConcurrentScans;
 
             _logger.LogInformation("Starting bulk scan of {Count} cards with model chain {Models} (max concurrency {Concurrency})",
-                pending.Count, string.Join(",", modelChain), maxConcurrency);
+                pending.Count, string.Join(",", freeChain), maxConcurrency);
 
             // Start error tracking session — log the head model for context.
-            _errorLogger.StartSession(pending.Count, modelChain[0]);
+            _errorLogger.StartSession(pending.Count, freeChain[0]);
 
             // Create semaphore to limit concurrent scans (Moss Machine pattern)
             using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
@@ -331,7 +330,7 @@ namespace FlipKit.Desktop.ViewModels
             // used to wrap the whole method body).
             var cts = _scanCts;
             var currentScanDepth = ScanDepth;
-            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel, currentScanDepth, cts));
+            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, freeChain, isFreeModel, currentScanDepth, cts, freeChainOnly));
 
             try
             {
@@ -340,6 +339,67 @@ namespace FlipKit.Desktop.ViewModels
             catch (OperationCanceledException)
             {
                 _logger.LogInformation("Bulk scan cancelled by user");
+            }
+
+            // Phase 2: If auto-mode left FreeFailed items, ask once for paid consent.
+            // Only offered after ALL free models are exhausted — never upfront.
+            if (freeChainOnly && !IsRateLimitPaused && !cts.Token.IsCancellationRequested)
+            {
+                var failedItems = Items.Where(i => i.Status == BulkScanStatus.FreeFailed).ToList();
+                if (failedItems.Count > 0 && cheapestPaid != null)
+                {
+                    StatusMessage = $"Asking about paid fallback for {failedItems.Count} card(s)...";
+                    var consented = await _consentService.AskAsync(
+                        cheapestPaid,
+                        $"{failedItems.Count} card(s) exhausted all {freeChain.Count} free model(s). " +
+                        $"Retry this batch with {cheapestPaid.DisplayName} as a paid fallback?\n\n" +
+                        $"⚠️ {failedItems.Count} paid scan(s) will be charged at the rate shown below. " +
+                        $"Costs can rise rapidly on large batches — review the pricing carefully before proceeding.");
+
+                    if (consented)
+                    {
+                        _logger.LogInformation("Paid consent granted; retrying {Count} FreeFailed items with {Model}.",
+                            failedItems.Count, cheapestPaid.Id);
+                        StatusMessage = $"Retrying {failedItems.Count} card(s) with paid model...";
+                        foreach (var item in failedItems)
+                        {
+                            item.Status = BulkScanStatus.Pending;
+                            item.ErrorMessage = null;
+                        }
+                        var paidChain = new List<string> { cheapestPaid.Id };
+                        using var paidSemaphore = new SemaphoreSlim(MaxConcurrentScans, MaxConcurrentScans);
+                        var retryTasks = failedItems.Select(item =>
+                            ProcessItemAsync(item, paidSemaphore, settings, paidChain, false, currentScanDepth, cts, freeChainOnly: false));
+                        try { await Task.WhenAll(retryTasks); }
+                        catch (OperationCanceledException) { }
+                    }
+                    else
+                    {
+                        foreach (var item in failedItems)
+                        {
+                            item.Status = BulkScanStatus.Error;
+                            item.ErrorMessage = "All free models exhausted — paid fallback declined.";
+                            _errorLogger.LogError(item.Index, item.FrontImagePath, item.BackImagePath,
+                                new Exception(item.ErrorMessage), freeChain[0]);
+                        }
+                    }
+                }
+                else if (failedItems.Count > 0)
+                {
+                    // No paid models available — convert to errors
+                    foreach (var item in failedItems)
+                    {
+                        item.Status = BulkScanStatus.Error;
+                        item.ErrorMessage = "All free models exhausted — no paid models available.";
+                    }
+                }
+            }
+
+            // Ensure any remaining FreeFailed (e.g. scan cancelled during phase 1) become errors.
+            foreach (var item in Items.Where(i => i.Status == BulkScanStatus.FreeFailed).ToList())
+            {
+                item.Status = BulkScanStatus.Error;
+                item.ErrorMessage = "All free models exhausted — scan cancelled before paid fallback was offered.";
             }
 
             var scanned = Items.Count(i => i.Status == BulkScanStatus.Scanned);
@@ -355,6 +415,10 @@ namespace FlipKit.Desktop.ViewModels
             IsScanning = false;
             _scanCts = null;
             StatusMessage = null;
+
+            // Notify even when the user is on another tab so they know the batch is done.
+            if (!cts.Token.IsCancellationRequested)
+                _notificationService?.NotifyBulkScanComplete(scanned, errors);
 
             if (IsRateLimitPaused)
             {
@@ -373,40 +437,21 @@ namespace FlipKit.Desktop.ViewModels
         }
 
         /// <summary>
-        /// Builds the per-card model chain for a bulk run. Returns null if the user
-        /// declined paid consent, an empty list if no usable models exist, or a list
-        /// of model ids to try in order otherwise.
+        /// Returns the free-only model chain plus the cheapest paid model (for Phase 2
+        /// consent, if needed). Explicit picks return a single-element chain with no
+        /// paid model — those fail as errors, not FreeFailed, when the chain is exhausted.
         /// </summary>
-        private async Task<IReadOnlyList<string>?> BuildBulkModelChainAsync()
+        private async Task<(IReadOnlyList<string> FreeChain, OpenRouterModel? CheapestPaid)> BuildFreeChainAsync()
         {
-            // Explicit pick → trust it; single-element chain.
             if (SelectedModel != null && !SelectedModel.IsAuto)
-                return new[] { SelectedModel.Value };
+                return (new[] { SelectedModel.Value }, null);
 
             var catalog = await _modelCatalog.GetAsync();
-            if (catalog.IsEmpty) return Array.Empty<string>();
+            if (catalog.IsEmpty) return (Array.Empty<string>(), null);
 
             var chain = catalog.FreeVisionModels.Select(m => m.Id).ToList();
-
-            if (catalog.PaidVisionModels.Count > 0)
-            {
-                var cheapest = catalog.PaidVisionModels[0];
-                var consented = await _consentService.AskAsync(
-                    cheapest,
-                    $"Bulk scan: when all {catalog.FreeVisionModels.Count} free models fail for a card, " +
-                    $"should we try the cheapest paid model ({cheapest.DisplayName}) as a fallback? " +
-                    "If you decline, cards that all free models fail on will be marked as errors.");
-                if (!consented)
-                {
-                    // User said no — return null to signal "user canceled the whole run".
-                    // (Alternative: continue with free-only and let cards fail. The current
-                    // semantics of "Cancel" in the dialog reads as "don't run", so we honor that.)
-                    return null;
-                }
-                chain.Add(cheapest.Id);
-            }
-
-            return chain;
+            var cheapestPaid = catalog.PaidVisionModels.Count > 0 ? catalog.PaidVisionModels[0] : null;
+            return (chain, cheapestPaid);
         }
 
         private async Task ProcessItemAsync(
@@ -416,7 +461,8 @@ namespace FlipKit.Desktop.ViewModels
             IReadOnlyList<string> modelChain,
             bool isFreeModel,
             ScanDepth scanDepth,
-            CancellationTokenSource cts)
+            CancellationTokenSource cts,
+            bool freeChainOnly = false)
         {
             // Wait for semaphore slot (rate limiting)
             await semaphore.WaitAsync(cts.Token);
@@ -444,7 +490,7 @@ namespace FlipKit.Desktop.ViewModels
                         {
                             scanResult = await _scannerService.ScanCardAsync(
                                 item.FrontImagePath, item.BackImagePath, modelId,
-                                scanDepth: scanDepth);
+                                scanDepth: scanDepth, ct: cts.Token);
                             usedModel = modelId;
                             break;
                         }
@@ -453,66 +499,87 @@ namespace FlipKit.Desktop.ViewModels
                         {
                             throw; // propagate to outer catch — pauses the whole run
                         }
+                        catch (OperationCanceledException)
+                        {
+                            throw; // user cancelled — don't silently walk to next model
+                        }
                         catch (Exception ex)
                         {
                             lastError = ex;
-                            _logger.LogDebug("Card {Index}: model {Model} failed, trying next.", item.Index, modelId);
+                            _logger.LogWarning("Card {Index}: model {Model} failed ({Reason}), trying next.",
+                                item.Index, modelId, ex.Message);
                         }
                     }
-                    if (scanResult == null) throw lastError ?? new Exception("All models in chain failed.");
-
-                    scanResult.Card.ImagePathFront = item.FrontImagePath;
-                    if (!string.IsNullOrEmpty(item.BackImagePath))
-                        scanResult.Card.ImagePathBack = item.BackImagePath;
-
-                    item.CardDetail = CardDetailViewModel.FromCard(scanResult.Card);
-
-                    // Run verification pipeline if enabled (same as regular Scan view)
-                    if (settings.EnableVariationVerification && item.CardDetail != null)
+                    if (scanResult != null)
                     {
-                        try
+                        scanResult.Card.ImagePathFront = item.FrontImagePath;
+                        if (!string.IsNullOrEmpty(item.BackImagePath))
+                            scanResult.Card.ImagePathBack = item.BackImagePath;
+
+                        item.CardDetail = CardDetailViewModel.FromCard(scanResult.Card);
+
+                        // Run verification pipeline if enabled (same as regular Scan view)
+                        if (settings.EnableVariationVerification && item.CardDetail != null)
                         {
-                            var verification = await _variationVerifier.VerifyCardAsync(scanResult, item.FrontImagePath);
-
-                            // Run confirmation pass if needed and enabled
-                            if (settings.RunConfirmationPass && _variationVerifier.NeedsConfirmationPass(verification))
+                            try
                             {
-                                verification = await _variationVerifier.RunConfirmationPassAsync(scanResult, verification, item.FrontImagePath);
-                            }
+                                var verification = await _variationVerifier.VerifyCardAsync(scanResult, item.FrontImagePath);
 
-                            // Auto-apply high-confidence suggestions if enabled
-                            if (settings.AutoApplyHighConfidenceSuggestions)
-                            {
-                                if (verification.SuggestedPlayerName != null &&
-                                    verification.PlayerVerified == false &&
-                                    verification.FieldConfidences.Any(f =>
-                                        f.FieldName == "player_name" &&
-                                        f.Confidence == VerificationConfidence.Conflict))
+                                // Run confirmation pass if needed and enabled
+                                if (settings.RunConfirmationPass && _variationVerifier.NeedsConfirmationPass(verification))
                                 {
-                                    item.CardDetail.PlayerName = verification.SuggestedPlayerName;
+                                    verification = await _variationVerifier.RunConfirmationPassAsync(scanResult, verification, item.FrontImagePath);
                                 }
 
-                                if (verification.SuggestedVariation != null &&
-                                    verification.OverallConfidence != VerificationConfidence.Conflict)
+                                // Auto-apply high-confidence suggestions if enabled
+                                if (settings.AutoApplyHighConfidenceSuggestions)
                                 {
-                                    item.CardDetail.ParallelName = verification.SuggestedVariation;
+                                    if (verification.SuggestedPlayerName != null &&
+                                        verification.PlayerVerified == false &&
+                                        verification.FieldConfidences.Any(f =>
+                                            f.FieldName == "player_name" &&
+                                            f.Confidence == VerificationConfidence.Conflict))
+                                    {
+                                        item.CardDetail.PlayerName = verification.SuggestedPlayerName;
+                                    }
+
+                                    if (verification.SuggestedVariation != null &&
+                                        verification.OverallConfidence != VerificationConfidence.Conflict)
+                                    {
+                                        item.CardDetail.ParallelName = verification.SuggestedVariation;
+                                    }
                                 }
                             }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Verification failed for card {Index}, using unverified scan", item.Index);
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Verification failed for card {Index}, using unverified scan", item.Index);
-                        }
+
+                        item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
+                            ? item.CardDetail.PlayerName
+                            : $"Card {item.Index}";
+                        item.Status = BulkScanStatus.Scanned;
+                        _logger.LogInformation("Successfully scanned card {Index}: {PlayerName}", item.Index, item.DisplayName);
+
+                        // Log success for tracking
+                        _errorLogger.LogSuccess(item.Index, item.FrontImagePath, item.DisplayName);
                     }
-
-                    item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
-                        ? item.CardDetail.PlayerName
-                        : $"Card {item.Index}";
-                    item.Status = BulkScanStatus.Scanned;
-                    _logger.LogInformation("Successfully scanned card {Index}: {PlayerName}", item.Index, item.DisplayName);
-
-                    // Log success for tracking
-                    _errorLogger.LogSuccess(item.Index, item.FrontImagePath, item.DisplayName);
+                    else if (freeChainOnly)
+                    {
+                        // All free models exhausted — defer to Phase 2 paid-consent prompt.
+                        item.Status = BulkScanStatus.FreeFailed;
+                        item.ErrorMessage = lastError?.Message ?? "All free models exhausted.";
+                        _logger.LogWarning("Card {Index}: all free models exhausted — will prompt for paid tier after free run.", item.Index);
+                    }
+                    else
+                    {
+                        throw lastError ?? new Exception("All models in chain failed.");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw; // propagate to Task.WhenAll so ScanAllAsync sees the cancel
                 }
                 catch (OpenRouterRateLimitException rlEx)
                     when (rlEx.Scope == RateLimitScope.AccountPerDay)
@@ -561,7 +628,9 @@ namespace FlipKit.Desktop.ViewModels
         [RelayCommand]
         private void CancelScan()
         {
-            _scanCts?.Cancel();
+            if (_scanCts == null || _scanCts.IsCancellationRequested) return;
+            StatusMessage = "Cancelling scan — waiting for current requests to finish...";
+            _scanCts.Cancel();
         }
 
         /// <summary>
@@ -714,6 +783,7 @@ namespace FlipKit.Desktop.ViewModels
         Scanned,
         Saved,
         Error,
+        FreeFailed,  // All free models exhausted — awaiting paid-consent prompt at end of phase 1
         RateLimited, // Daily limit hit — reset to Pending via ResumeBulkScan
     }
 
