@@ -95,11 +95,17 @@ namespace FlipKit.Desktop
 
                 var services = new ServiceCollection();
 
-                // Logging
+                // Logging.
+                // dispose: false — the temp service provider built below for settings
+                // detection is also built from this ServiceCollection, and its disposal
+                // must NOT call Log.CloseAndFlush(). Serilog is flushed explicitly in
+                // ShutdownRequested. With dispose: true, the temp provider's disposal
+                // silently killed all ILogger<T> calls for the rest of the process
+                // (scan service, BulkScanViewModel, model catalog response, etc.).
                 services.AddLogging(builder =>
                 {
                     builder.ClearProviders();
-                    builder.AddSerilog(dispose: true);
+                    builder.AddSerilog(dispose: false);
                 });
 
                 // Secrets encryption — DPAPI on Windows, file-protected AES key ring on
@@ -127,7 +133,7 @@ namespace FlipKit.Desktop
                 services.AddSingleton<INetworkInfoProvider, NetworkInfoProvider>();
                 services.AddSingleton<INetworkAddressProvider, NetworkAddressProvider>();
 
-                // Smart mode detection - choose between local database or API
+                // Smart mode detection - choose between local database or API.
                 using var tempProvider = services.BuildServiceProvider();
                 var settingsService = tempProvider.GetRequiredService<ISettingsService>();
                 var settings = settingsService.Load();
