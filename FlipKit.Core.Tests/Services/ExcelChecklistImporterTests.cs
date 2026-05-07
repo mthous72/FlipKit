@@ -132,6 +132,138 @@ public class ExcelChecklistImporterTests
         Assert.Contains(preview.Cards, c => c.IsRookie && c.PlayerName == "Roman Anthony");
     }
 
+    [Theory]
+    [InlineData("2023 ALL TOPPS TEAM")]
+    [InlineData("1990 TOPPS BASEBALL")]
+    [InlineData("Retail Exclusive")]
+    [InlineData("Hobby Only Exclusive")]
+    [InlineData("BASE CARDS PLAYER NUMBER VARIATION")]
+    [InlineData("CHROME STARS OF MLB")]
+    public void Parse_InlineHeader_Treats_Mixed_And_DigitPrefixed_Headers_AsSubsets(string header)
+    {
+        // Real Topps baseball files insert dividers between subsets in many
+        // shapes: digit-prefixed ("2023 ALL TOPPS TEAM"), mixed-case
+        // distribution-channel labels ("Retail Exclusive"), or all-caps multi-
+        // word names. The original parser only accepted all-caps-letters-only
+        // headers and surfaced everything else as a "missing card # / player
+        // name; skipped" warning, alarming users even when the actual cards
+        // imported correctly. They should silently become the current subset
+        // instead of generating warnings.
+        using var stream = SyntheticChecklistXlsxBuilder.BuildInlineHeaderXlsx(new (string?, SyntheticChecklistXlsxBuilder.CardRow?)[]
+        {
+            (header, null),
+            (null, new(header, "1", "Aaron Judge", "New York Yankees", null)),
+        });
+
+        var preview = NewImporter().Parse(stream, "synthetic.xlsx");
+
+        Assert.Equal(ChecklistFileFormat.InlineHeader, preview.DetectedFormat);
+        Assert.Single(preview.Cards);
+        Assert.Empty(preview.Warnings);
+    }
+
+    [Fact]
+    public void Parse_InlineHeader_Allows_BlankCardNumber_For_RedemptionEntries()
+    {
+        // Some Topps subsets (sweepstakes redemptions, "75 YEARS OF TOPPS BASEBALL
+        // GIFTS") ship rows with a player/prize description in column B but no
+        // card number in column A. Those are real entries and should land in
+        // Cards with an empty CardNumber, not generate a "missing card number"
+        // warning that masks the actual import.
+        using var stream = SyntheticChecklistXlsxBuilder.BuildInlineHeaderXlsx(new (string?, SyntheticChecklistXlsxBuilder.CardRow?)[]
+        {
+            ("75 YEARS OF TOPPS BASEBALL GIFTS", null),
+            (null, new("75 YEARS OF TOPPS BASEBALL GIFTS", "", "2 Tickets to the World Series", "Major League Baseball", null)),
+            (null, new("75 YEARS OF TOPPS BASEBALL GIFTS", "", "2 Tickets to the Home Run Derby", "Major League Baseball", null)),
+        });
+
+        var preview = NewImporter().Parse(stream, "synthetic.xlsx");
+
+        Assert.Equal(2, preview.Cards.Count);
+        Assert.Contains(preview.Cards, c => c.PlayerName == "2 Tickets to the World Series" && c.CardNumber == "");
+        Assert.Empty(preview.Warnings);
+    }
+
+    [Fact]
+    public void Parse_InlineHeader_With_Unknown_PreambleRow_StillDetected()
+    {
+        // Future-proofing: when leading non-content text appears in a form we
+        // haven't catalogued (date stamp, version note, etc.), the detector
+        // should still find the real first format-classifiable row by walking
+        // past anything unrecognized — not just rows in the disclaimer list.
+        using var stream = SyntheticChecklistXlsxBuilder.BuildInlineHeaderXlsx(new (string?, SyntheticChecklistXlsxBuilder.CardRow?)[]
+        {
+            ("Updated 2026-02-15", null),  // not a disclaimer phrase, mixed case
+            (null, null),
+            ("BASE SET", null),
+            (null, new("BASE SET", "1", "Mookie Betts", "Los Angeles Dodgers", null)),
+        });
+
+        var preview = NewImporter().Parse(stream, "2026-Mystery-Format.xlsx");
+
+        Assert.Equal(ChecklistFileFormat.InlineHeader, preview.DetectedFormat);
+        Assert.Contains(preview.Cards, c => c.PlayerName == "Mookie Betts");
+    }
+
+    [Fact]
+    public void Parse_InlineHeader_With_Leading_DisclaimerRow_StillDetected()
+    {
+        // Newer Topps baseball files (2025 / 2026) lead with a row like
+        // "*SUBJECT TO CHANGE", then have the real subset header on the next
+        // populated row. Format detection must skip the disclaimer instead of
+        // treating it as the first row, otherwise the file misclassifies and
+        // no cards get parsed.
+        using var stream = SyntheticChecklistXlsxBuilder.BuildInlineHeaderXlsx(new (string?, SyntheticChecklistXlsxBuilder.CardRow?)[]
+        {
+            ("*SUBJECT TO CHANGE", null),
+            (null, null), // blank row, mirrors real-world layout
+            ("BASE SET", null),
+            (null, new("BASE SET", "1", "Aaron Judge", "New York Yankees", null)),
+            (null, new("BASE SET", "2", "Mookie Betts", "Los Angeles Dodgers", null)),
+        });
+
+        var preview = NewImporter().Parse(stream, "2026-Topps-Series-1-Baseball.xlsx");
+
+        Assert.Equal(ChecklistFileFormat.InlineHeader, preview.DetectedFormat);
+        Assert.NotEmpty(preview.Cards);
+        Assert.Contains(preview.Cards, c => c.PlayerName == "Aaron Judge" && c.Team == "New York Yankees");
+    }
+
+    [Theory]
+    [InlineData("2024-Topps-Series-1-Baseball-Checklist-Downloads-Download-the-Excel-checklist-spreadsheet-1.xlsx")]
+    [InlineData("2025-Topps-Series-2-Baseball-Checklist-Downloads-Excel-spreadsheet.xlsx")]
+    [InlineData("2026-Topps-Series-1-Baseball-Checklist-Update-Feb.xlsx")]
+    public void Parse_RealBaseballFixture_FromDocsReferences_ProducesCards(string fileName)
+    {
+        // Integration check against the real Topps baseball xlsx files dropped
+        // into Docs/References. Skip silently if the fixture isn't present so
+        // the test stays runnable on machines that haven't checked them in.
+        var path = TryFindReferenceFile(fileName);
+        if (path == null) return;
+
+        using var stream = File.OpenRead(path);
+        var preview = NewImporter().Parse(stream, fileName);
+
+        Assert.Equal(ChecklistFileFormat.InlineHeader, preview.DetectedFormat);
+        Assert.True(preview.Cards.Count > 50,
+            $"Expected >50 cards from {fileName} but got {preview.Cards.Count}. Format: {preview.DetectedFormat}");
+        Assert.All(preview.Cards.Take(20), c => Assert.False(string.IsNullOrWhiteSpace(c.PlayerName)));
+    }
+
+    private static string? TryFindReferenceFile(string fileName)
+    {
+        // Walk up from the test bin directory to find the repo root, then look
+        // in Docs/References. Returns null when not found so the test no-ops.
+        var dir = new DirectoryInfo(System.AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            var candidate = Path.Combine(dir.FullName, "Docs", "References", fileName);
+            if (File.Exists(candidate)) return candidate;
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
     [Fact]
     public void Parse_InvalidStream_Throws()
     {
