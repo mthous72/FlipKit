@@ -180,6 +180,8 @@ namespace FlipKit.Desktop
                 services.AddTransient<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
                 // Validator is pure (no DB, no state) — Singleton is safe and efficient.
                 services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
+                // Description generator is pure template logic — no LLM, no DB, no state.
+                services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();

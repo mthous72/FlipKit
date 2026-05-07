@@ -108,6 +108,8 @@ builder.Services.AddScoped<IEbayListingImportService, FlipKit.Core.Services.Impl
 builder.Services.AddScoped<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
 // Validator is pure (no DB, no state) — Singleton is safe and efficient.
 builder.Services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
+// Description generator is pure template logic — no LLM, no DB, no state.
+builder.Services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
 // IMemoryCache backs the 2-step Web import preview — parse + LLM enrich on
 // upload, stash by GUID token, render the review page, commit reads back by
 // token. Avoids re-running the LLM on every commit.
