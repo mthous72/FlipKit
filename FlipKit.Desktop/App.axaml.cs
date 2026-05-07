@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -68,9 +69,29 @@ namespace FlipKit.Desktop
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
+                // Keep app alive while the splash is visible and init is in progress.
+                desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
 
                 DisableAvaloniaDataAnnotationValidation();
+
+                var splash = new SplashWindow();
+                splash.Show();
+
+                // Kick off async init so the splash can actually render before blocking work starts.
+                _ = InitializeAsync(desktop, splash);
+            }
+
+            base.OnFrameworkInitializationCompleted();
+        }
+
+        private async Task InitializeAsync(
+            IClassicDesktopStyleApplicationLifetime desktop,
+            SplashWindow splash)
+        {
+            try
+            {
+                // Yield once so Avalonia can process the splash window's layout/render pass.
+                await Task.Yield();
 
                 var services = new ServiceCollection();
 
@@ -212,20 +233,25 @@ namespace FlipKit.Desktop
 
                 _services = services.BuildServiceProvider();
 
-                // Ensure database is created and seeded (only in local mode)
+                // Ensure database is created and seeded (only in local mode).
+                // Run on a background thread so the splash stays responsive.
                 if (dataMode == DataAccessMode.Local)
                 {
+                    splash.SetStatus("Initializing database…");
                     try
                     {
-                        using var scope = _services.CreateScope();
-                        var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
-                        Log.Information("Initializing database at {DbPath}", FlipKitDbContext.GetDbPath());
-                        db.Database.EnsureCreated();
-                        Log.Debug("Running schema updates");
-                        SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
-                        Log.Debug("Running checklist seeder");
-                        ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
-                        Log.Information("Database initialization complete");
+                        await Task.Run(() =>
+                        {
+                            using var scope = _services.CreateScope();
+                            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
+                            Log.Information("Initializing database at {DbPath}", FlipKitDbContext.GetDbPath());
+                            db.Database.EnsureCreated();
+                            Log.Debug("Running schema updates");
+                            SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
+                            Log.Debug("Running checklist seeder");
+                            ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
+                            Log.Information("Database initialization complete");
+                        });
                     }
                     catch (Exception ex)
                     {
@@ -238,11 +264,11 @@ namespace FlipKit.Desktop
                     Log.Information("Skipping local database initialization (using remote API mode)");
                 }
 
+                splash.SetStatus("Loading…");
+
                 var mainViewModel = _services.GetRequiredService<MainWindowViewModel>();
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = mainViewModel
-                };
+                var mainWindow = new MainWindow { DataContext = mainViewModel };
+                desktop.MainWindow = mainWindow;
 
                 // System Tray Icon
                 var trayIcon = new TrayIcon
@@ -342,6 +368,12 @@ namespace FlipKit.Desktop
                 trayMenu.Add(exitItem);
 
                 trayIcon.Menu = trayMenu;
+
+                // Switch to normal shutdown mode now that MainWindow is fully set up,
+                // then show it and dismiss the splash.
+                desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                mainWindow.Show();
+                splash.Close();
 
                 // Handle window visibility changes
                 mainViewModel.PropertyChanged += (s, e) =>
@@ -482,8 +514,14 @@ namespace FlipKit.Desktop
                     }
                 };
             }
-
-            base.OnFrameworkInitializationCompleted();
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Startup initialization failed");
+                splash.SetStatus($"Startup failed — see logs for details.");
+                // Leave splash open briefly so the user can read the message.
+                await Task.Delay(4000);
+                splash.Close();
+            }
         }
 
         private void DisableAvaloniaDataAnnotationValidation()
