@@ -201,6 +201,8 @@ namespace FlipKit.Desktop
                 services.AddTransient<ImportEbayListingsViewModel>();
                 services.AddTransient<EditCardViewModel>();
                 services.AddTransient<EbayPublishViewModel>();
+                services.AddTransient<SurpriseSetListViewModel>();
+                services.AddTransient<SurpriseSetDetailViewModel>();
 
                 // Navigation Service (must be after MainWindowViewModel)
                 services.AddSingleton<INavigationService, AvaloniaNavigationService>();

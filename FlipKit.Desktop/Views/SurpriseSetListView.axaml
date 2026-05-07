@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FlipKit.Desktop.ViewModels"
+             xmlns:models="using:FlipKit.Core.Models"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+             x:Class="FlipKit.Desktop.Views.SurpriseSetListView"
+             x:DataType="vm:SurpriseSetListViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24,24,24,32">
+
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Surprise Sets" FontSize="24" FontWeight="Bold"/>
+                <TextBlock Text="Create and manage Whatnot Surprise Set listings"
+                           Opacity="0.6" Margin="0,4,0,0"/>
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Content="+ New Set"
+                    Command="{Binding NewSetCommand}"
+                    Classes="accent"
+                    Padding="20,10"
+                    VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Status / error -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding StatusMessage}"
+                   IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                   Opacity="0.7" Margin="0,0,0,8"/>
+
+        <!-- Set list -->
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource SystemBaseLowColor}"
+                BorderThickness="1" CornerRadius="6" Padding="0">
+            <DataGrid ItemsSource="{Binding Sets}"
+                      SelectedItem="{Binding SelectedSet}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserResizeColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      DoubleTapped="OnRowDoubleTapped">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name"
+                                        Binding="{Binding Name}"
+                                        Width="*"/>
+                    <DataGridTextColumn Header="Show Name"
+                                        Binding="{Binding ShowName}"
+                                        Width="160"/>
+                    <DataGridTextColumn Header="State"
+                                        Binding="{Binding State}"
+                                        Width="100"/>
+                    <DataGridTextColumn Header="Cards"
+                                        Binding="{Binding Cards.Count}"
+                                        Width="70"/>
+                    <DataGridTextColumn Header="Spot Price"
+                                        Binding="{Binding SpotPrice, StringFormat=\{0:C\}}"
+                                        Width="90"/>
+                    <DataGridTextColumn Header="Condition"
+                                        Binding="{Binding SharedCondition}"
+                                        Width="120"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Bottom row -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Open"
+                    Command="{Binding OpenSetCommand}"
+                    CommandParameter="{Binding SelectedSet}"
+                    IsEnabled="{Binding SelectedSet, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Classes="accent" Padding="20,8"/>
+            <Button Content="Refresh"
+                    Command="{Binding LoadCommand}"
+                    Padding="20,8"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
