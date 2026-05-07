@@ -178,6 +178,8 @@ namespace FlipKit.Desktop
                 services.AddTransient<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
                 // Surprise Set repository — Transient (owns FlipKitDbContext which is Transient on Desktop).
                 services.AddTransient<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
+                // Validator is pure (no DB, no state) — Singleton is safe and efficient.
+                services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();
