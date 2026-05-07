@@ -120,6 +120,7 @@ namespace FlipKit.Core.Models
 
         // === STATUS / METADATA ===
         public CardStatus Status { get; set; } = CardStatus.Draft;
+        public CardDataSource DataSource { get; set; } = CardDataSource.None;
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

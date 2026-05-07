@@ -29,33 +29,53 @@
 
                 <!-- Controls -->
                 <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,8">
-                    <!-- Model Selection -->
-                    <TextBlock Text="AI Model" FontSize="12" FontWeight="SemiBold"/>
-                    <ComboBox ItemsSource="{Binding ModelOptions}"
-                              SelectedItem="{Binding SelectedModel}"
+                    <!-- Scan Mode -->
+                    <TextBlock Text="Scan Mode" FontSize="12" FontWeight="SemiBold"/>
+                    <ComboBox ItemsSource="{Binding ScanModeOptions}"
+                              SelectedItem="{Binding SelectedScanModeOption}"
                               DisplayMemberBinding="{Binding Label}"
-                              IsEnabled="{Binding !IsLoadingModels}"
                               HorizontalAlignment="Stretch"/>
-                    <TextBlock Text="Loading model catalog..." FontSize="10" Opacity="0.6"
-                               IsVisible="{Binding IsLoadingModels}"/>
-                    <TextBlock Text="{Binding ModelLoadError}" FontSize="10" Foreground="#E53935"
-                               TextWrapping="Wrap"
-                               IsVisible="{Binding ModelLoadError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6" Margin="0,-4,0,0"
+                               IsVisible="{Binding IsOcrMode}">
+                        Offline, free — no internet required. Accuracy varies; use Enhance for better results.
+                    </TextBlock>
+                    <!-- OCR unavailable warning -->
+                    <Border Background="#FFEBEE" CornerRadius="4" Padding="8,6"
+                            IsVisible="{Binding IsOcrModeUnavailable}">
+                        <TextBlock Text="Windows OCR is not available on this system."
+                                   Foreground="#B71C1C" FontSize="11" TextWrapping="Wrap"/>
+                    </Border>
 
-                    <!-- Concurrent Scans -->
-                    <TextBlock Text="Concurrent Scans" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                    <NumericUpDown Value="{Binding MaxConcurrentScans}"
-                                   Minimum="1" Maximum="8" Increment="1"
-                                   HorizontalAlignment="Stretch"
-                                   IsEnabled="{Binding !IsSelectedModelFree}"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6" Margin="0,-4,0,0"
-                               IsVisible="{Binding IsSelectedModelFree}">
-                        Free models limited to 1 concurrent scan
-                    </TextBlock>
-                    <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6" Margin="0,-4,0,0"
-                               IsVisible="{Binding !IsSelectedModelFree}">
-                        Paid models: Use 3-4 for best speed
-                    </TextBlock>
+                    <!-- AI-only controls (hidden in OCR mode) -->
+                    <StackPanel IsVisible="{Binding IsAiMode}" Spacing="8">
+                        <!-- Model Selection -->
+                        <TextBlock Text="AI Model" FontSize="12" FontWeight="SemiBold"/>
+                        <ComboBox ItemsSource="{Binding ModelOptions}"
+                                  SelectedItem="{Binding SelectedModel}"
+                                  DisplayMemberBinding="{Binding Label}"
+                                  IsEnabled="{Binding !IsLoadingModels}"
+                                  HorizontalAlignment="Stretch"/>
+                        <TextBlock Text="Loading model catalog..." FontSize="10" Opacity="0.6"
+                                   IsVisible="{Binding IsLoadingModels}"/>
+                        <TextBlock Text="{Binding ModelLoadError}" FontSize="10" Foreground="#E53935"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding ModelLoadError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                        <!-- Concurrent Scans -->
+                        <TextBlock Text="Concurrent Scans" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <NumericUpDown Value="{Binding MaxConcurrentScans}"
+                                       Minimum="1" Maximum="8" Increment="1"
+                                       HorizontalAlignment="Stretch"
+                                       IsEnabled="{Binding !IsSelectedModelFree}"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6" Margin="0,-4,0,0"
+                                   IsVisible="{Binding IsSelectedModelFree}">
+                            Free models limited to 1 concurrent scan
+                        </TextBlock>
+                        <TextBlock TextWrapping="Wrap" FontSize="10" Opacity="0.6" Margin="0,-4,0,0"
+                                   IsVisible="{Binding !IsSelectedModelFree}">
+                            Paid models: Use 3-4 for best speed
+                        </TextBlock>
+                    </StackPanel>
 
                     <!-- Destination -->
                     <TextBlock Text="Save To" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,0"/>
@@ -124,6 +144,12 @@
                                     <TextBlock Text="{Binding ErrorMessage}" FontSize="11" Foreground="Red"
                                                TextWrapping="Wrap"
                                                IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <!-- Low-confidence OCR banner -->
+                                    <Border Background="#FFF8E1" CornerRadius="2" Padding="4,2" Margin="0,2,0,0"
+                                            IsVisible="{Binding ShowLowConfidenceBanner}">
+                                        <TextBlock Text="Low confidence — consider enhancing"
+                                                   FontSize="10" Foreground="#5D4037"/>
+                                    </Border>
                                 </StackPanel>
                                 <!-- Index -->
                                 <TextBlock Grid.Column="2" Text="{Binding Index}" FontSize="11"
@@ -252,6 +278,21 @@
                     IsVisible="{Binding IsScanning}" Padding="20,10"/>
             <Button Content="Save All" Command="{Binding SaveAllCommand}"
                     Padding="20,10"/>
+            <!-- Enhance buttons (OCR mode) -->
+            <Button Content="Enhance All with AI" Command="{Binding EnhanceAllCommand}"
+                    IsVisible="{Binding HasOcrScannedItems}"
+                    IsEnabled="{Binding !IsEnhancing}"
+                    Padding="20,10"/>
+            <Button Content="Enhance Selected" Command="{Binding EnhanceSelectedCommand}"
+                    IsVisible="{Binding SelectedItem.IsOcrScanned, FallbackValue=False}"
+                    IsEnabled="{Binding !IsEnhancing}"
+                    Padding="20,10"/>
+            <!-- Enhance progress -->
+            <StackPanel IsVisible="{Binding IsEnhancing}" Orientation="Horizontal"
+                        Spacing="8" VerticalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="80" Height="8" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding StatusMessage}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+            </StackPanel>
             <Button Content="Remove Selected" Command="{Binding RemoveSelectedCommand}"
                     Padding="20,10"/>
             <Button Content="Clear All" Command="{Binding ClearAllCommand}"

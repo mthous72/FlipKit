@@ -223,6 +223,22 @@
                             Padding="12,6"/>
                     <Button Content="Upload Images for Selected" Command="{Binding UploadSelectedImagesCommand}"
                             IsEnabled="{Binding !IsUploading}" Padding="12,6"/>
+                    <Button Content="Enhance OCR Cards with AI" Command="{Binding EnhanceSelectedOcrCardsCommand}"
+                            IsVisible="{Binding HasOcrSelectedCards}"
+                            IsEnabled="{Binding !IsEnhancing}"
+                            Padding="12,6"/>
+
+                    <!-- Enhance Progress -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsEnhancing}">
+                        <ProgressBar Minimum="0" Maximum="{Binding EnhanceTotal}" Value="{Binding EnhanceProgress}"
+                                     Width="100" Height="8" VerticalAlignment="Center"/>
+                        <TextBlock VerticalAlignment="Center" FontSize="12">
+                            <Run Text="Enhancing "/>
+                            <Run Text="{Binding EnhanceProgress}"/>
+                            <Run Text="/"/>
+                            <Run Text="{Binding EnhanceTotal}"/>
+                        </TextBlock>
+                    </StackPanel>
 
                     <!-- Upload Progress -->
                     <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsUploading}">

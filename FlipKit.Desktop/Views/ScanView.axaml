@@ -104,9 +104,27 @@
             <ScrollViewer Grid.Column="0" Margin="0,0,12,0" Padding="0,0,0,40">
                 <StackPanel Spacing="8">
 
-                    <!-- Model Selection -->
+                    <!-- Scan Mode -->
                     <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Scan Mode" FontSize="12" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <RadioButton Content="AI (Online)"
+                                             IsChecked="{Binding IsAiMode}"/>
+                                <RadioButton Content="OCR (Offline, Free)"
+                                             IsChecked="{Binding IsOcrMode}"/>
+                            </StackPanel>
+                            <TextBlock Text="OCR: fast offline scan, lower accuracy. Use Enhance after saving to upgrade."
+                                       FontSize="10" Opacity="0.6" TextWrapping="Wrap"
+                                       IsVisible="{Binding IsOcrMode}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Model Selection (AI mode only) -->
+                    <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                            IsVisible="{Binding IsAiMode}">
                         <StackPanel Spacing="6">
                             <TextBlock Text="AI Model" FontSize="12" FontWeight="SemiBold"/>
                             <ComboBox ItemsSource="{Binding ModelOptions}"

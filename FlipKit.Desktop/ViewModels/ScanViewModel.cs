@@ -16,6 +16,7 @@ namespace FlipKit.Desktop.ViewModels
     public partial class ScanViewModel : ViewModelBase
     {
         private readonly IScannerService _scannerService;
+        private readonly IOcrService _ocrService;
         private readonly ICardRepository _cardRepository;
         private readonly IFileDialogService _fileDialogService;
         private readonly ISettingsService _settingsService;
@@ -58,6 +59,18 @@ namespace FlipKit.Desktop.ViewModels
         // them on machines without a working camera.
         [ObservableProperty] private bool _isWebcamEnabled = true;
 
+        // Scan mode
+        [ObservableProperty] private ScanMode _scanMode = ScanMode.Ai;
+        public bool IsOcrMode => ScanMode == ScanMode.Ocr;
+        public bool IsAiMode => ScanMode == ScanMode.Ai;
+        public bool IsOcrAvailable => _ocrService.IsAvailable;
+
+        partial void OnScanModeChanged(ScanMode value)
+        {
+            OnPropertyChanged(nameof(IsOcrMode));
+            OnPropertyChanged(nameof(IsAiMode));
+        }
+
         // Model selection
         [ObservableProperty] private ModelOption? _selectedModel;
         [ObservableProperty] private bool _isLoadingModels;
@@ -72,6 +85,7 @@ namespace FlipKit.Desktop.ViewModels
 
         public ScanViewModel(
             IScannerService scannerService,
+            IOcrService ocrService,
             ICardRepository cardRepository,
             IFileDialogService fileDialogService,
             ISettingsService settingsService,
@@ -87,6 +101,7 @@ namespace FlipKit.Desktop.ViewModels
             ILogger<ScanViewModel> logger)
         {
             _scannerService = scannerService;
+            _ocrService = ocrService;
             _cardRepository = cardRepository;
             _fileDialogService = fileDialogService;
             _settingsService = settingsService;
@@ -250,6 +265,21 @@ namespace FlipKit.Desktop.ViewModels
 
             try
             {
+                // OCR mode: bypass AI consent and model selection entirely.
+                if (ScanMode == ScanMode.Ocr)
+                {
+                    var ocrResult = await _ocrService.ScanCardAsync(ImagePath, ImagePathBack);
+                    ocrResult.Card.ImagePathFront = ImagePath;
+                    if (!string.IsNullOrEmpty(ImagePathBack))
+                        ocrResult.Card.ImagePathBack = ImagePathBack;
+                    ocrResult.Card.DataSource = CardDataSource.Ocr;
+                    _lastScanResult = ocrResult;
+                    ScannedCard = CardDetailViewModel.FromCard(ocrResult.Card);
+                    MergeCustomGradingCompanies(ScannedCard);
+                    ResetMatcherState();
+                    return;
+                }
+
                 var settings = _settingsService.Load();
 
                 // First-run consent: if the user hasn't yet acknowledged that images

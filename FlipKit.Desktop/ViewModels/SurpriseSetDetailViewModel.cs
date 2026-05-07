@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,6 +21,10 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISurpriseSetCompletionService _completionService;
         private readonly IFileDialogService _fileDialog;
         private readonly INavigationService _navigation;
+        private readonly ICardRepository _cardRepository;
+        private readonly IScannerService _scannerService;
+        private readonly ISettingsService _settingsService;
+        private CancellationTokenSource? _enhanceCts;
 
         [ObservableProperty] private SurpriseSet? _set;
         [ObservableProperty] private ObservableCollection<Card> _cards = new();
@@ -26,9 +32,14 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isLoading;
         [ObservableProperty] private bool _isExporting;
         [ObservableProperty] private bool _isCompleting;
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private int _enhanceProgress;
+        [ObservableProperty] private int _enhanceTotal;
         [ObservableProperty] private string? _statusMessage;
         [ObservableProperty] private string? _exportStatusMessage;
         [ObservableProperty] private string? _completeStatusMessage;
+
+        public bool HasOcrSourcedCards => Cards.Any(c => c.DataSource == CardDataSource.Ocr);
 
         // Mark-completed form fields
         [ObservableProperty] private int _spotsSold;
@@ -48,7 +59,10 @@ namespace FlipKit.Desktop.ViewModels
             ISurpriseSetCsvExporter csvExporter,
             ISurpriseSetCompletionService completionService,
             IFileDialogService fileDialog,
-            INavigationService navigation)
+            INavigationService navigation,
+            ICardRepository cardRepository,
+            IScannerService scannerService,
+            ISettingsService settingsService)
         {
             _repository = repository;
             _validator = validator;
@@ -56,6 +70,9 @@ namespace FlipKit.Desktop.ViewModels
             _completionService = completionService;
             _fileDialog = fileDialog;
             _navigation = navigation;
+            _cardRepository = cardRepository;
+            _scannerService = scannerService;
+            _settingsService = settingsService;
         }
 
         public async Task LoadAsync(int setId)
@@ -76,6 +93,7 @@ namespace FlipKit.Desktop.ViewModels
                 var ordered = Set.Cards.OrderBy(c => c.SurpriseSetSlot ?? int.MaxValue).ToList();
                 Cards = new ObservableCollection<Card>(ordered);
                 RefreshIssues(Set, ordered);
+                OnPropertyChanged(nameof(HasOcrSourcedCards));
                 SpotsSold = ordered.Count; // default to full sell-through
                 GrossRevenue = Set.GrossRevenue ?? Set.SpotPrice * ordered.Count;
                 TotalFees = Set.TotalFees ?? 0m;
@@ -179,6 +197,92 @@ namespace FlipKit.Desktop.ViewModels
             finally
             {
                 IsCompleting = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task EnhanceOcrCardsAsync()
+        {
+            if (Set == null) return;
+
+            var ocrCards = Cards
+                .Where(c => c.DataSource == CardDataSource.Ocr
+                         && !string.IsNullOrEmpty(c.ImagePathFront)
+                         && File.Exists(c.ImagePathFront))
+                .ToList();
+
+            if (ocrCards.Count == 0) return;
+
+            _enhanceCts = new CancellationTokenSource();
+            IsEnhancing = true;
+            EnhanceProgress = 0;
+            EnhanceTotal = ocrCards.Count;
+            StatusMessage = null;
+
+            var settings = _settingsService.Load();
+            var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+
+            try
+            {
+                foreach (var card in ocrCards)
+                {
+                    _enhanceCts.Token.ThrowIfCancellationRequested();
+
+                    var hint = new OcrHint
+                    {
+                        PlayerName = card.PlayerName,
+                        Year = card.Year,
+                        CardNumber = card.CardNumber,
+                        Manufacturer = card.Manufacturer,
+                        Brand = card.Brand,
+                        SetName = card.SetName,
+                    };
+
+                    var result = await _scannerService.ScanCardAsync(
+                        card.ImagePathFront!,
+                        card.ImagePathBack,
+                        model,
+                        scanDepth: ScanDepth.Standard,
+                        ocrHint: hint,
+                        ct: _enhanceCts.Token);
+
+                    var e = result.Card;
+                    card.PlayerName = e.PlayerName ?? card.PlayerName;
+                    card.Year = e.Year ?? card.Year;
+                    card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
+                    card.Brand = e.Brand ?? card.Brand;
+                    card.SetName = e.SetName ?? card.SetName;
+                    card.CardNumber = e.CardNumber ?? card.CardNumber;
+                    card.Team = e.Team ?? card.Team;
+                    card.VariationType = e.VariationType ?? card.VariationType;
+                    card.ParallelName = e.ParallelName ?? card.ParallelName;
+                    card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
+                    card.IsRookie = e.IsRookie;
+                    card.IsAuto = e.IsAuto;
+                    card.IsRelic = e.IsRelic;
+                    card.DataSource = CardDataSource.Ai;
+
+                    await _cardRepository.UpdateCardAsync(card);
+                    EnhanceProgress++;
+                }
+
+                StatusMessage = $"Enhanced {ocrCards.Count} card(s) with AI.";
+                await LoadAsync(Set.Id);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = "Enhancement cancelled.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Enhance failed: {ex.Message}";
+            }
+            finally
+            {
+                IsEnhancing = false;
+                _enhanceCts?.Dispose();
+                _enhanceCts = null;
+                OnPropertyChanged(nameof(HasOcrSourcedCards));
             }
         }
 

@@ -31,6 +31,7 @@ public class ScanViewModelFillInTests
         });
         return new ScanViewModel(
             scanner,
+            Substitute.For<IOcrService>(),
             Substitute.For<ICardRepository>(),
             Substitute.For<IFileDialogService>(),
             settings,

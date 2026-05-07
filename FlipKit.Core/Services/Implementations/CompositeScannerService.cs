@@ -33,6 +33,7 @@ namespace FlipKit.Core.Services
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
             XimilarScanMode ximilarMode = XimilarScanMode.Standard,
             ScanDepth scanDepth = ScanDepth.Standard,
+            OcrHint? ocrHint = null,
             CancellationToken ct = default)
         {
             // Check if Ximilar should be used based on mode
@@ -55,6 +56,8 @@ namespace FlipKit.Core.Services
                     // Set back image if provided
                     if (!string.IsNullOrEmpty(backImagePath))
                         ximilarResult.Card.ImagePathBack = backImagePath;
+
+                    ximilarResult.Card.DataSource = CardDataSource.Ai;
 
                     return new ScanResult
                     {
@@ -89,7 +92,7 @@ namespace FlipKit.Core.Services
 
             // Fall back to OpenRouter LLM
             _logger.LogInformation("Using OpenRouter LLM for card recognition...");
-            return await _openRouterService.ScanCardAsync(imagePath, backImagePath, model, scanDepth: scanDepth, ct: ct);
+            return await _openRouterService.ScanCardAsync(imagePath, backImagePath, model, scanDepth: scanDepth, ocrHint: ocrHint, ct: ct);
         }
 
         public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = OpenRouterModelDefaults.DefaultFreeModelId)

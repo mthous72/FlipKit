@@ -21,6 +21,7 @@ public class EditCardViewModelTests
             upload ?? Substitute.For<IImageUploadService>(),
             webcam ?? Substitute.For<IWebcamCaptureDialogService>(),
             settings ?? BuildDefaultSettings(),
+            Substitute.For<IScannerService>(),
             NullLogger<EditCardViewModel>.Instance);
 
     private static ISettingsService BuildDefaultSettings()

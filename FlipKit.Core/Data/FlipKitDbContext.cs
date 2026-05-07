@@ -67,6 +67,10 @@ namespace FlipKit.Core.Data
                 .HasConversion<string>()
                 .HasDefaultValue(VerificationStatus.NotChecked);
 
+            card.Property(c => c.DataSource)
+                .HasConversion<string>()
+                .HasDefaultValue(CardDataSource.None);
+
             card.Property(c => c.CostSource)
                 .HasConversion<string?>();
 

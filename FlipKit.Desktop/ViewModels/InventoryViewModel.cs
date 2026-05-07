@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -28,9 +30,11 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IBrowserService _browserService;
         private readonly INavigationService _navigationService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IScannerService _scannerService;
         private readonly ILogger<InventoryViewModel> _logger;
 
         private List<Card> _allCards = new();
+        private CancellationTokenSource? _enhanceCts;
 
         [ObservableProperty] private ObservableCollection<SelectableCard> _filteredCards = new();
         [ObservableProperty] private string _searchText = string.Empty;
@@ -67,6 +71,14 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _exportError;
         [ObservableProperty] private int _selectedCount;
 
+        // Enhance
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private int _enhanceProgress;
+        [ObservableProperty] private int _enhanceTotal;
+
+        public bool HasOcrSelectedCards =>
+            FilteredCards.Any(c => c.IsSelected && c.Card.DataSource == CardDataSource.Ocr);
+
         // Edit Panel (side panel for quick editing)
         [ObservableProperty] private bool _isEditPanelOpen;
         [ObservableProperty] private CardDetailViewModel? _editingCard;
@@ -88,6 +100,7 @@ namespace FlipKit.Desktop.ViewModels
             IBrowserService browserService,
             INavigationService navigationService,
             IServiceProvider serviceProvider,
+            IScannerService scannerService,
             ILogger<InventoryViewModel> logger)
         {
             _cardRepository = cardRepository;
@@ -98,6 +111,7 @@ namespace FlipKit.Desktop.ViewModels
             _imageUploadService = imageUploadService;
             _browserService = browserService;
             _serviceProvider = serviceProvider;
+            _scannerService = scannerService;
             _logger = logger;
 
             LoadCardsAsync();
@@ -446,10 +460,101 @@ namespace FlipKit.Desktop.ViewModels
             SelectedCount = FilteredCards.Count(c => c.IsSelected);
             OnPropertyChanged(nameof(SelectedCard));
             OnPropertyChanged(nameof(HasSelectedItem));
+            OnPropertyChanged(nameof(HasOcrSelectedCards));
             EditSelectedCommand.NotifyCanExecuteChanged();
             RequestDeleteSelectedCommand.NotifyCanExecuteChanged();
             OpenSoldDialogCommand.NotifyCanExecuteChanged();
             RepriceSelectedCommand.NotifyCanExecuteChanged();
+        }
+
+        // === Enhance Commands ===
+
+        [RelayCommand]
+        private async Task EnhanceSelectedOcrCardsAsync()
+        {
+            var targets = FilteredCards
+                .Where(sc => sc.IsSelected
+                          && sc.Card.DataSource == CardDataSource.Ocr
+                          && !string.IsNullOrEmpty(sc.Card.ImagePathFront)
+                          && File.Exists(sc.Card.ImagePathFront))
+                .Select(sc => sc.Card)
+                .ToList();
+
+            if (targets.Count == 0) return;
+
+            _enhanceCts = new CancellationTokenSource();
+            IsEnhancing = true;
+            EnhanceProgress = 0;
+            EnhanceTotal = targets.Count;
+            ExportError = null;
+            ExportMessage = null;
+
+            var settings = _settingsService.Load();
+            var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+
+            try
+            {
+                foreach (var card in targets)
+                {
+                    _enhanceCts.Token.ThrowIfCancellationRequested();
+
+                    var hint = new OcrHint
+                    {
+                        PlayerName = card.PlayerName,
+                        Year = card.Year,
+                        CardNumber = card.CardNumber,
+                        Manufacturer = card.Manufacturer,
+                        Brand = card.Brand,
+                        SetName = card.SetName,
+                    };
+
+                    var result = await _scannerService.ScanCardAsync(
+                        card.ImagePathFront!,
+                        card.ImagePathBack,
+                        model,
+                        scanDepth: ScanDepth.Standard,
+                        ocrHint: hint,
+                        ct: _enhanceCts.Token);
+
+                    var e = result.Card;
+                    card.PlayerName = e.PlayerName ?? card.PlayerName;
+                    card.Year = e.Year ?? card.Year;
+                    card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
+                    card.Brand = e.Brand ?? card.Brand;
+                    card.SetName = e.SetName ?? card.SetName;
+                    card.CardNumber = e.CardNumber ?? card.CardNumber;
+                    card.Team = e.Team ?? card.Team;
+                    card.VariationType = e.VariationType ?? card.VariationType;
+                    card.ParallelName = e.ParallelName ?? card.ParallelName;
+                    card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
+                    card.IsRookie = e.IsRookie;
+                    card.IsAuto = e.IsAuto;
+                    card.IsRelic = e.IsRelic;
+                    card.DataSource = CardDataSource.Ai;
+
+                    await _cardRepository.UpdateCardAsync(card);
+                    EnhanceProgress++;
+                }
+
+                ExportMessage = $"Enhanced {targets.Count} card(s) with AI.";
+                LoadCardsAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                ExportMessage = "Enhancement cancelled.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Bulk enhance failed");
+                ExportError = $"Enhance failed: {ex.Message}";
+            }
+            finally
+            {
+                IsEnhancing = false;
+                _enhanceCts?.Dispose();
+                _enhanceCts = null;
+                OnPropertyChanged(nameof(HasOcrSelectedCards));
+            }
         }
 
         // === Export Commands ===

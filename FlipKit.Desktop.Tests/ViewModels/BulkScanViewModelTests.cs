@@ -38,6 +38,7 @@ public class BulkScanViewModelTests
 
         return new BulkScanViewModel(
             scanner ?? Substitute.For<IScannerService>(),
+            Substitute.For<IOcrService>(),
             repo ?? Substitute.For<ICardRepository>(),
             setRepo ?? Substitute.For<ISurpriseSetRepository>(),
             dialog ?? Substitute.For<IFileDialogService>(),

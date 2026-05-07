@@ -48,6 +48,7 @@ namespace FlipKit.Core.Data
             await EnsureEbayImportColumnsAsync(db);
             await EnsureSurpriseSetTablesAsync(db);
             await EnsureSurpriseSetCardColumnsAsync(db);
+            await EnsureCardDataSourceColumnAsync(db);
         }
 
         public static async Task EnsureSurpriseSetTablesAsync(FlipKitDbContext db)
@@ -237,6 +238,29 @@ namespace FlipKit.Core.Data
 
                 if (!columns.Contains("AutoGrade"))
                     await db.Database.ExecuteSqlRawAsync("ALTER TABLE cards ADD COLUMN AutoGrade TEXT");
+            }
+            finally
+            {
+                await conn.CloseAsync();
+            }
+        }
+
+        private static async Task EnsureCardDataSourceColumnAsync(FlipKitDbContext db)
+        {
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "PRAGMA table_info(cards)";
+                using var reader = await cmd.ExecuteReaderAsync();
+                var columns = new System.Collections.Generic.List<string>();
+                while (await reader.ReadAsync())
+                    columns.Add(reader.GetString(1));
+
+                if (!columns.Contains("DataSource"))
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE cards ADD COLUMN DataSource TEXT NOT NULL DEFAULT 'None'");
             }
             finally
             {

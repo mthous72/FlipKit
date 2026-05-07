@@ -153,6 +153,25 @@
                 <TextBlock Text="{Binding ExportStatusMessage}"
                            VerticalAlignment="Center" Opacity="0.75"
                            IsVisible="{Binding ExportStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <!-- Enhance OCR cards -->
+                <Button Content="Enhance OCR Cards with AI"
+                        Command="{Binding EnhanceOcrCardsCommand}"
+                        IsVisible="{Binding HasOcrSourcedCards}"
+                        IsEnabled="{Binding !IsEnhancing}"
+                        Padding="20,10"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            IsVisible="{Binding IsEnhancing}">
+                    <ProgressBar IsIndeterminate="False"
+                                 Minimum="0" Maximum="{Binding EnhanceTotal}" Value="{Binding EnhanceProgress}"
+                                 Width="100" Height="8" VerticalAlignment="Center"/>
+                    <TextBlock FontSize="12" Opacity="0.7" VerticalAlignment="Center">
+                        <Run Text="Enhancing "/>
+                        <Run Text="{Binding EnhanceProgress}"/>
+                        <Run Text=" of "/>
+                        <Run Text="{Binding EnhanceTotal}"/>
+                        <Run Text="…"/>
+                    </TextBlock>
+                </StackPanel>
             </StackPanel>
 
             <!-- Mark Completed panel (hidden when already Completed/Cancelled) -->

@@ -38,6 +38,7 @@ public class MainWindowViewModelTests
     /// </summary>
     private static ScanViewModel BuildScanVm() =>
         new(Substitute.For<IScannerService>(),
+            Substitute.For<IOcrService>(),
             Substitute.For<ICardRepository>(),
             Substitute.For<IFileDialogService>(),
             Substitute.For<ISettingsService>().Tap(s => s.Load().Returns(new AppSettings())),

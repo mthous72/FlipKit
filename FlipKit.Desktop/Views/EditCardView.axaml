@@ -177,6 +177,41 @@
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
 
+                    <!-- OCR source banner + enhance controls -->
+                    <Border Background="#E3F2FD" CornerRadius="6" Padding="12,10"
+                            IsVisible="{Binding IsOcrSourced}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Scanned with OCR — accuracy may be limited"
+                                       FontWeight="SemiBold" FontSize="13" Foreground="#0D47A1"/>
+                            <TextBlock Text="Fields were extracted from image text. Use Enhance to run the full AI pipeline for better results."
+                                       FontSize="11" Foreground="#1565C0" TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Enhance with AI" Command="{Binding EnhanceCommand}"
+                                        IsEnabled="{Binding !IsEnhancing}"
+                                        Classes="accent" Padding="14,6"/>
+                                <ProgressBar IsIndeterminate="True" Width="80" Height="8"
+                                             VerticalAlignment="Center"
+                                             IsVisible="{Binding IsEnhancing}"/>
+                                <TextBlock Text="Enhancing..." FontSize="12" Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding IsEnhancing}"/>
+                            </StackPanel>
+                            <TextBlock Text="{Binding EnhanceMessage}" FontSize="12" Foreground="#2E7D32"
+                                       IsVisible="{Binding EnhanceMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Re-scan button for AI-sourced cards -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4"
+                                IsVisible="{Binding !IsOcrSourced}">
+                        <Button Content="Re-scan with AI" Command="{Binding EnhanceCommand}"
+                                IsEnabled="{Binding !IsEnhancing}"
+                                Opacity="0.55" Padding="12,5" FontSize="11"/>
+                        <ProgressBar IsIndeterminate="True" Width="60" Height="7" Margin="8,0,0,0"
+                                     VerticalAlignment="Center"
+                                     IsVisible="{Binding IsEnhancing}"/>
+                    </StackPanel>
+
                     <!-- Card Detail Form -->
                     <Border IsVisible="{Binding CardDetail, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <StackPanel Spacing="8"

@@ -131,20 +131,22 @@ Return ONLY the JSON, no other text.";
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
             XimilarScanMode ximilarMode = XimilarScanMode.Standard,
             ScanDepth scanDepth = ScanDepth.Standard,
+            OcrHint? ocrHint = null,
             CancellationToken ct = default)
         {
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
 
             var promptBody = scanDepth == ScanDepth.Quick ? QuickScanPromptBody : ScanPromptBody;
+            var hintPreamble = ocrHint != null ? BuildOcrHintPreamble(ocrHint) : string.Empty;
             string prompt;
             if (!string.IsNullOrEmpty(backImagePath) && File.Exists(backImagePath))
             {
                 dataUrls.Add(await EncodeImageToDataUrl(backImagePath));
-                prompt = "You are given the FRONT and BACK images of the same sports card. The first image is the FRONT, the second is the BACK. Analyze BOTH images together to extract all identifying information. The back often contains the card number, set name, manufacturer, and serial number." + promptBody;
+                prompt = hintPreamble + "You are given the FRONT and BACK images of the same sports card. The first image is the FRONT, the second is the BACK. Analyze BOTH images together to extract all identifying information. The back often contains the card number, set name, manufacturer, and serial number." + promptBody;
             }
             else
             {
-                prompt = "Analyze this sports card image and extract all identifying information." + promptBody;
+                prompt = hintPreamble + "Analyze this sports card image and extract all identifying information." + promptBody;
             }
 
             var settings = _settingsService.Load();
@@ -508,6 +510,21 @@ Return ONLY the JSON, no other text.";
             return content.Trim();
         }
 
+        private static string BuildOcrHintPreamble(OcrHint hint)
+        {
+            var sb = new StringBuilder("PRELIMINARY OCR DATA (treat as hints, not ground truth — verify with your vision):\n");
+            if (!string.IsNullOrEmpty(hint.PlayerName)) sb.AppendLine($"- Player name from OCR: {hint.PlayerName}");
+            if (hint.Year.HasValue) sb.AppendLine($"- Year from OCR: {hint.Year}");
+            if (!string.IsNullOrEmpty(hint.CardNumber)) sb.AppendLine($"- Card number from OCR: {hint.CardNumber}");
+            if (!string.IsNullOrEmpty(hint.Manufacturer)) sb.AppendLine($"- Manufacturer from OCR: {hint.Manufacturer}");
+            if (!string.IsNullOrEmpty(hint.Brand)) sb.AppendLine($"- Brand from OCR: {hint.Brand}");
+            if (!string.IsNullOrEmpty(hint.SetName)) sb.AppendLine($"- Set name from OCR: {hint.SetName}");
+            if (hint.AllVisibleText.Count > 0)
+                sb.AppendLine($"- Raw OCR text: {string.Join("; ", hint.AllVisibleText.Take(20))}");
+            sb.AppendLine();
+            return sb.ToString();
+        }
+
         private static Card MapToCard(ScannedCardData data, string imagePath)
         {
             var card = new Card
@@ -532,7 +549,8 @@ Return ONLY the JSON, no other text.";
                 AutoGrade = data.AutoGrade,
                 CertNumber = data.CertNumber,
                 ImagePathFront = imagePath,
-                Condition = "Near Mint"
+                Condition = "Near Mint",
+                DataSource = CardDataSource.Ai,
             };
 
             if (Enum.TryParse<Sport>(data.Sport, true, out var sport))

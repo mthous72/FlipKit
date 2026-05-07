@@ -174,6 +174,7 @@ namespace FlipKit.Desktop
                 // service owns the modal window so ViewModels stay Avalonia-free.
                 services.AddSingleton<ICameraService, OpenCvCameraService>();
                 services.AddSingleton<IWebcamCaptureDialogService, WebcamCaptureDialogService>();
+                services.AddSingleton<IOcrService, WindowsOcrService>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 // Export pipeline — registered unconditionally (no DbContext dependency).
