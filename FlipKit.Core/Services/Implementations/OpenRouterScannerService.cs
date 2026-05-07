@@ -477,7 +477,13 @@ Return ONLY the JSON, no other text.";
             var request = new OpenRouterRequest
             {
                 Model = model,
-                MaxTokens = 4096, // Increased from 2048 to ensure complete JSON response
+                // Verified-fields Enhance pushes the response token count up because
+                // the LLM is asked to echo every confirmed identity field verbatim
+                // alongside visual_cues + confidence dict + all_visible_text. 4096
+                // started truncating in real Enhance runs (graded cards with full
+                // text). 8192 is comfortable headroom while still well under any
+                // major-model context window.
+                MaxTokens = 8192,
                 Messages = new List<OpenRouterMessage>
                 {
                     new() { Role = "user", Content = contentParts }

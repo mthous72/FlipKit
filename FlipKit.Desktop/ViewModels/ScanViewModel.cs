@@ -29,6 +29,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
         private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<ScanViewModel> _logger;
 
         private ScanResult? _lastScanResult;
@@ -65,6 +66,19 @@ namespace FlipKit.Desktop.ViewModels
         public bool IsAiMode => ScanMode == ScanMode.Ai;
         public bool IsOcrAvailable => _ocrService.IsAvailable;
 
+        // Pre-save Enhance (OCR-only). Surfaces a button after an OCR scan
+        // completes so the user can re-run the LLM with directory-validated
+        // values locked, without first having to save the card.
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private bool _lastScanWasOcr;
+        [ObservableProperty] private string? _enhanceMessage;
+        public bool CanEnhance => !IsScanning && !IsEnhancing && LastScanWasOcr && ScannedCard != null;
+
+        partial void OnIsEnhancingChanged(bool value) => OnPropertyChanged(nameof(CanEnhance));
+        partial void OnIsScanningChanged(bool value) => OnPropertyChanged(nameof(CanEnhance));
+        partial void OnLastScanWasOcrChanged(bool value) => OnPropertyChanged(nameof(CanEnhance));
+        partial void OnScannedCardChanged(CardDetailViewModel? value) => OnPropertyChanged(nameof(CanEnhance));
+
         partial void OnScanModeChanged(ScanMode value)
         {
             OnPropertyChanged(nameof(IsOcrMode));
@@ -98,7 +112,8 @@ namespace FlipKit.Desktop.ViewModels
             IImageUploadService imageUploadService,
             IBrowserService browserService,
             IWebcamCaptureDialogService webcamCaptureDialog,
-            ILogger<ScanViewModel> logger)
+            ILogger<ScanViewModel> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _scannerService = scannerService;
             _ocrService = ocrService;
@@ -114,6 +129,7 @@ namespace FlipKit.Desktop.ViewModels
             _imageUploadService = imageUploadService;
             _browserService = browserService;
             _webcamCaptureDialog = webcamCaptureDialog;
+            _playerDirectory = playerDirectory;
             _logger = logger;
 
             // Honour the master toggle from Settings. Read once — users can re-open
@@ -277,6 +293,7 @@ namespace FlipKit.Desktop.ViewModels
                     ScannedCard = CardDetailViewModel.FromCard(ocrResult.Card);
                     MergeCustomGradingCompanies(ScannedCard);
                     ResetMatcherState();
+                    LastScanWasOcr = true;
                     return;
                 }
 
@@ -324,6 +341,7 @@ namespace FlipKit.Desktop.ViewModels
                 _lastScanResult = scanResult;
                 ScannedCard = CardDetailViewModel.FromCard(scanResult.Card);
                 MergeCustomGradingCompanies(ScannedCard);
+                LastScanWasOcr = false;
 
                 // Phase 2 tier-aware verification (Roadmap 1 §8d). Runs alongside the
                 // existing variation verifier — produces a coloured tier badge + the
@@ -405,6 +423,106 @@ namespace FlipKit.Desktop.ViewModels
             finally
             {
                 IsScanning = false;
+            }
+        }
+
+        /// <summary>
+        /// Pre-save Enhance for the Single Scan flow. Only available after an
+        /// OCR scan — re-runs the LLM with directory-validated values locked
+        /// (verified-fields hint) so the model spends its tokens on the
+        /// visual-pattern fields the OCR pass couldn't see (parallel pattern,
+        /// refractor, foil, border colour, visual cues). Result merges back
+        /// into the in-memory ScannedCard form so the user can review before
+        /// saving — same shape as Bulk Scan's per-item Enhance.
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanEnhance))]
+        private async Task EnhanceAsync()
+        {
+            if (ScannedCard == null || string.IsNullOrEmpty(ImagePath)) return;
+
+            IsEnhancing = true;
+            EnhanceMessage = null;
+            ErrorMessage = null;
+
+            try
+            {
+                // Build the verified-fields hint via the directory if available;
+                // otherwise fall back to a soft hint so the LLM still has the
+                // OCR's identity guess as context.
+                OcrHint hint;
+                if (_playerDirectory?.IsReady == true)
+                {
+                    hint = _playerDirectory.BuildHintFromCard(ScannedCard.ToCard());
+                }
+                else
+                {
+                    hint = new OcrHint
+                    {
+                        PlayerName = ScannedCard.PlayerName,
+                        Year = ScannedCard.Year,
+                        CardNumber = ScannedCard.CardNumber,
+                        Manufacturer = ScannedCard.Manufacturer,
+                        Brand = ScannedCard.Brand,
+                        SetName = ScannedCard.SetName,
+                    };
+                }
+                // Carry the raw OCR text from the pre-enhance scan so the LLM
+                // sees peripheral text it might otherwise miss.
+                if (_lastScanResult?.AllVisibleText != null)
+                    hint.AllVisibleText = _lastScanResult.AllVisibleText.ToList();
+
+                var settings = _settingsService.Load();
+                var model = SelectedModel?.IsAuto == false
+                    ? SelectedModel.Value
+                    : (settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId);
+
+                var result = await _scannerService.ScanCardAsync(
+                    ImagePath,
+                    ImagePathBack,
+                    model,
+                    scanDepth: ScanDepth.Standard,
+                    ocrHint: hint);
+
+                // Merge the LLM result back into the form. Verified fields are
+                // already locked at the LLM level + restored by the drift guard,
+                // so the assignments here mostly fill the visual / unknown
+                // fields the OCR pass left blank. Use null-coalesce so an
+                // empty LLM response doesn't wipe a field we already had.
+                var e = result.Card;
+                ScannedCard.PlayerName    = e.PlayerName    ?? ScannedCard.PlayerName;
+                ScannedCard.Year          = e.Year          ?? ScannedCard.Year;
+                ScannedCard.CardNumber    = e.CardNumber    ?? ScannedCard.CardNumber;
+                ScannedCard.Manufacturer  = e.Manufacturer  ?? ScannedCard.Manufacturer;
+                ScannedCard.Brand         = e.Brand         ?? ScannedCard.Brand;
+                ScannedCard.SetName       = e.SetName       ?? ScannedCard.SetName;
+                ScannedCard.Team          = e.Team          ?? ScannedCard.Team;
+                ScannedCard.VariationType = e.VariationType ?? ScannedCard.VariationType;
+                ScannedCard.ParallelName  = e.ParallelName  ?? ScannedCard.ParallelName;
+                ScannedCard.SerialNumbered= e.SerialNumbered?? ScannedCard.SerialNumbered;
+                ScannedCard.IsRookie      = e.IsRookie;
+                ScannedCard.IsAuto        = e.IsAuto;
+                ScannedCard.IsRelic       = e.IsRelic;
+                ScannedCard.IsGraded      = e.IsGraded;
+                ScannedCard.GradeCompany  = e.GradeCompany  ?? ScannedCard.GradeCompany;
+                ScannedCard.GradeValue    = e.GradeValue    ?? ScannedCard.GradeValue;
+                if (e.Sport.HasValue) ScannedCard.Sport = e.Sport;
+
+                // Card has now effectively been AI-scanned — flag it so a
+                // subsequent click of Enhance doesn't re-run uselessly.
+                LastScanWasOcr = false;
+                _lastScanResult = result;
+
+                EnhanceMessage = "Enhanced with AI — review fields and save.";
+                _logger.LogInformation("Enhanced single OCR scan with AI ({Player})", ScannedCard.PlayerName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Single-scan enhance failed");
+                ErrorMessage = $"Enhance failed: {ex.Message}";
+            }
+            finally
+            {
+                IsEnhancing = false;
             }
         }
 

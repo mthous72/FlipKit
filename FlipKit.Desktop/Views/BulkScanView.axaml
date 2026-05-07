@@ -132,12 +132,19 @@
                          x:CompileBindings="False">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid ColumnDefinitions="36,*,Auto" Margin="4">
+                            <!-- New 4-column grid: checkbox, thumbnail, info, index.
+                                 The checkbox drives IsSelected (independent of
+                                 ListBox SelectedItem) so a user can tick several
+                                 cards without losing detail-pane focus. -->
+                            <Grid ColumnDefinitions="Auto,36,*,Auto" Margin="4">
+                                <CheckBox Grid.Column="0" Margin="0,0,6,0"
+                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          ToolTip.Tip="Tick to include in 'Enhance Selected' / batch ops"/>
                                 <!-- Thumbnail -->
-                                <Image Grid.Column="0" Width="28" Height="28" Stretch="UniformToFill"
+                                <Image Grid.Column="1" Width="28" Height="28" Stretch="UniformToFill"
                                        Source="{Binding FrontImagePath, Converter={StaticResource FilePathToBitmapConverter}}"/>
                                 <!-- Name + status -->
-                                <StackPanel Grid.Column="1" Margin="8,0">
+                                <StackPanel Grid.Column="2" Margin="8,0">
                                     <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13"
                                                TextTrimming="CharacterEllipsis"/>
                                     <TextBlock Text="{Binding Status}" FontSize="11" Opacity="0.6"/>
@@ -152,7 +159,7 @@
                                     </Border>
                                 </StackPanel>
                                 <!-- Index -->
-                                <TextBlock Grid.Column="2" Text="{Binding Index}" FontSize="11"
+                                <TextBlock Grid.Column="3" Text="{Binding Index}" FontSize="11"
                                            Opacity="0.4" VerticalAlignment="Center"/>
                             </Grid>
                         </DataTemplate>
@@ -184,12 +191,14 @@
                             </Grid>
 
                             <TextBlock Text="Sport"/>
-                            <ComboBox SelectedItem="{Binding Sport}" HorizontalAlignment="Stretch">
-                                <ComboBoxItem Content="{x:Null}" Tag=""/>
-                                <ComboBoxItem Content="Football"/>
-                                <ComboBoxItem Content="Baseball"/>
-                                <ComboBoxItem Content="Basketball"/>
-                            </ComboBox>
+                            <!-- Bind against the enum-typed SportOptions list so
+                                 selection assigns a Sport? to Card.Sport, not a
+                                 string. The string-based ComboBoxItem flavor
+                                 throws InvalidCastException at SelectedItem
+                                 commit time. -->
+                            <ComboBox ItemsSource="{x:Static vm:CardDetailViewModel.SportOptions}"
+                                      SelectedItem="{Binding Sport}"
+                                      HorizontalAlignment="Stretch"/>
 
                             <!-- Manufacturer -->
                             <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto" RowSpacing="4">
@@ -346,13 +355,17 @@
             <Button Content="Rescan Selected" Command="{Binding RescanSelectedCommand}"
                     IsVisible="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Padding="20,10"/>
-            <!-- Enhance buttons (OCR mode) -->
+            <!-- Enhance buttons (OCR mode). "Enhance All" runs every OCR-scanned
+                 card; "Enhance Selected" runs only the rows the user checked
+                 (HasSelectedOcrItems). Visibility is driven by VM-level computed
+                 properties that auto-refresh when item state changes (the VM
+                 subscribes to per-item PropertyChanged in its constructor). -->
             <Button Content="Enhance All with AI" Command="{Binding EnhanceAllCommand}"
                     IsVisible="{Binding HasOcrScannedItems}"
                     IsEnabled="{Binding !IsEnhancing}"
                     Padding="20,10"/>
             <Button Content="Enhance Selected" Command="{Binding EnhanceSelectedCommand}"
-                    IsVisible="{Binding SelectedItem.IsOcrScanned, FallbackValue=False}"
+                    IsVisible="{Binding HasSelectedOcrItems}"
                     IsEnabled="{Binding !IsEnhancing}"
                     Padding="20,10"/>
             <!-- Enhance progress -->

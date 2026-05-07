@@ -22,7 +22,18 @@ namespace FlipKit.Desktop.ViewModels
 
         public List<string> GradingCompanyOptions { get; set; } = new() { "PSA", "BGS", "CGC", "CCG", "SGC" };
 
-        public static List<Enums.Sport?> SportOptions { get; } = new() { null, Enums.Sport.Football, Enums.Sport.Baseball, Enums.Sport.Basketball };
+        // All Sport enum values surface in the dropdown so cards scanned via the
+        // expanded LeagueAcronyms / team-mascot pipeline (Hockey, Soccer, MMA,
+        // Wrestling, Golf, Tennis, Racing) can bind without an InvalidCastException
+        // when a value lands outside the original short list.
+        public static List<Enums.Sport?> SportOptions { get; } = new()
+        {
+            null,
+            Enums.Sport.Football, Enums.Sport.Baseball, Enums.Sport.Basketball,
+            Enums.Sport.Hockey,   Enums.Sport.Soccer,   Enums.Sport.MMA,
+            Enums.Sport.Wrestling, Enums.Sport.Golf,    Enums.Sport.Tennis,
+            Enums.Sport.Racing,
+        };
         public static List<Enums.CostSource?> CostSourceOptions { get; } = new() { null, Enums.CostSource.LCS, Enums.CostSource.Online, Enums.CostSource.CardShow, Enums.CostSource.Break, Enums.CostSource.Trade, Enums.CostSource.Gift, Enums.CostSource.PersonalCollection, Enums.CostSource.Unknown };
         public static List<string> ConditionOptions { get; } = new() { "Near Mint", "Like New", "Very Good", "Good", "Acceptable" };
 

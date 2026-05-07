@@ -541,8 +541,23 @@
             <Button Content="Save to My Cards" Command="{Binding SaveCardCommand}"
                     IsEnabled="{Binding ScannedCard, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Padding="20,10"/>
+            <!-- Pre-save Enhance — only after an OCR scan, since AI scans
+                 already had the LLM pass. Re-runs with verified-fields hint
+                 (player / brand / sport / year locked when in directory)
+                 so the model focuses on visual fields. -->
+            <Button Content="Enhance with AI" Command="{Binding EnhanceCommand}"
+                    IsVisible="{Binding LastScanWasOcr}"
+                    IsEnabled="{Binding CanEnhance}"
+                    Padding="20,10"/>
             <Button Content="Clear" Command="{Binding ClearCommand}"
                     Padding="20,10"/>
+
+            <!-- Live enhance state — small inline indicator while the LLM call runs -->
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        IsVisible="{Binding IsEnhancing}" VerticalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="60" Height="6" VerticalAlignment="Center"/>
+                <TextBlock Text="Enhancing with AI…" FontSize="12" Opacity="0.75" VerticalAlignment="Center"/>
+            </StackPanel>
 
             <!-- Messages -->
             <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
@@ -551,6 +566,9 @@
             <TextBlock Text="{Binding SuccessMessage}" Foreground="Green"
                        VerticalAlignment="Center" Margin="12,0,0,0"
                        IsVisible="{Binding SuccessMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="{Binding EnhanceMessage}" Foreground="DarkOrange"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       IsVisible="{Binding EnhanceMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
     </Grid>
 </UserControl>

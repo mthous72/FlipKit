@@ -258,6 +258,74 @@
                                VerticalAlignment="Center"
                                IsVisible="{Binding ExportError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </StackPanel>
+
+                <!-- Rich enhance ticker — shows the live state of the AI enhance
+                     batch so the user can see which card / model is running and
+                     which fields the directory marked as confirmed for that card.
+                     Sits below the action row inside the Export Footer; only
+                     visible during an active enhance run. -->
+                <Border IsVisible="{Binding IsEnhancing}"
+                        Background="#FFF8E1" BorderBrush="#FFB300" BorderThickness="1"
+                        CornerRadius="6" Padding="14" Margin="0,8,0,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14"
+                          x:CompileBindings="False">
+                        <!-- Image column -->
+                        <Grid Grid.Column="0" RowDefinitions="Auto,Auto" RowSpacing="4"
+                              IsVisible="{Binding CurrentEnhanceCard, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Image Grid.Row="0" Height="100" Stretch="Uniform"
+                                   Source="{Binding CurrentEnhanceCard.ImagePathFront, Converter={StaticResource FilePathToBitmapConverter}}"/>
+                            <Image Grid.Row="1" Height="100" Stretch="Uniform"
+                                   Source="{Binding CurrentEnhanceCard.ImagePathBack, Converter={StaticResource FilePathToBitmapConverter}}"/>
+                        </Grid>
+
+                        <!-- Detail column -->
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock FontWeight="SemiBold" FontSize="14">
+                                <Run Text="✨ Enhancing"/>
+                                <Run Text="{Binding EnhanceProgress}"/>
+                                <Run Text="of"/>
+                                <Run Text="{Binding EnhanceTotal}"/>
+                            </TextBlock>
+
+                            <ProgressBar Minimum="0" Maximum="{Binding EnhanceTotal}"
+                                         Value="{Binding EnhanceProgress}"
+                                         Height="8"/>
+
+                            <StackPanel IsVisible="{Binding CurrentEnhanceCard, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                        Spacing="2">
+                                <TextBlock FontSize="13" FontWeight="SemiBold"
+                                           Text="{Binding CurrentEnhanceCard.PlayerName}"/>
+                                <TextBlock FontSize="11" Opacity="0.75">
+                                    <Run Text="Card #"/>
+                                    <Run Text="{Binding CurrentEnhanceCard.CardNumber}"/>
+                                    <Run Text=" · "/>
+                                    <Run Text="{Binding CurrentEnhanceCard.Year}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding CurrentEnhanceCard.Brand}"/>
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Spacing="6"
+                                        IsVisible="{Binding CurrentEnhanceModel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Model:" FontSize="11" Opacity="0.7"/>
+                                <TextBlock Text="{Binding CurrentEnhanceModel}" FontSize="11" FontFamily="Consolas, Courier New"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="2"
+                                        IsVisible="{Binding CurrentEnhanceVerifiedFields, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <TextBlock Text="Locked / confirmed fields sent to LLM:" FontSize="11" FontWeight="SemiBold" Opacity="0.75"/>
+                                <TextBlock Text="{Binding CurrentEnhanceVerifiedFields}" FontSize="11"
+                                           FontFamily="Consolas, Courier New" TextWrapping="Wrap"/>
+                            </StackPanel>
+
+                            <TextBlock FontSize="11" Foreground="#B71C1C"
+                                       IsVisible="{Binding EnhanceFailedCount, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Run Text="Failures so far:"/>
+                                <Run Text="{Binding EnhanceFailedCount}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
+                </Border>
             </StackPanel>
         </Border>
 

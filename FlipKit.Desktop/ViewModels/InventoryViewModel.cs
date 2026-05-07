@@ -76,6 +76,14 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isEnhancing;
         [ObservableProperty] private int _enhanceProgress;
         [ObservableProperty] private int _enhanceTotal;
+        [ObservableProperty] private int _enhanceFailedCount;
+
+        // Live enhance ticker — bound by the My Cards enhance panel so the user
+        // can see which card / model is being processed and which fields the
+        // directory marked as verified for the current request.
+        [ObservableProperty] private Card? _currentEnhanceCard;
+        [ObservableProperty] private string? _currentEnhanceModel;
+        [ObservableProperty] private string? _currentEnhanceVerifiedFields;
 
         public bool HasOcrSelectedCards =>
             FilteredCards.Any(c => c.IsSelected && c.Card.DataSource == CardDataSource.Ocr);
@@ -495,6 +503,9 @@ namespace FlipKit.Desktop.ViewModels
             var settings = _settingsService.Load();
             var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
 
+            EnhanceFailedCount = 0;
+            int succeeded = 0;
+
             try
             {
                 foreach (var card in targets)
@@ -517,40 +528,74 @@ namespace FlipKit.Desktop.ViewModels
                             SetName = card.SetName,
                         };
 
-                    var result = await _scannerService.ScanCardAsync(
-                        card.ImagePathFront!,
-                        card.ImagePathBack,
-                        model,
-                        scanDepth: ScanDepth.Standard,
-                        ocrHint: hint,
-                        ct: _enhanceCts.Token);
+                    // Update the live ticker so the UI shows what's currently
+                    // running. CurrentEnhanceCard drives the image + identity
+                    // panel; verified-fields list shows what's locked.
+                    CurrentEnhanceCard = card;
+                    CurrentEnhanceModel = model;
+                    CurrentEnhanceVerifiedFields = hint.VerifiedFieldNames.Count > 0
+                        ? string.Join(", ", hint.VerifiedFieldNames)
+                        : "(none — soft-hint mode)";
 
-                    var e = result.Card;
-                    card.PlayerName = e.PlayerName ?? card.PlayerName;
-                    card.Year = e.Year ?? card.Year;
-                    card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
-                    card.Brand = e.Brand ?? card.Brand;
-                    card.SetName = e.SetName ?? card.SetName;
-                    card.CardNumber = e.CardNumber ?? card.CardNumber;
-                    card.Team = e.Team ?? card.Team;
-                    card.VariationType = e.VariationType ?? card.VariationType;
-                    card.ParallelName = e.ParallelName ?? card.ParallelName;
-                    card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
-                    card.IsRookie = e.IsRookie;
-                    card.IsAuto = e.IsAuto;
-                    card.IsRelic = e.IsRelic;
-                    card.DataSource = CardDataSource.Ai;
+                    try
+                    {
+                        var result = await _scannerService.ScanCardAsync(
+                            card.ImagePathFront!,
+                            card.ImagePathBack,
+                            model,
+                            scanDepth: ScanDepth.Standard,
+                            ocrHint: hint,
+                            ct: _enhanceCts.Token);
 
-                    await _cardRepository.UpdateCardAsync(card);
-                    EnhanceProgress++;
+                        var e = result.Card;
+                        card.PlayerName = e.PlayerName ?? card.PlayerName;
+                        card.Year = e.Year ?? card.Year;
+                        card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
+                        card.Brand = e.Brand ?? card.Brand;
+                        card.SetName = e.SetName ?? card.SetName;
+                        card.CardNumber = e.CardNumber ?? card.CardNumber;
+                        card.Team = e.Team ?? card.Team;
+                        card.VariationType = e.VariationType ?? card.VariationType;
+                        card.ParallelName = e.ParallelName ?? card.ParallelName;
+                        card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
+                        card.IsRookie = e.IsRookie;
+                        card.IsAuto = e.IsAuto;
+                        card.IsRelic = e.IsRelic;
+                        card.DataSource = CardDataSource.Ai;
+
+                        await _cardRepository.UpdateCardAsync(card);
+                        succeeded++;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Cancellation is a batch-level signal — re-throw to break the loop.
+                        throw;
+                    }
+                    catch (Exception cardEx)
+                    {
+                        // Per-card isolation: log the failure with enough context to
+                        // diagnose, increment the failed counter, and keep going.
+                        // One bad LLM response (truncation, JSON malformed, network
+                        // blip) should never abort the whole batch.
+                        _logger.LogError(cardEx,
+                            "Enhance failed for card {CardId} ({Player}); continuing batch.",
+                            card.Id, card.PlayerName);
+                        EnhanceFailedCount++;
+                    }
+                    finally
+                    {
+                        EnhanceProgress++;
+                    }
                 }
 
-                ExportMessage = $"Enhanced {targets.Count} card(s) with AI.";
+                ExportMessage = EnhanceFailedCount == 0
+                    ? $"Enhanced {succeeded} card(s) with AI."
+                    : $"Enhanced {succeeded} card(s); {EnhanceFailedCount} failed (see log).";
                 LoadCardsAsync();
             }
             catch (OperationCanceledException)
             {
-                ExportMessage = "Enhancement cancelled.";
+                ExportMessage = $"Enhancement cancelled after {succeeded} card(s).";
             }
             catch (Exception ex)
             {
@@ -560,6 +605,9 @@ namespace FlipKit.Desktop.ViewModels
             finally
             {
                 IsEnhancing = false;
+                CurrentEnhanceCard = null;
+                CurrentEnhanceModel = null;
+                CurrentEnhanceVerifiedFields = null;
                 _enhanceCts?.Dispose();
                 _enhanceCts = null;
                 OnPropertyChanged(nameof(HasOcrSelectedCards));

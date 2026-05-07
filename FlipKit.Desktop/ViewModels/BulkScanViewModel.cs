@@ -218,6 +218,20 @@ namespace FlipKit.Desktop.ViewModels
             _playerDirectory = playerDirectory;
             _logger = logger;
 
+            // Subscribe to per-item PropertyChanged so HasSelectedOcrItems /
+            // HasOcrScannedItems / Enhance command CanExecute re-evaluate when
+            // checkboxes flip or scan-status changes. Items only ever grow
+            // (no item is recreated for an existing index), so attach-on-add
+            // is sufficient and we never need to detach.
+            Items.CollectionChanged += (_, e) =>
+            {
+                if (e.NewItems != null)
+                {
+                    foreach (BulkScanItem item in e.NewItems)
+                        item.PropertyChanged += (_, args) => OnBulkScanItemPropertyChanged(args.PropertyName);
+                }
+            };
+
             // Initialize from settings
             var settings = _settingsService.Load();
             _maxConcurrentScans = settings.MaxConcurrentScans;
@@ -818,15 +832,48 @@ namespace FlipKit.Desktop.ViewModels
             await RunBulkEnhanceAsync(ocrItems);
         }
 
+        /// <summary>
+        /// Enhances every CHECKED OCR-scanned card. If nothing is checked,
+        /// the button is hidden (CanEnhanceSelected returns false). The
+        /// previous behavior — single-select via ListBox.SelectedItem —
+        /// only ever processed one card at a time even when the user wanted
+        /// a subset; the new model is "tick the rows you want, click Enhance Selected."
+        /// </summary>
         [RelayCommand(CanExecute = nameof(CanEnhanceSelected))]
         private async Task EnhanceSelectedAsync()
         {
-            if (SelectedItem == null || SelectedItem.ScanMode != ScanMode.Ocr) return;
-            await RunBulkEnhanceAsync(new List<BulkScanItem> { SelectedItem });
+            var picked = SelectedOcrItems;
+            if (picked.Count == 0) return;
+            await RunBulkEnhanceAsync(picked);
         }
 
+        /// <summary>OCR-scanned items the user has CHECKED (separate from ListBox focus).</summary>
+        public List<BulkScanItem> SelectedOcrItems =>
+            Items.Where(i => i.IsSelected && i.ScanMode == ScanMode.Ocr && i.Status == BulkScanStatus.Scanned)
+                 .ToList();
+
+        public bool HasSelectedOcrItems => SelectedOcrItems.Count > 0;
+
         private bool CanEnhance() => !IsEnhancing && HasOcrScannedItems;
-        private bool CanEnhanceSelected() => !IsEnhancing && SelectedItem?.ScanMode == ScanMode.Ocr;
+        private bool CanEnhanceSelected() => !IsEnhancing && HasSelectedOcrItems;
+
+        // The Items collection's per-item PropertyChanged events don't bubble up
+        // to the parent VM, so HasSelectedOcrItems / HasOcrScannedItems wouldn't
+        // re-evaluate when an item's IsSelected / Status / ScanMode flips.
+        // Subscribe to each item's PropertyChanged in the constructor (see ctor)
+        // and re-broadcast when relevant fields change.
+        internal void OnBulkScanItemPropertyChanged(string? propName)
+        {
+            if (propName is nameof(BulkScanItem.IsSelected)
+                or nameof(BulkScanItem.Status)
+                or nameof(BulkScanItem.ScanMode))
+            {
+                OnPropertyChanged(nameof(HasSelectedOcrItems));
+                OnPropertyChanged(nameof(HasOcrScannedItems));
+                EnhanceSelectedCommand.NotifyCanExecuteChanged();
+                EnhanceAllCommand.NotifyCanExecuteChanged();
+            }
+        }
 
         [RelayCommand]
         private void CancelEnhance()
@@ -1196,10 +1243,23 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _errorMessage;
         [ObservableProperty] private CardDetailViewModel? _cardDetail;
 
+        // Per-row checkbox state for multi-select Enhance / batch operations.
+        // ListBox SelectedItem still drives which card is shown in the detail
+        // pane; IsSelected is independent so the user can check several cards
+        // without losing the detail focus.
+        [ObservableProperty] private bool _isSelected;
+
+        // ScanMode used to be a plain auto-property — changes never fired
+        // PropertyChanged, so the XAML binding `SelectedItem.IsOcrScanned`
+        // got stuck at the value at-selection time and the Enhance button
+        // never appeared after a fresh OCR scan completed. Promoting it to
+        // an ObservableProperty + cascading the notification to IsOcrScanned
+        // / ShowLowConfidenceBanner fixes that.
+        [ObservableProperty] private ScanMode _scanMode = ScanMode.Ai;
+
         public string FrontImagePath { get; set; } = string.Empty;
         public string? BackImagePath { get; set; }
 
-        public ScanMode ScanMode { get; set; } = ScanMode.Ai;
         public List<FieldConfidence> Confidences { get; set; } = new();
 
         /// <summary>Raw OCR text captured at scan time. Surfaced in the enhance ticker.</summary>
@@ -1213,5 +1273,17 @@ namespace FlipKit.Desktop.ViewModels
             ScanMode == ScanMode.Ocr &&
             Confidences.Count > 0 &&
             Confidences.Count(c => c.Confidence == VerificationConfidence.Low) > Confidences.Count / 2;
+
+        partial void OnStatusChanged(BulkScanStatus value)
+        {
+            OnPropertyChanged(nameof(IsOcrScanned));
+            OnPropertyChanged(nameof(ShowLowConfidenceBanner));
+        }
+
+        partial void OnScanModeChanged(ScanMode value)
+        {
+            OnPropertyChanged(nameof(IsOcrScanned));
+            OnPropertyChanged(nameof(ShowLowConfidenceBanner));
+        }
     }
 }
