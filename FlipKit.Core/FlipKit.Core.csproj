@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="FuzzySharp" Version="2.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.11" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.11" />
@@ -27,6 +28,16 @@
          same legal posture as KnownSetsCatalog. Drives the Parallel dropdown in the
          Phase 2 tier-aware editor. Sets not in the catalog show free-text Parallel. -->
     <EmbeddedResource Include="Resources\ParallelFamilyCatalog.json" />
+    <!-- Bootstrap reference data — teams (with sport mapping), manufacturers, brands.
+         Stable, low-variance facts shipped with the app so OCR scanning works
+         out-of-the-box before any checklists are imported. Updates to leagues
+         (relocations, expansions) are JSON edits, never code changes. -->
+    <EmbeddedResource Include="Resources\ReferenceData\leagues_teams.json" />
+    <EmbeddedResource Include="Resources\ReferenceData\manufacturers.json" />
+    <EmbeddedResource Include="Resources\ReferenceData\brands.json" />
+    <EmbeddedResource Include="Resources\ReferenceData\parallels.json" />
+    <EmbeddedResource Include="Resources\ReferenceData\grading_authorities.json" />
+    <EmbeddedResource Include="Resources\ReferenceData\league_acronyms.json" />
   </ItemGroup>
 
 </Project>

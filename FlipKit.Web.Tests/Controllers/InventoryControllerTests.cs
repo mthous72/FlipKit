@@ -29,6 +29,8 @@ public class InventoryControllerTests
             upload ?? Substitute.For<IImageUploadService>(),
             ebayImport ?? Substitute.For<IEbayListingImportService>(),
             cache,
+            Substitute.For<IScannerService>(),
+            Substitute.For<ISettingsService>(),
             NullLogger<InventoryController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;

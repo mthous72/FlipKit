@@ -1,0 +1,74 @@
+@model FlipKit.Web.Models.SurpriseSetCreateViewModel
+@{
+    ViewData["Title"] = "New Surprise Set";
+}
+
+<div class="container py-4" style="max-width:640px">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+    <h2 class="mb-4">New Surprise Set</h2>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <div class="alert alert-danger">@Model.Error</div>
+    }
+
+    <form asp-action="Create" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Set Name <span class="text-danger">*</span></label>
+            <input asp-for="Name" class="form-control" placeholder="Internal name (e.g. May Baseball Lot)" maxlength="120"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Show Name <span class="text-muted fw-normal">(optional)</span></label>
+            <input asp-for="ShowName" class="form-control" placeholder="Name shown on stream — leave blank to use Set Name" maxlength="120"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Whatnot Listing Title</label>
+            <input asp-for="Title" class="form-control" placeholder="Buyers see this (max 80 chars)" maxlength="80"/>
+            <div class="form-text">Leave blank to use the Set Name.</div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+                <label class="form-label fw-semibold">Spot Price ($)</label>
+                <input asp-for="SpotPrice" type="number" min="0" step="0.01" class="form-control" placeholder="0.00"/>
+            </div>
+            <div class="col-sm-6">
+                <label class="form-label fw-semibold">Condition</label>
+                <select asp-for="SharedCondition" class="form-select">
+                    <option>Near Mint</option>
+                    <option>Like New</option>
+                    <option>Very Good</option>
+                    <option>Good</option>
+                    <option>Acceptable</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Shipping Profile</label>
+            <input asp-for="SharedShippingProfile" class="form-control" placeholder="e.g. Standard, PWE, 4 oz"/>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Whatnot Category</label>
+            <input asp-for="SharedWhatnotCategory" class="form-control" placeholder="Sports Trading Cards"/>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
+            <textarea asp-for="Notes" class="form-control" rows="3"
+                      placeholder="Visible to buyers in the listing description"></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Set</button>
+        </div>
+    </form>
+</div>

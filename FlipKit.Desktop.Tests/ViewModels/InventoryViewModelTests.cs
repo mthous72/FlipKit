@@ -37,6 +37,7 @@ public class InventoryViewModelTests
             browser ?? Substitute.For<IBrowserService>(),
             nav ?? Substitute.For<INavigationService>(),
             services ?? Substitute.For<IServiceProvider>(),
+            Substitute.For<IScannerService>(),
             NullLogger<InventoryViewModel>.Instance);
     }
 

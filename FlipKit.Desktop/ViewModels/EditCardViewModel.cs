@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using FlipKit.Core.Helpers;
 using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -20,6 +22,8 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IImageUploadService _imageUploadService;
         private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
         private readonly ISettingsService _settingsService;
+        private readonly IScannerService _scannerService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<EditCardViewModel> _logger;
 
         private Card? _originalCard;
@@ -40,6 +44,12 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _tierBadgeText = string.Empty;
         [ObservableProperty] private string _tierBadgeColor = "#9E9E9E";
 
+        // Enhance feature
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private string? _enhanceMessage;
+
+        public bool IsOcrSourced => _originalCard?.DataSource == CardDataSource.Ocr;
+
         // Webcam capture toggle — bound to the 📷 buttons' IsVisible.
         [ObservableProperty] private bool _isWebcamEnabled = true;
 
@@ -58,7 +68,9 @@ namespace FlipKit.Desktop.ViewModels
             IImageUploadService imageUploadService,
             IWebcamCaptureDialogService webcamCaptureDialog,
             ISettingsService settingsService,
-            ILogger<EditCardViewModel> logger)
+            IScannerService scannerService,
+            ILogger<EditCardViewModel> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
             _navigationService = navigationService;
@@ -66,6 +78,8 @@ namespace FlipKit.Desktop.ViewModels
             _imageUploadService = imageUploadService;
             _webcamCaptureDialog = webcamCaptureDialog;
             _settingsService = settingsService;
+            _scannerService = scannerService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
 
             IsWebcamEnabled = settingsService.Load().WebcamCaptureEnabled;
@@ -91,6 +105,7 @@ namespace FlipKit.Desktop.ViewModels
                 ImageUrl1 = _originalCard.ImageUrl1;
                 ImageUrl2 = _originalCard.ImageUrl2;
                 ApplyTierBadge(_originalCard);
+                OnPropertyChanged(nameof(IsOcrSourced));
 
                 AdditionalPhotos.Clear();
                 AddSlotIfAny(_originalCard.ImagePath3, _originalCard.ImageUrl3);
@@ -223,6 +238,94 @@ namespace FlipKit.Desktop.ViewModels
                     TierBadgeText = string.Empty;
                     TierBadgeColor = "#9E9E9E";
                     break;
+            }
+        }
+
+        [RelayCommand]
+        private async Task EnhanceAsync()
+        {
+            if (_originalCard == null || CardDetail == null)
+                return;
+
+            var frontPath = _originalCard.ImagePathFront ?? ImagePathFront;
+            if (string.IsNullOrEmpty(frontPath) || !File.Exists(frontPath))
+            {
+                ErrorMessage = "Cannot enhance: front image file not found.";
+                return;
+            }
+
+            IsEnhancing = true;
+            EnhanceMessage = null;
+            ErrorMessage = null;
+
+            try
+            {
+                // Reconstruct verified-fields hint from the saved Card by
+                // re-querying the directory. Falls back to the legacy 6-field
+                // soft hint when the directory isn't ready (fresh install,
+                // pre-seed). Cards that weren't OCR-sourced still benefit —
+                // any directory-anchored field gets locked.
+                OcrHint? hint = null;
+                if (_playerDirectory?.IsReady == true)
+                {
+                    hint = _playerDirectory.BuildHintFromCard(CardDetail.ToCard());
+                }
+                else if (_originalCard.DataSource == CardDataSource.Ocr)
+                {
+                    hint = new OcrHint
+                    {
+                        PlayerName = CardDetail.PlayerName,
+                        Year = CardDetail.Year,
+                        CardNumber = CardDetail.CardNumber,
+                        Manufacturer = CardDetail.Manufacturer,
+                        Brand = CardDetail.Brand,
+                        SetName = CardDetail.SetName,
+                    };
+                }
+
+                var settings = _settingsService.Load();
+                var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+
+                var result = await _scannerService.ScanCardAsync(
+                    frontPath,
+                    _originalCard.ImagePathBack ?? ImagePathBack,
+                    model,
+                    scanDepth: ScanDepth.Standard,
+                    ocrHint: hint);
+
+                var e = result.Card;
+                CardDetail.PlayerName = e.PlayerName ?? CardDetail.PlayerName;
+                CardDetail.Year = e.Year ?? CardDetail.Year;
+                CardDetail.Manufacturer = e.Manufacturer ?? CardDetail.Manufacturer;
+                CardDetail.Brand = e.Brand ?? CardDetail.Brand;
+                CardDetail.SetName = e.SetName ?? CardDetail.SetName;
+                CardDetail.CardNumber = e.CardNumber ?? CardDetail.CardNumber;
+                CardDetail.Team = e.Team ?? CardDetail.Team;
+                CardDetail.VariationType = e.VariationType ?? CardDetail.VariationType;
+                CardDetail.ParallelName = e.ParallelName ?? CardDetail.ParallelName;
+                CardDetail.SerialNumbered = e.SerialNumbered ?? CardDetail.SerialNumbered;
+                CardDetail.IsRookie = e.IsRookie;
+                CardDetail.IsAuto = e.IsAuto;
+                CardDetail.IsRelic = e.IsRelic;
+                CardDetail.IsGraded = e.IsGraded;
+                CardDetail.GradeCompany = e.GradeCompany ?? CardDetail.GradeCompany;
+                CardDetail.GradeValue = e.GradeValue ?? CardDetail.GradeValue;
+                if (e.Sport.HasValue) CardDetail.Sport = e.Sport;
+
+                _originalCard.DataSource = CardDataSource.Ai;
+                OnPropertyChanged(nameof(IsOcrSourced));
+
+                EnhanceMessage = "Enhanced with AI — review fields and save.";
+                _logger.LogInformation("Enhanced card {CardId} with AI", _originalCard.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Enhance failed for card {CardId}", _originalCard?.Id);
+                ErrorMessage = $"Enhance failed: {ex.Message}";
+            }
+            finally
+            {
+                IsEnhancing = false;
             }
         }
 

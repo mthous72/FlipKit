@@ -1,0 +1,56 @@
+[
+  {
+    "Code": "PSA",
+    "FullName": "Professional Sports Authenticator",
+    "MinGrade": 1,
+    "MaxGrade": 10,
+    "GradeIncrement": 0.5,
+    "HasSubgrades": false,
+    "IsActive": true
+  },
+  {
+    "Code": "BGS",
+    "FullName": "Beckett Grading Services",
+    "MinGrade": 1,
+    "MaxGrade": 10,
+    "GradeIncrement": 0.5,
+    "HasSubgrades": true,
+    "IsActive": true
+  },
+  {
+    "Code": "CGC",
+    "FullName": "Certified Guaranty Company",
+    "MinGrade": 1,
+    "MaxGrade": 10,
+    "GradeIncrement": 0.5,
+    "HasSubgrades": true,
+    "IsActive": true
+  },
+  {
+    "Code": "SGC",
+    "FullName": "Sportscard Guaranty Corporation",
+    "MinGrade": 1,
+    "MaxGrade": 10,
+    "GradeIncrement": 0.5,
+    "HasSubgrades": false,
+    "IsActive": true
+  },
+  {
+    "Code": "CSG",
+    "FullName": "Certified Sports Guaranty",
+    "MinGrade": 1,
+    "MaxGrade": 10,
+    "GradeIncrement": 0.5,
+    "HasSubgrades": true,
+    "IsActive": false
+  },
+  {
+    "Code": "BCCG",
+    "FullName": "Beckett Collectors Club Grading",
+    "MinGrade": 1,
+    "MaxGrade": 10,
+    "GradeIncrement": 1,
+    "HasSubgrades": false,
+    "IsActive": false
+  }
+]

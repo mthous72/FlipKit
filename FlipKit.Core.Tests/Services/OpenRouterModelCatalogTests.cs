@@ -102,17 +102,20 @@ public class OpenRouterModelCatalogTests
     }
 
     [Fact]
-    public async Task Should_SortPaidModelsCheapestFirst_When_FetchingCatalog()
+    public async Task Should_SortPaidModelsPreferredListFirst_When_FetchingCatalog()
     {
         var handler = new StubHttpMessageHandler(HttpStatusCode.OK, SampleModelsResponse);
         var catalog = CreateCatalog(handler);
 
         var result = await catalog.GetAsync();
 
-        // Gemma 3 27B paid (0.0000001) cheaper than Claude (0.000003).
+        // Sample response has claude-3.5-sonnet (in FallbackPaidModelIds) and
+        // gemma-3-27b-it (not in the list). Claude should sort first because preferred
+        // list order takes priority over raw price — prevents cheap low-quality models
+        // from becoming the default paid fallback just because they're cheaper.
         Assert.Equal(2, result.PaidVisionModels.Count);
-        Assert.True(result.PaidVisionModels[0].PromptPricePerMillion < result.PaidVisionModels[1].PromptPricePerMillion);
-        Assert.Equal("google/gemma-3-27b-it", result.PaidVisionModels[0].Id);
+        Assert.Equal("anthropic/claude-3.5-sonnet", result.PaidVisionModels[0].Id);
+        Assert.Equal("google/gemma-3-27b-it", result.PaidVisionModels[1].Id);
     }
 
     [Fact]

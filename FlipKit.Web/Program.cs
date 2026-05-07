@@ -89,6 +89,10 @@ builder.Services.AddScoped<IExportService, CsvExportService>(); // Depends on Db
 builder.Services.AddSingleton<IImageUploadService, ImgBBUploadService>();
 builder.Services.AddScoped<IVariationVerifier, VariationVerifierService>(); // Depends on DbContext
 builder.Services.AddSingleton<IChecklistLearningService, ChecklistLearningService>(); // Uses IServiceProvider to create scopes
+// Directory for OCR / Enhance fuzzy lookups against imported checklists +
+// reference seed. Singleton so the cache is hot across requests; refresh on
+// app start and after every checklist import.
+builder.Services.AddSingleton<IPlayerNameDirectory, PlayerNameDirectory>();
 // Phase 1 of the Checklist Insider import work — parser + service that turn user-supplied
 // .xlsx files into SetChecklist rows. Singleton because nothing here owns DbContext directly;
 // the service resolves a scoped DbContext per commit via IServiceProvider.
@@ -104,6 +108,17 @@ builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
 // Scoped because the import service holds an ICardRepository.
 builder.Services.AddScoped<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
 builder.Services.AddScoped<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
+// Surprise Set repository — Scoped (consistent with other DbContext-dependent services on Web).
+builder.Services.AddScoped<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
+// Validator is pure (no DB, no state) — Singleton is safe and efficient.
+builder.Services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
+// Description generator is pure template logic — no LLM, no DB, no state.
+builder.Services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
+// CSV exporter depends on the Scoped repository, so it must be Scoped too.
+builder.Services.AddScoped<ISurpriseSetCsvExporter, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCsvExporter>();
+// Completion service depends on the repository — Scoped.
+builder.Services.AddSingleton<IRevenueAllocationService, FlipKit.Core.Services.Implementations.SurpriseSets.RevenueAllocationService>();
+builder.Services.AddScoped<ISurpriseSetCompletionService, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCompletionService>();
 // IMemoryCache backs the 2-step Web import preview — parse + LLM enrich on
 // upload, stash by GUID token, render the review page, commit reads back by
 // token. Avoids re-running the LLM on every commit.

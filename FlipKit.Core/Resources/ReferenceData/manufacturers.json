@@ -1,0 +1,32 @@
+[
+  { "Name": "Panini",         "SportsActive": ["Football", "Basketball", "Baseball", "Soccer"],            "Aliases": ["Pannini"] },
+  { "Name": "Topps",          "SportsActive": ["Baseball", "Football", "Basketball", "Soccer", "Hockey"],   "Aliases": [] },
+  { "Name": "Upper Deck",     "SportsActive": ["Hockey", "Basketball", "Football", "Baseball", "Golf"],     "Aliases": ["UD"] },
+  { "Name": "Bowman",         "SportsActive": ["Baseball", "Football"],                                     "Aliases": [] },
+  { "Name": "Donruss",        "SportsActive": ["Football", "Baseball", "Basketball"],                       "Aliases": [] },
+  { "Name": "Leaf",           "SportsActive": ["Football", "Baseball", "Basketball", "Hockey"],             "Aliases": [] },
+  { "Name": "Fleer",          "SportsActive": ["Baseball", "Basketball", "Football"],                       "Aliases": [] },
+  { "Name": "Score",          "SportsActive": ["Football", "Baseball"],                                     "Aliases": [] },
+  { "Name": "Pacific",        "SportsActive": ["Football", "Baseball", "Hockey"],                           "Aliases": [] },
+  { "Name": "Press Pass",     "SportsActive": ["Racing", "Football", "Basketball"],                         "Aliases": [] },
+
+  { "Name": "Pinnacle",       "SportsActive": ["Football", "Baseball", "Hockey"],                           "Aliases": [] },
+  { "Name": "SkyBox",         "SportsActive": ["Basketball", "Football"],                                   "Aliases": ["Sky Box", "Skybox"] },
+  { "Name": "O-Pee-Chee",     "SportsActive": ["Hockey", "Baseball"],                                       "Aliases": ["OPC", "O Pee Chee"] },
+  { "Name": "Stadium Club",   "SportsActive": ["Baseball", "Football", "Basketball"],                       "Aliases": [] },
+  { "Name": "Pro Set",        "SportsActive": ["Football", "Hockey"],                                       "Aliases": ["ProSet"] },
+  { "Name": "Action Packed",  "SportsActive": ["Football", "Racing"],                                       "Aliases": [] },
+  { "Name": "Classic",        "SportsActive": ["Football", "Basketball", "Baseball"],                       "Aliases": [] },
+  { "Name": "Maxx",           "SportsActive": ["Racing"],                                                   "Aliases": [] },
+  { "Name": "Wild Card",      "SportsActive": ["Football"],                                                 "Aliases": ["WildCard"] },
+  { "Name": "Onyx",           "SportsActive": ["Baseball", "Football"],                                     "Aliases": [] },
+  { "Name": "Sage",           "SportsActive": ["Football", "Basketball"],                                   "Aliases": [] },
+  { "Name": "Razor",          "SportsActive": ["Football", "Baseball", "Basketball"],                       "Aliases": [] },
+
+  { "Name": "Goudey",         "SportsActive": ["Baseball"],                                                 "Aliases": [] },
+  { "Name": "Play Ball",      "SportsActive": ["Baseball"],                                                 "Aliases": ["Playball"] },
+  { "Name": "Cracker Jack",   "SportsActive": ["Baseball"],                                                 "Aliases": [] },
+  { "Name": "Bowman Gum",     "SportsActive": ["Baseball"],                                                 "Aliases": [] },
+  { "Name": "Diamond Stars",  "SportsActive": ["Baseball"],                                                 "Aliases": [] },
+  { "Name": "Allen & Ginter", "SportsActive": ["Baseball"],                                                 "Aliases": ["Allen and Ginter"] }
+]

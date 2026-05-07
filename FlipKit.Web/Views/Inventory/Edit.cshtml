@@ -21,6 +21,28 @@
 
         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
+        @if (Model.DataSource == FlipKit.Core.Models.Enums.CardDataSource.Ocr)
+        {
+            <div class="alert alert-info d-flex align-items-center justify-content-between mb-3" id="ocr-banner">
+                <div>
+                    <strong>Scanned with OCR</strong> — accuracy may be limited.
+                    Fields were extracted from image text. Enhance to run the full AI pipeline for better results.
+                </div>
+                <button type="button" class="btn btn-primary btn-sm ms-3" onclick="enhanceCard(@Model.Id)">
+                    Enhance with AI
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="text-end mb-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="enhanceCard(@Model.Id)">
+                    Re-scan with AI
+                </button>
+            </div>
+        }
+        <div id="enhance-result" class="mb-3" style="display:none"></div>
+
         <!-- Basic Info Section -->
         <div class="card mb-3">
             <div class="card-header">
@@ -482,5 +504,28 @@
         // Hide trigger buttons on origins that can't access the camera (HTTP
         // over Tailscale per the webcam plan §6).
         FlipKitWebcam.gate('[data-webcam-required]');
+
+        async function enhanceCard(cardId) {
+            const resultDiv = document.getElementById('enhance-result');
+            resultDiv.style.display = '';
+            resultDiv.innerHTML = '<div class="alert alert-secondary">Enhancing with AI — please wait...</div>';
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            try {
+                const resp = await fetch('/Inventory/Enhance/' + cardId, {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': token }
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resultDiv.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">' + (data.error || 'Enhance failed.') + '</div>';
+                }
+            } catch (e) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Request failed: ' + e.message + '</div>';
+            }
+        }
     </script>
 }

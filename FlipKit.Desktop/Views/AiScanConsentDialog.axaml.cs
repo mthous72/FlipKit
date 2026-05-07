@@ -11,20 +11,21 @@ namespace FlipKit.Desktop.Views
         {
             InitializeComponent();
 
-            this.FindControl<Button>("ContinueButton")!.Click += (_, _) =>
+            this.FindControl<Button>("AcceptButton")!.Click += (_, _) =>
             {
                 _proceed = true;
                 Close();
             };
-            this.FindControl<Button>("CancelButton")!.Click += (_, _) =>
+            this.FindControl<Button>("DenyButton")!.Click += (_, _) =>
             {
                 _proceed = false;
                 Close();
             };
         }
 
+        // Accepting always saves the consent — there's no reason to accept and be asked again.
         public bool Proceed => _proceed;
-        public bool Remember => this.FindControl<CheckBox>("RememberCheckBox")!.IsChecked == true;
+        public bool Remember => _proceed;
 
         private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
     }

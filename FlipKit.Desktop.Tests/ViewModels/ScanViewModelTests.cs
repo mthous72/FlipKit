@@ -36,6 +36,7 @@ public class ScanViewModelTests
 
         return new ScanViewModel(
             scanner ?? Substitute.For<IScannerService>(),
+            Substitute.For<IOcrService>(),
             repo ?? Substitute.For<ICardRepository>(),
             dialog ?? Substitute.For<IFileDialogService>(),
             settings,

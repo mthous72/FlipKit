@@ -22,6 +22,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IChecklistLearningService _checklistService;
         private readonly IFileDialogService _fileDialogService;
         private readonly IChecklistImportService _excelImportService;
+        private readonly IBrowserService _browserService;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ChecklistManagerViewModel> _logger;
 
@@ -46,15 +47,21 @@ namespace FlipKit.Desktop.ViewModels
             IChecklistLearningService checklistService,
             IFileDialogService fileDialogService,
             IChecklistImportService excelImportService,
+            IBrowserService browserService,
             IServiceProvider serviceProvider,
             ILogger<ChecklistManagerViewModel> logger)
         {
             _checklistService = checklistService;
             _fileDialogService = fileDialogService;
             _excelImportService = excelImportService;
+            _browserService = browserService;
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
+
+        [RelayCommand]
+        private void OpenChecklistInsider() =>
+            _browserService.OpenUrl("https://www.checklistinsider.com/");
 
         [RelayCommand]
         private async Task LoadAsync()

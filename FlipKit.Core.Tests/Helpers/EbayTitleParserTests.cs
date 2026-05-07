@@ -10,6 +10,41 @@ namespace FlipKit.Core.Tests.Helpers;
 // is exactly what these tests are guarding.
 public class EbayTitleParserTests
 {
+    // Mirrors what the production code feeds in via IPlayerNameDirectory.Manufacturers
+    // — a flat list of canonical manufacturer names. Tests that don't assert on the
+    // Manufacturer field continue to use the no-arg Parse(title) overload, which
+    // intentionally produces null Manufacturer (no dictionary supplied).
+    private static readonly string[] TestManufacturers =
+    {
+        "Upper Deck", "Press Pass", "Stadium Club", "Panini", "Topps",
+        "Bowman", "Fleer", "Donruss", "SkyBox", "Score", "Leaf", "Pinnacle",
+    };
+
+    // Mirrors what the seeded LeagueAcronyms table feeds into the directory
+    // and through to InferSport. Tests own this dictionary explicitly so they
+    // don't depend on the seed being loaded; same shape as production.
+    private static readonly Dictionary<string, Sport> TestLeagueAcronyms = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "NFL", Sport.Football },
+        { "NCAAF", Sport.Football },
+        { "NBA", Sport.Basketball },
+        { "WNBA", Sport.Basketball },
+        { "NCAAB", Sport.Basketball },
+        { "MLB", Sport.Baseball },
+        { "NHL", Sport.Hockey },
+        { "MLS", Sport.Soccer },
+        { "UFC", Sport.MMA },
+        { "WWE", Sport.Wrestling },
+        { "AEW", Sport.Wrestling },
+        { "PGA", Sport.Golf },
+        { "F1", Sport.Racing },
+        { "Formula 1", Sport.Racing },
+        { "NASCAR", Sport.Racing },
+        { "ATP", Sport.Tennis },
+        { "WTA", Sport.Tennis },
+    };
+
+
     [Theory]
     [InlineData("2025 Panini Select - Premier Level Jonathan Taylor #132 Zebra Prizm", 2025)]
     [InlineData("2025 Panini Impeccable Sammy Sosa Auto 1998 MVP /98 Chicago Cubs", 2025)] // first year wins
@@ -54,7 +89,7 @@ public class EbayTitleParserTests
     [InlineData("1989 Score - Deion Sanders #246 (RC)", "Score")]
     public void Identifies_Manufacturer(string title, string expected)
     {
-        var parsed = EbayTitleParser.Parse(title);
+        var parsed = EbayTitleParser.Parse(title, TestManufacturers);
         Assert.Equal(expected, parsed.Manufacturer);
     }
 
@@ -63,8 +98,19 @@ public class EbayTitleParserTests
     {
         // Both "Upper Deck" and "Score" are in the manufacturer list; longest
         // multi-word entries must be tried first.
-        var parsed = EbayTitleParser.Parse("1991 Upper Deck Score-Less Test #1");
+        var parsed = EbayTitleParser.Parse("1991 Upper Deck Score-Less Test #1", TestManufacturers);
         Assert.Equal("Upper Deck", parsed.Manufacturer);
+    }
+
+    [Fact]
+    public void NoArg_Parse_LeavesManufacturerNull()
+    {
+        // Documents the intentional behavior of the no-arg overload: without a
+        // manufacturer dictionary, the parser cannot fill the field, so it
+        // stays null and is flagged for the LLM second pass / user.
+        var parsed = EbayTitleParser.Parse("2025 Panini Prizm Whoever #1");
+        Assert.Null(parsed.Manufacturer);
+        Assert.Contains(nameof(EbayParsedTitle.Manufacturer), parsed.LowConfidenceFields);
     }
 
     [Theory]
@@ -171,33 +217,45 @@ public class EbayTitleParserTests
     [InlineData("Dale Earnhardt Jr NASCAR Press Pass", Sport.Racing)]
     public void InferSport_LeagueAcronyms_MapToCorrectSport(string title, Sport expected)
     {
-        Assert.Equal(expected, EbayTitleParser.InferSport(title));
+        Assert.Equal(expected, EbayTitleParser.InferSport(title, TestLeagueAcronyms));
     }
 
-    [Theory]
-    [InlineData("2025 Bowman Chrome Roki Sasaki RC", Sport.Baseball)]
-    [InlineData("2024 Topps Chrome Paul Skenes Rookie Refractor", Sport.Baseball)]
-    public void InferSport_BrandFallback_ResolvesAmbiguousTitlesToBaseball(string title, Sport expected)
+    [Fact]
+    public void InferSport_NoArgOverload_ReturnsNull_Without_Dictionary()
     {
-        Assert.Equal(expected, EbayTitleParser.InferSport(title));
+        // The no-arg overload always returns null because it's called with an
+        // empty dictionary. Documents the intentional behavior — callers must
+        // supply a dictionary (e.g. from IPlayerNameDirectory.LeagueAcronymToSport)
+        // to get sport inference.
+        Assert.Null(EbayTitleParser.InferSport("Blake Corum RC 2024 National Treasures NFL Gear"));
+    }
+
+    [Fact]
+    public void InferSport_BrandOnlyTitle_NoLongerInferred_WithoutLeagueAcronym()
+    {
+        // The previous "Bowman → Baseball" / "Topps Chrome → Baseball" heuristic
+        // biases were removed when SportKeywords moved to data. A title with no
+        // league acronym now returns null — the LLM enrichment pass handles
+        // those cases instead of a hardcoded brand→sport table.
+        Assert.Null(EbayTitleParser.InferSport("2025 Bowman Chrome Roki Sasaki RC", TestLeagueAcronyms));
     }
 
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    [InlineData("2024 Panini Select Card Singles")]               // no league, no brand fallback
-    [InlineData("Random Card With No Identifying Tokens 2025")]   // genuine ambiguity — leave null
+    [InlineData("2024 Panini Select Card Singles")]
+    [InlineData("Random Card With No Identifying Tokens 2025")]
     public void InferSport_ReturnsNull_When_TitleIsBlankOrAmbiguous(string? title)
     {
-        Assert.Null(EbayTitleParser.InferSport(title));
+        Assert.Null(EbayTitleParser.InferSport(title, TestLeagueAcronyms));
     }
 
     [Fact]
     public void InferSport_DoesNotFalseMatch_OnSubstring()
     {
         // "f1" inside "manufacturer" must NOT match "F1" (whole-word boundaries).
-        Assert.Null(EbayTitleParser.InferSport("manufacturer f1ish"));
+        Assert.Null(EbayTitleParser.InferSport("manufacturer f1ish", TestLeagueAcronyms));
         // "MLS" inside "MLST" must NOT match.
-        Assert.Null(EbayTitleParser.InferSport("MLSTimes Card"));
+        Assert.Null(EbayTitleParser.InferSport("MLSTimes Card", TestLeagueAcronyms));
     }
 }

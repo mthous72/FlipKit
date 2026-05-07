@@ -11,12 +11,15 @@ namespace FlipKit.Core.Services
     /// <summary>
     /// Parses a Checklist Insider .xlsx into a <see cref="ChecklistImportPreview"/>. Two
     /// layouts are seen in the wild:
-    ///   1. Inline-header (Bowman 2026): no top header row, subsets announced by all-caps
-    ///      single-cell rows in column A, data rows have A=Card #, B=Player, C=Team, D=flag.
+    ///   1. Inline-header (Bowman 2026, Topps Series Baseball): no top header row,
+    ///      subsets announced by all-caps single-cell rows in column A, data rows have
+    ///      A=Card #, B=Player, C=Team, D=flag/card-type. Newer Topps baseball files
+    ///      lead with a "*SUBJECT TO CHANGE" disclaimer row that we skip during format
+    ///      detection so the file isn't misclassified.
     ///   2. Column-A-subset (Mosaic 2025): top header row "CARD SET / CARD # / ATHLETE /
     ///      TEAM / SEQ", data rows carry the subset in column A on every line.
-    /// Format is auto-detected from the first non-empty row. Unrecognized rows are skipped
-    /// and surfaced as warnings rather than failing the whole parse.
+    /// Format is auto-detected from the first non-disclaimer row. Unrecognized rows are
+    /// skipped and surfaced as warnings rather than failing the whole parse.
     /// </summary>
     public class ExcelChecklistImporter : IExcelChecklistImporter
     {
@@ -28,9 +31,18 @@ namespace FlipKit.Core.Services
         private static readonly string[] PlayerHeaderTokens = { "ATHLETE", "PLAYER", "PLAYER NAME", "NAME" };
         private static readonly string[] TeamHeaderTokens = { "TEAM" };
 
-        // Inline-header detection: a single-cell row in column A with all-caps text and no
-        // accompanying B/C/D content. Allow letters, digits, spaces, slashes, dashes.
-        private static readonly Regex InlineSubsetHeaderPattern = new("^[A-Z][A-Z0-9 /\\-]+$", RegexOptions.Compiled);
+        // Inline-header detection: a single-cell row in column A with non-trivial
+        // text and no accompanying B/C/D content. Originally limited to all-caps
+        // letters-only, which missed real subset headers like "2023 ALL TOPPS TEAM"
+        // (digit-prefixed) and "Retail Exclusive" / "Hobby Exclusive" (mixed-case
+        // distribution-channel labels Topps inserts between subsets). The looser
+        // pattern now admits anything that starts with a letter or digit and runs
+        // on with letters / digits / spaces / slashes / dashes / ampersands —
+        // enough to cover the section dividers Topps prints without admitting
+        // disclaimer prose (which contains punctuation/lowercase mid-sentence
+        // patterns the row-shape gate already rejects).
+        private static readonly Regex InlineSubsetHeaderPattern =
+            new("^[A-Za-z0-9][A-Za-z0-9 /\\-&]*$", RegexOptions.Compiled);
 
         // Skip-able disclaimer lines often appended at the bottom of files.
         private static readonly string[] DisclaimerSnippets =
@@ -92,18 +104,50 @@ namespace FlipKit.Core.Services
             return preview;
         }
 
+        /// <summary>
+        /// Walks rows top-down and returns the format implied by the first row that
+        /// decisively matches one of the known shapes (column-A header, inline subset
+        /// header, or a data row in either layout). Anything before that — disclaimers,
+        /// blank rows, date stamps, copyright lines, future preamble we haven't seen —
+        /// is treated as preamble and skipped. This is robust to leading junk regardless
+        /// of source/sport, instead of relying on a hard-coded disclaimer list.
+        /// </summary>
         private static ChecklistFileFormat DetectFormat(List<IXLRow> rows)
         {
-            var firstRow = rows.FirstOrDefault();
-            if (firstRow == null) return ChecklistFileFormat.Unknown;
+            foreach (var row in rows)
+            {
+                var classification = ClassifyRow(row);
+                if (classification != ChecklistFileFormat.Unknown)
+                    return classification;
+            }
+            return ChecklistFileFormat.Unknown;
+        }
 
-            var a = TextOf(firstRow, 1);
-            var b = TextOf(firstRow, 2);
-            var c = TextOf(firstRow, 3);
-            var d = TextOf(firstRow, 4);
+        /// <summary>
+        /// Classifies a single row as belonging to one of the known formats, or returns
+        /// Unknown for blank/preamble/unrecognized rows that the detector should skip
+        /// past. Pattern checks are tried in order from most-specific (named header
+        /// tokens) to least (data-row shape inference).
+        /// </summary>
+        private static ChecklistFileFormat ClassifyRow(IXLRow row)
+        {
+            var a = TextOf(row, 1);
+            var b = TextOf(row, 2);
+            var c = TextOf(row, 3);
+            var d = TextOf(row, 4);
 
-            // Column-A-subset: first row is a header line with both a "set" column and a
-            // "card #" column called out by name.
+            // Blank row → keep walking.
+            if (string.IsNullOrWhiteSpace(a)
+                && string.IsNullOrWhiteSpace(b)
+                && string.IsNullOrWhiteSpace(c)
+                && string.IsNullOrWhiteSpace(d))
+                return ChecklistFileFormat.Unknown;
+
+            // Disclaimer row (any sport's "subject to change", copyright, etc.) → skip.
+            if (IsDisclaimer(a))
+                return ChecklistFileFormat.Unknown;
+
+            // ColumnASubset header row: tokens like CARD SET / CARD # / ATHLETE / TEAM.
             var hasSetHeader = MatchesAny(a, CardSetHeaderTokens) || MatchesAny(b, CardSetHeaderTokens);
             var hasCardNumberHeader = MatchesAny(a, CardNumberHeaderTokens)
                                       || MatchesAny(b, CardNumberHeaderTokens)
@@ -114,7 +158,7 @@ namespace FlipKit.Core.Services
             if (hasSetHeader && hasCardNumberHeader && hasPlayerHeader)
                 return ChecklistFileFormat.ColumnASubset;
 
-            // Inline-header: the first row is itself a subset announcement (single-cell, all-caps).
+            // InlineHeader subset announcement: single populated cell, all-caps text.
             if (!string.IsNullOrWhiteSpace(a)
                 && string.IsNullOrWhiteSpace(b)
                 && string.IsNullOrWhiteSpace(c)
@@ -122,20 +166,17 @@ namespace FlipKit.Core.Services
                 && InlineSubsetHeaderPattern.IsMatch(a.Trim()))
                 return ChecklistFileFormat.InlineHeader;
 
-            // Fallback: peek at the first two data-shaped rows. If column A consistently looks
-            // like a card number (short, contains digits) we're in inline-header mode by
-            // default; if column A consistently looks like text (the subset name), assume
-            // column-A-subset.
-            var sampleA = rows.Take(5)
-                .Select(r => TextOf(r, 1))
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Take(3)
-                .ToList();
-            if (sampleA.Count > 0 && sampleA.All(LooksLikeCardNumber))
+            // InlineHeader data row: A=card number (short, has digits), B=player name.
+            if (LooksLikeCardNumber(a) && !string.IsNullOrWhiteSpace(b))
                 return ChecklistFileFormat.InlineHeader;
-            if (sampleA.Count > 0 && sampleA.All(LooksLikeSubsetName))
+
+            // ColumnASubset data row: A=subset name (text-only), B=card number, C=player.
+            if (LooksLikeSubsetName(a)
+                && LooksLikeCardNumber(b)
+                && !string.IsNullOrWhiteSpace(c))
                 return ChecklistFileFormat.ColumnASubset;
 
+            // Unrecognized — keep walking; could still be preamble.
             return ChecklistFileFormat.Unknown;
         }
 
@@ -161,16 +202,25 @@ namespace FlipKit.Core.Services
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(player) || string.IsNullOrWhiteSpace(cardNumber))
+                // Same rule as InlineHeader: PlayerName is the required identifier;
+                // CardNumber may be blank for redemption / sweepstakes entries.
+                if (string.IsNullOrWhiteSpace(player))
                 {
-                    preview.Warnings.Add($"Row {row.RowNumber()}: missing card number or player name; skipped.");
-                    preview.RowsSkipped++;
+                    if (!string.IsNullOrWhiteSpace(cardNumber))
+                    {
+                        preview.Warnings.Add($"Row {row.RowNumber()}: missing player name; skipped.");
+                        preview.RowsSkipped++;
+                    }
+                    else
+                    {
+                        preview.RowsSkipped++;
+                    }
                     continue;
                 }
 
                 preview.Cards.Add(new ChecklistCard
                 {
-                    CardNumber = cardNumber.Trim(),
+                    CardNumber = string.IsNullOrWhiteSpace(cardNumber) ? string.Empty : cardNumber.Trim(),
                     PlayerName = player.Trim(),
                     Team = string.IsNullOrWhiteSpace(team) ? null : team.Trim(),
                     Subset = string.IsNullOrWhiteSpace(subset) ? "Base" : subset.Trim(),
@@ -216,16 +266,27 @@ namespace FlipKit.Core.Services
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))
+                // Player name is required — it's the unique identifier for the
+                // card. Card number is allowed to be blank: redemption / prize /
+                // sweepstakes entries (e.g. "2 Tickets to the World Series") and
+                // some special inserts ship without a printed number.
+                if (string.IsNullOrWhiteSpace(b))
                 {
-                    preview.Warnings.Add($"Row {row.RowNumber()}: missing card number or player name; skipped.");
-                    preview.RowsSkipped++;
+                    if (!string.IsNullOrWhiteSpace(a))
+                    {
+                        preview.Warnings.Add($"Row {row.RowNumber()}: missing player name; skipped.");
+                        preview.RowsSkipped++;
+                    }
+                    else
+                    {
+                        preview.RowsSkipped++;
+                    }
                     continue;
                 }
 
                 preview.Cards.Add(new ChecklistCard
                 {
-                    CardNumber = a.Trim(),
+                    CardNumber = string.IsNullOrWhiteSpace(a) ? string.Empty : a.Trim(),
                     PlayerName = b.Trim(),
                     Team = string.IsNullOrWhiteSpace(c) ? null : c.Trim(),
                     Subset = currentSubset,

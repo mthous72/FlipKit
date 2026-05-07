@@ -18,6 +18,7 @@ namespace FlipKit.Desktop.ViewModels
     {
         private readonly IChecklistImportService _importService;
         private readonly IBrowserService _browserService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private ChecklistImportPreview? _preview;
 
         [ObservableProperty] private string _fileName = string.Empty;
@@ -36,10 +37,14 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _committed;
         [ObservableProperty] private ChecklistImportCommitResult? _commitResult;
 
-        public ImportChecklistViewModel(IChecklistImportService importService, IBrowserService browserService)
+        public ImportChecklistViewModel(
+            IChecklistImportService importService,
+            IBrowserService browserService,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _importService = importService;
             _browserService = browserService;
+            _playerDirectory = playerDirectory;
         }
 
         public void LoadPreview(ChecklistImportPreview preview)
@@ -87,6 +92,15 @@ namespace FlipKit.Desktop.ViewModels
                         ? $"Replaced existing checklist — {CommitResult.CardsImported} cards across {CommitResult.SubsetCount} subsets."
                         : $"Imported {CommitResult.CardsImported} cards across {CommitResult.SubsetCount} subsets.";
                     Committed = true;
+
+                    // Refresh the OCR fuzzy-match directory so newly imported
+                    // names are immediately available on the next scan. Errors
+                    // are non-fatal — the import itself already succeeded.
+                    if (_playerDirectory != null)
+                    {
+                        try { await _playerDirectory.RefreshAsync(); }
+                        catch { /* directory falls back to its previous cache */ }
+                    }
                 }
                 else
                 {

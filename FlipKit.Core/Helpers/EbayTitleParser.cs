@@ -20,24 +20,6 @@ namespace FlipKit.Core.Helpers
     /// </summary>
     public static class EbayTitleParser
     {
-        // Ordered longest-first so multi-word manufacturers ("Upper Deck",
-        // "Press Pass") match before any single-word substring would.
-        private static readonly string[] Manufacturers =
-        {
-            "Upper Deck",
-            "Press Pass",
-            "Stadium Club",
-            "Panini",
-            "Topps",
-            "Bowman",
-            "Fleer",
-            "Donruss",
-            "SkyBox",
-            "Score",
-            "Leaf",
-            "Pinnacle",
-        };
-
         private static readonly Regex YearRegex = new(
             @"(?<![\d/])((?:19|20)\d{2})(?:[-–](\d{2}))?(?![\d/])",
             RegexOptions.Compiled);
@@ -77,7 +59,24 @@ namespace FlipKit.Core.Helpers
             @"(?<![A-Z])SP\b",
             RegexOptions.Compiled);
 
+        /// <summary>
+        /// Parses without a manufacturer dictionary — leaves
+        /// <see cref="EbayParsedTitle.Manufacturer"/> null and adds it to
+        /// <c>LowConfidenceFields</c>. Use the overload that accepts a
+        /// <paramref name="manufacturers"/> collection (sourced from the
+        /// checklist directory) to enable manufacturer extraction.
+        /// </summary>
         public static EbayParsedTitle Parse(string title)
+            => Parse(title, manufacturers: Array.Empty<string>());
+
+        /// <summary>
+        /// Parses an eBay listing title using regex + the supplied manufacturer
+        /// dictionary. Manufacturers come from
+        /// <see cref="FlipKit.Core.Services.IPlayerNameDirectory.Manufacturers"/>
+        /// at the call site so this helper carries no card-catalog facts of its
+        /// own — the dictionary is data, not code.
+        /// </summary>
+        public static EbayParsedTitle Parse(string title, IReadOnlyCollection<string> manufacturers)
         {
             var result = new EbayParsedTitle { OriginalTitle = title ?? string.Empty };
             if (string.IsNullOrWhiteSpace(title))
@@ -101,7 +100,11 @@ namespace FlipKit.Core.Helpers
                 }
             }
 
-            foreach (var m in Manufacturers)
+            // Manufacturer match — order longest-first so multi-word entries
+            // ("Upper Deck", "Press Pass") win over any single-word substring.
+            // When `manufacturers` is empty (caller didn't supply a dictionary),
+            // this loop is a no-op and Manufacturer stays null.
+            foreach (var m in manufacturers.OrderByDescending(x => x.Length))
             {
                 if (Regex.IsMatch(title, $@"\b{Regex.Escape(m)}\b", RegexOptions.IgnoreCase))
                 {
@@ -159,51 +162,37 @@ namespace FlipKit.Core.Helpers
             nameof(EbayParsedTitle.Team),
         };
 
-        // League / brand tokens that are safe enough to map a title straight to a Sport
-        // without an LLM call. Order matters — first match wins, so put the more specific
-        // tokens first (e.g. "WNBA" before "NBA" wouldn't matter for Sport but illustrates
-        // the pattern). Keys are case-insensitive whole-word matches.
-        private static readonly (string Token, Sport Sport)[] SportKeywords =
-        {
-            ("NFL", Sport.Football),
-            ("NCAAF", Sport.Football),
-            ("NBA", Sport.Basketball),
-            ("WNBA", Sport.Basketball),
-            ("NCAAB", Sport.Basketball),
-            ("MLB", Sport.Baseball),
-            ("NHL", Sport.Hockey),
-            ("MLS", Sport.Soccer),
-            ("UFC", Sport.MMA),
-            ("WWE", Sport.Wrestling),
-            ("AEW", Sport.Wrestling),
-            ("PGA", Sport.Golf),
-            ("F1", Sport.Racing),
-            ("Formula 1", Sport.Racing),
-            ("NASCAR", Sport.Racing),
-            ("ATP", Sport.Tennis),
-            ("WTA", Sport.Tennis),
-            // Brand → sport fallbacks. Many brands are sport-specific in collector parlance:
-            ("Bowman", Sport.Baseball),  // Bowman is overwhelmingly baseball
-            ("Topps Chrome", Sport.Baseball),
-        };
-
         /// <summary>
         /// Best-effort map of an eBay listing title to a <see cref="Sport"/> using
-        /// league acronyms and a small set of brand fallbacks. Returns null when no
-        /// signal is present so the caller can leave the field blank rather than
-        /// guessing wrong. Whole-word matching is case-insensitive.
+        /// league acronyms supplied by the caller. Returns null when no signal is
+        /// present so the caller can leave the field blank rather than guessing.
         /// </summary>
-        public static Sport? InferSport(string? title)
+        /// <remarks>
+        /// Caller passes a <c>(acronym, sport)</c> dictionary built from the
+        /// directory's seeded <c>LeagueAcronyms</c> table. Whole-word matching
+        /// is case-insensitive; first match wins, so callers should order
+        /// entries from most-specific to least if there's overlap.
+        /// </remarks>
+        public static Sport? InferSport(string? title, IReadOnlyDictionary<string, Sport> leagueAcronyms)
         {
             if (string.IsNullOrWhiteSpace(title)) return null;
+            if (leagueAcronyms.Count == 0) return null;
 
-            foreach (var (token, sport) in SportKeywords)
+            foreach (var (token, sport) in leagueAcronyms)
             {
                 if (Regex.IsMatch(title, $@"\b{Regex.Escape(token)}\b", RegexOptions.IgnoreCase))
                     return sport;
             }
             return null;
         }
+
+        /// <summary>
+        /// No-arg overload for callers that don't have a directory wired in
+        /// (or for scripts/tests). Always returns null since the dictionary
+        /// is empty.
+        /// </summary>
+        public static Sport? InferSport(string? title)
+            => InferSport(title, new Dictionary<string, Sport>());
     }
 
     public class EbayParsedTitle

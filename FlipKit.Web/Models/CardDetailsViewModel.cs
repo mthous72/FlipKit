@@ -123,6 +123,7 @@ namespace FlipKit.Web.Models
         public string? Notes { get; set; }
 
         public CardStatus Status { get; set; }
+        public CardDataSource DataSource { get; set; } = CardDataSource.None;
 
         [Display(Name = "Front Image")]
         public string? ImagePathFront { get; set; }

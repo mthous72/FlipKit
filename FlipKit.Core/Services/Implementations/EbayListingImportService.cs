@@ -21,15 +21,18 @@ namespace FlipKit.Core.Services.Implementations
     {
         private readonly IEbayTitleEnricher _enricher;
         private readonly ICardRepository _cardRepository;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<EbayListingImportService> _logger;
 
         public EbayListingImportService(
             IEbayTitleEnricher enricher,
             ICardRepository cardRepository,
-            ILogger<EbayListingImportService> logger)
+            ILogger<EbayListingImportService> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _enricher = enricher;
             _cardRepository = cardRepository;
+            _playerDirectory = playerDirectory;
             _logger = logger;
         }
 
@@ -57,8 +60,16 @@ namespace FlipKit.Core.Services.Implementations
                 return preview;
             }
 
-            // Rule pass first — synchronous, deterministic.
-            var parsed = rows.Select(r => EbayTitleParser.Parse(r.Title)).ToList();
+            // Rule pass first — synchronous, deterministic. The manufacturer
+            // dictionary comes from the checklist directory (reference seed +
+            // user imports + saved cards); empty when the directory hasn't
+            // loaded, in which case Manufacturer stays null and the LLM pass
+            // can still enrich it.
+            var manufacturers = _playerDirectory?.IsReady == true
+                ? _playerDirectory.Manufacturers
+                : (IReadOnlyCollection<string>)Array.Empty<string>();
+            var leagueAcronyms = BuildLeagueAcronymMap();
+            var parsed = rows.Select(r => EbayTitleParser.Parse(r.Title, manufacturers)).ToList();
 
             // LLM enrichment — one batch over all titles. Failures inside the
             // enricher are swallowed per-batch (see OpenRouterEbayTitleEnricher),
@@ -85,7 +96,7 @@ namespace FlipKit.Core.Services.Implementations
                 var llm = enrichments[i];
                 var existing = await _cardRepository.GetCardByEbayItemIdAsync(csv.EbayItemId!).ConfigureAwait(false);
 
-                var proposed = MergeIntoCard(csv, rule, llm, existing);
+                var proposed = MergeIntoCard(csv, rule, llm, existing, leagueAcronyms);
                 var rowPreview = new EbayImportRowPreview
                 {
                     CsvRow = csv,
@@ -143,6 +154,28 @@ namespace FlipKit.Core.Services.Implementations
         }
 
         /// <summary>
+        /// Builds an acronym→sport dictionary from the directory's seeded
+        /// league acronyms. Returns empty when the directory isn't loaded; in
+        /// that case <see cref="EbayTitleParser.InferSport(string?, IReadOnlyDictionary{string, Sport})"/>
+        /// returns null and Sport stays unfilled. Acronyms whose sport string
+        /// can't be parsed into the <see cref="Sport"/> enum are silently
+        /// dropped — better to skip than guess wrong.
+        /// </summary>
+        private IReadOnlyDictionary<string, Sport> BuildLeagueAcronymMap()
+        {
+            if (_playerDirectory?.IsReady != true)
+                return new Dictionary<string, Sport>();
+
+            var dict = new Dictionary<string, Sport>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in _playerDirectory.LeagueAcronymToSport)
+            {
+                if (Enum.TryParse<Sport>(kv.Value, ignoreCase: true, out var parsed))
+                    dict[kv.Key] = parsed;
+            }
+            return dict;
+        }
+
+        /// <summary>
         /// Builds the proposed <see cref="Card"/> for one CSV row. When an
         /// existing card matches via <see cref="Card.EbayItemId"/> we mutate
         /// it (preserving image paths, custom notes, etc.) — otherwise we
@@ -152,7 +185,8 @@ namespace FlipKit.Core.Services.Implementations
             EbayListingRow csv,
             EbayParsedTitle rule,
             EbayTitleEnrichment llm,
-            Card? existing)
+            Card? existing,
+            IReadOnlyDictionary<string, Sport> leagueAcronyms)
         {
             var card = existing ?? new Card();
 
@@ -173,9 +207,9 @@ namespace FlipKit.Core.Services.Implementations
 
             // Sport heuristic — only fills when blank (preserves user corrections on
             // re-import). Returns null for ambiguous titles and we leave it null
-            // rather than guessing wrong.
+            // rather than guessing wrong. League dictionary comes from the directory.
             if (card.Sport is null)
-                card.Sport = EbayTitleParser.InferSport(csv.Title);
+                card.Sport = EbayTitleParser.InferSport(csv.Title, leagueAcronyms);
 
             // Default VariationType: anything with a parallel name leaves "Base".
             // (Card initialises VariationType="Base"; we don't override it here

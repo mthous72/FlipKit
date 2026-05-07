@@ -1,0 +1,212 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:FlipKit.Desktop.ViewModels"
+             xmlns:models="using:FlipKit.Core.Models"
+             xmlns:svc="using:FlipKit.Core.Services"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="FlipKit.Desktop.Views.SurpriseSetDetailView"
+             x:DataType="vm:SurpriseSetDetailViewModel">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24,24,24,32">
+
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+            <Button Grid.Column="0" Content="← Back"
+                    Command="{Binding GoBackCommand}"
+                    Padding="12,8" Margin="0,0,16,0"/>
+            <StackPanel Grid.Column="1">
+                <TextBlock FontSize="22" FontWeight="Bold"
+                           Text="{Binding Set.Name, FallbackValue='Surprise Set'}"
+                           IsVisible="{Binding Set, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0"
+                            IsVisible="{Binding Set, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Opacity="0.6">
+                        <Run Text="State: "/>
+                        <Run Text="{Binding Set.State}"/>
+                    </TextBlock>
+                    <TextBlock Opacity="0.6">
+                        <Run Text="{Binding CardCount}"/>
+                        <Run Text=" cards"/>
+                    </TextBlock>
+                    <TextBlock Opacity="0.6">
+                        <Run Text="Spot: "/>
+                        <Run Text="{Binding Set.SpotPrice, StringFormat=\{0:C\}}"/>
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <!-- Status messages -->
+        <StackPanel Grid.Row="1" Spacing="4" Margin="0,0,0,8">
+            <TextBlock Text="{Binding StatusMessage}"
+                       IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Opacity="0.7"/>
+            <TextBlock Text="{Binding ExportStatusMessage}"
+                       IsVisible="{Binding ExportStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       Opacity="0.85"/>
+        </StackPanel>
+
+        <!-- Main split: cards left, compliance right -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,300" ColumnSpacing="16">
+
+            <!-- Cards column -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0" Text="Cards in Set"
+                           FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <Border Grid.Row="1"
+                        BorderBrush="{DynamicResource SystemBaseLowColor}"
+                        BorderThickness="1" CornerRadius="6">
+                    <DataGrid ItemsSource="{Binding Cards}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserResizeColumns="True"
+                              GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Slot"
+                                                Binding="{Binding SurpriseSetSlot}"
+                                                Width="50"/>
+                            <DataGridTextColumn Header="Player"
+                                                Binding="{Binding PlayerName}"
+                                                Width="*"/>
+                            <DataGridTextColumn Header="Sport"
+                                                Binding="{Binding Sport}"
+                                                Width="90"/>
+                            <DataGridTextColumn Header="Graded"
+                                                Binding="{Binding IsGraded}"
+                                                Width="70"/>
+                            <DataGridTextColumn Header="Condition"
+                                                Binding="{Binding Condition}"
+                                                Width="100"/>
+                            <DataGridTemplateColumn Header="" Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="models:Card">
+                                        <Button Content="Remove"
+                                                Command="{Binding $parent[UserControl].((vm:SurpriseSetDetailViewModel)DataContext).RemoveCardCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="6,2" FontSize="11"
+                                                HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Border>
+            </Grid>
+
+            <!-- Compliance panel -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0" Text="Compliance"
+                           FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <Border Grid.Row="1"
+                        BorderBrush="{DynamicResource SystemBaseLowColor}"
+                        BorderThickness="1" CornerRadius="6" Padding="12">
+                    <ScrollViewer>
+                        <StackPanel Spacing="6">
+
+                            <!-- All-clear state -->
+                            <TextBlock Text="✓ No issues found"
+                                       Foreground="Green" FontSize="13"
+                                       IsVisible="{Binding !HasErrors}"
+                                       Opacity="0.8"/>
+
+                            <ItemsControl ItemsSource="{Binding Issues}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="svc:SurpriseSetIssue">
+                                        <Border Padding="8,6" CornerRadius="4" Margin="0,2"
+                                                Background="#F5F5F5">
+                                            <StackPanel Spacing="2">
+                                                <TextBlock FontWeight="SemiBold" FontSize="11"
+                                                           Text="{Binding Code}"
+                                                           Opacity="0.6"/>
+                                                <TextBlock TextWrapping="Wrap" FontSize="12"
+                                                           Text="{Binding Message}"/>
+                                                <TextBlock FontSize="11" Opacity="0.6"
+                                                           IsVisible="{Binding CardId, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                    <Run Text="Card ID: "/>
+                                                    <Run Text="{Binding CardId}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Bottom action bar + completion panel -->
+        <StackPanel Grid.Row="3" Spacing="12" Margin="0,12,0,0">
+
+            <!-- Export row -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Export CSV to Whatnot"
+                        Command="{Binding ExportCsvCommand}"
+                        Classes="accent"
+                        IsEnabled="{Binding !IsExporting}"
+                        Padding="20,10"/>
+                <TextBlock Text="Exporting…" VerticalAlignment="Center" Opacity="0.6"
+                           IsVisible="{Binding IsExporting}"/>
+                <TextBlock Text="{Binding ExportStatusMessage}"
+                           VerticalAlignment="Center" Opacity="0.75"
+                           IsVisible="{Binding ExportStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                <!-- Enhance OCR cards -->
+                <Button Content="Enhance OCR Cards with AI"
+                        Command="{Binding EnhanceOcrCardsCommand}"
+                        IsVisible="{Binding HasOcrSourcedCards}"
+                        IsEnabled="{Binding !IsEnhancing}"
+                        Padding="20,10"/>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
+                            IsVisible="{Binding IsEnhancing}">
+                    <ProgressBar IsIndeterminate="False"
+                                 Minimum="0" Maximum="{Binding EnhanceTotal}" Value="{Binding EnhanceProgress}"
+                                 Width="100" Height="8" VerticalAlignment="Center"/>
+                    <TextBlock FontSize="12" Opacity="0.7" VerticalAlignment="Center">
+                        <Run Text="Enhancing "/>
+                        <Run Text="{Binding EnhanceProgress}"/>
+                        <Run Text=" of "/>
+                        <Run Text="{Binding EnhanceTotal}"/>
+                        <Run Text="…"/>
+                    </TextBlock>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Mark Completed panel (hidden when already Completed/Cancelled) -->
+            <Border IsVisible="{Binding CanComplete}"
+                    BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                    BorderThickness="1" CornerRadius="6" Padding="16,12">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Mark as Completed" FontSize="14" FontWeight="SemiBold"/>
+                    <Grid ColumnDefinitions="Auto,120,Auto,120,Auto,120,Auto,120" RowDefinitions="Auto" ColumnSpacing="8">
+                        <TextBlock Grid.Column="0" Text="Spots Sold" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1" Value="{Binding SpotsSold}"
+                                       Minimum="0" FormatString="0" Padding="8,4"/>
+                        <TextBlock Grid.Column="2" Text="Gross Revenue" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <NumericUpDown Grid.Column="3" Value="{Binding GrossRevenue}"
+                                       Minimum="0" FormatString="C2" Padding="8,4"/>
+                        <TextBlock Grid.Column="4" Text="Fees" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <NumericUpDown Grid.Column="5" Value="{Binding TotalFees}"
+                                       Minimum="0" FormatString="C2" Padding="8,4"/>
+                        <TextBlock Grid.Column="6" Text="Shipping" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <NumericUpDown Grid.Column="7" Value="{Binding TotalShipping}"
+                                       Minimum="0" FormatString="C2" Padding="8,4"/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Mark Completed"
+                                Command="{Binding MarkCompletedCommand}"
+                                IsEnabled="{Binding !IsCompleting}"
+                                Padding="16,8"/>
+                        <TextBlock Text="Saving…" VerticalAlignment="Center" Opacity="0.6"
+                                   IsVisible="{Binding IsCompleting}"/>
+                        <TextBlock Text="{Binding CompleteStatusMessage}"
+                                   VerticalAlignment="Center" Opacity="0.8"
+                                   IsVisible="{Binding CompleteStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>

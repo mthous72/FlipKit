@@ -595,6 +595,39 @@ namespace FlipKit.Desktop.ViewModels
         }
 
         [RelayCommand]
+        private void OpenLogFolder()
+        {
+            // Match the Serilog paths from App.axaml.cs — dev build first, then published.
+            var devPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,
+                "..", "..", "..", "..", "Docs", "debug"));
+            var publishedPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FlipKit", "logs");
+
+            var folder = Directory.Exists(devPath) && Directory.GetFiles(devPath, "*.log").Length > 0
+                ? devPath
+                : publishedPath;
+
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            _browserService.OpenUrl(folder);
+        }
+
+        [RelayCommand]
+        private void OpenScanLogsFolder()
+        {
+            var folder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FlipKit", "BulkScanLogs");
+
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
+
+            _browserService.OpenUrl(folder);
+        }
+
+        [RelayCommand]
         private void ResetTitleTemplates()
         {
             WhatnotTitleTemplate = TitleTemplateService.GetDefaultTemplate(ExportPlatform.Whatnot);

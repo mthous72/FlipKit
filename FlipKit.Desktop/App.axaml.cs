@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -68,17 +69,43 @@ namespace FlipKit.Desktop
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.ShutdownMode = Avalonia.Controls.ShutdownMode.OnMainWindowClose;
+                // Keep app alive while the splash is visible and init is in progress.
+                desktop.ShutdownMode = ShutdownMode.OnLastWindowClose;
 
                 DisableAvaloniaDataAnnotationValidation();
 
+                var splash = new SplashWindow();
+                splash.Show();
+
+                // Kick off async init so the splash can actually render before blocking work starts.
+                _ = InitializeAsync(desktop, splash);
+            }
+
+            base.OnFrameworkInitializationCompleted();
+        }
+
+        private async Task InitializeAsync(
+            IClassicDesktopStyleApplicationLifetime desktop,
+            SplashWindow splash)
+        {
+            try
+            {
+                // Yield once so Avalonia can process the splash window's layout/render pass.
+                await Task.Yield();
+
                 var services = new ServiceCollection();
 
-                // Logging
+                // Logging.
+                // dispose: false — the temp service provider built below for settings
+                // detection is also built from this ServiceCollection, and its disposal
+                // must NOT call Log.CloseAndFlush(). Serilog is flushed explicitly in
+                // ShutdownRequested. With dispose: true, the temp provider's disposal
+                // silently killed all ILogger<T> calls for the rest of the process
+                // (scan service, BulkScanViewModel, model catalog response, etc.).
                 services.AddLogging(builder =>
                 {
                     builder.ClearProviders();
-                    builder.AddSerilog(dispose: true);
+                    builder.AddSerilog(dispose: false);
                 });
 
                 // Secrets encryption — DPAPI on Windows, file-protected AES key ring on
@@ -93,7 +120,12 @@ namespace FlipKit.Desktop
                 services.AddSingleton<ISecretEncryption, FlipKit.Core.Services.Implementations.DataProtectionSecretEncryption>();
 
                 // Services (order matters - settings service needed first)
-                services.AddSingleton<HttpClient>();
+                // 5-minute timeout matches the 270s server-side timeout sent in each OpenRouter request.
+                // Free models (Gemma 4 31B) can take 90-120s; paid models can be slower under load.
+                services.AddSingleton<HttpClient>(_ => new HttpClient
+                {
+                    Timeout = TimeSpan.FromMinutes(5),
+                });
                 services.AddSingleton<ISettingsService, JsonSettingsService>();
                 services.AddSingleton<IBrowserService, SystemBrowserService>();
                 services.AddSingleton<IServerManagementService, ServerManagementService>();
@@ -101,7 +133,7 @@ namespace FlipKit.Desktop
                 services.AddSingleton<INetworkInfoProvider, NetworkInfoProvider>();
                 services.AddSingleton<INetworkAddressProvider, NetworkAddressProvider>();
 
-                // Smart mode detection - choose between local database or API
+                // Smart mode detection - choose between local database or API.
                 using var tempProvider = services.BuildServiceProvider();
                 var settingsService = tempProvider.GetRequiredService<ISettingsService>();
                 var settings = settingsService.Load();
@@ -142,6 +174,11 @@ namespace FlipKit.Desktop
                 // service owns the modal window so ViewModels stay Avalonia-free.
                 services.AddSingleton<ICameraService, OpenCvCameraService>();
                 services.AddSingleton<IWebcamCaptureDialogService, WebcamCaptureDialogService>();
+                services.AddSingleton<IOcrService, WindowsOcrService>();
+                // Fuzzy-matches OCR-extracted player-name candidates against the
+                // checklist DB. Shared singleton: the cache is hot across scans
+                // and refreshed after each checklist import.
+                services.AddSingleton<IPlayerNameDirectory, PlayerNameDirectory>();
                 services.AddTransient<IPricerService, PricerService>();
                 services.AddSingleton<IImageUploadService, ImgBBUploadService>();
                 // Export pipeline — registered unconditionally (no DbContext dependency).
@@ -176,11 +213,23 @@ namespace FlipKit.Desktop
                 // import service composes the rule parser + enricher + repo upsert.
                 services.AddTransient<IEbayTitleEnricher, FlipKit.Core.Services.Implementations.OpenRouterEbayTitleEnricher>();
                 services.AddTransient<IEbayListingImportService, FlipKit.Core.Services.Implementations.EbayListingImportService>();
+                // Surprise Set repository — Transient (owns FlipKitDbContext which is Transient on Desktop).
+                services.AddTransient<ISurpriseSetRepository, FlipKit.Core.Services.Implementations.SurpriseSetRepository>();
+                // Validator is pure (no DB, no state) — Singleton is safe and efficient.
+                services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
+                // Description generator is pure template logic — no LLM, no DB, no state.
+                services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
+                // CSV exporter depends on the Transient repository, so it must be Transient too.
+                services.AddTransient<ISurpriseSetCsvExporter, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCsvExporter>();
+                // Completion service depends on the repository — Transient.
+                services.AddSingleton<IRevenueAllocationService, FlipKit.Core.Services.Implementations.SurpriseSets.RevenueAllocationService>();
+                services.AddTransient<ISurpriseSetCompletionService, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCompletionService>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();
                 services.AddTransient<ScanViewModel>();
-                services.AddTransient<BulkScanViewModel>();
+                // Singleton so in-flight scans survive tab navigation (see IKeepAliveViewModel).
+                services.AddSingleton<BulkScanViewModel>();
                 services.AddTransient<InventoryViewModel>();
                 services.AddTransient<PricingViewModel>();
                 services.AddTransient<ExportViewModel>();
@@ -193,26 +242,51 @@ namespace FlipKit.Desktop
                 services.AddTransient<ImportEbayListingsViewModel>();
                 services.AddTransient<EditCardViewModel>();
                 services.AddTransient<EbayPublishViewModel>();
+                services.AddTransient<SurpriseSetListViewModel>();
+                services.AddTransient<SurpriseSetDetailViewModel>();
 
                 // Navigation Service (must be after MainWindowViewModel)
                 services.AddSingleton<INavigationService, AvaloniaNavigationService>();
+                // Notification service — initialized with TopLevel after window opens (see below)
+                services.AddSingleton<IAppNotificationService, AvaloniaAppNotificationService>();
 
                 _services = services.BuildServiceProvider();
 
-                // Ensure database is created and seeded (only in local mode)
+                // Ensure database is created and seeded (only in local mode).
+                // Run on a background thread so the splash stays responsive.
                 if (dataMode == DataAccessMode.Local)
                 {
+                    splash.SetStatus("Initializing database…");
                     try
                     {
-                        using var scope = _services.CreateScope();
-                        var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
-                        Log.Information("Initializing database at {DbPath}", FlipKitDbContext.GetDbPath());
-                        db.Database.EnsureCreated();
-                        Log.Debug("Running schema updates");
-                        SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
-                        Log.Debug("Running checklist seeder");
-                        ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
-                        Log.Information("Database initialization complete");
+                        await Task.Run(() =>
+                        {
+                            using var scope = _services.CreateScope();
+                            var db = scope.ServiceProvider.GetRequiredService<FlipKitDbContext>();
+                            Log.Information("Initializing database at {DbPath}", FlipKitDbContext.GetDbPath());
+                            db.Database.EnsureCreated();
+                            Log.Debug("Running schema updates");
+                            SchemaUpdater.EnsureVerificationTablesAsync(db).GetAwaiter().GetResult();
+                            Log.Debug("Running checklist seeder");
+                            ChecklistSeeder.SeedIfEmptyAsync(db).GetAwaiter().GetResult();
+                            Log.Debug("Running reference-data seeder (teams / manufacturers / brands)");
+                            ReferenceDataSeeder.SeedIfMissingAsync(db).GetAwaiter().GetResult();
+                            Log.Information("Database initialization complete");
+                        });
+
+                        // Warm the player-name directory cache so OCR scans can
+                        // fuzzy-match candidates against the checklist on the
+                        // first scan, not the second. Failure here is non-fatal:
+                        // the directory falls back to "not ready" → no override.
+                        try
+                        {
+                            var directory = _services.GetRequiredService<IPlayerNameDirectory>();
+                            await directory.RefreshAsync();
+                        }
+                        catch (Exception dirEx)
+                        {
+                            Log.Warning(dirEx, "Player-name directory initial refresh failed");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -225,11 +299,11 @@ namespace FlipKit.Desktop
                     Log.Information("Skipping local database initialization (using remote API mode)");
                 }
 
+                splash.SetStatus("Loading…");
+
                 var mainViewModel = _services.GetRequiredService<MainWindowViewModel>();
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = mainViewModel
-                };
+                var mainWindow = new MainWindow { DataContext = mainViewModel };
+                desktop.MainWindow = mainWindow;
 
                 // System Tray Icon
                 var trayIcon = new TrayIcon
@@ -241,7 +315,7 @@ namespace FlipKit.Desktop
                 // Load app icon for tray
                 try
                 {
-                    var assets = AssetLoader.Open(new Uri("avares://FlipKit.Desktop/Assets/avalonia-logo.ico"));
+                    var assets = AssetLoader.Open(new Uri("avares://FlipKit.Desktop/Assets/flipkit.ico"));
                     trayIcon.Icon = new WindowIcon(assets);
                 }
                 catch (Exception ex)
@@ -330,6 +404,17 @@ namespace FlipKit.Desktop
 
                 trayIcon.Menu = trayMenu;
 
+                // Switch to normal shutdown mode now that MainWindow is fully set up,
+                // then show it and dismiss the splash.
+                desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                mainWindow.Show();
+
+                // Initialize in-app notification manager now that TopLevel is live.
+                var notificationService = _services.GetRequiredService<IAppNotificationService>();
+                notificationService.Initialize(TopLevel.GetTopLevel(mainWindow)!);
+
+                splash.Close();
+
                 // Handle window visibility changes
                 mainViewModel.PropertyChanged += (s, e) =>
                 {
@@ -347,22 +432,20 @@ namespace FlipKit.Desktop
                     }
                 };
 
-                // Handle window close to minimize to tray (if configured)
-                desktop.MainWindow.Closing += (s, e) =>
+                var serverManagement = _services.GetRequiredService<IServerManagementService>();
+
+                // Always prompt on close — let the user choose between full shutdown and tray.
+                // Use a local flag to allow the close to proceed once the user confirms it.
+                bool confirmedClose = false;
+                mainWindow.Closing += (s, e) =>
                 {
-                    var settingsService = _services?.GetService<ISettingsService>();
-                    var settings = settingsService?.Load();
-                    if (settings?.MinimizeToTray == true)
-                    {
-                        e.Cancel = true;
-                        mainViewModel.IsWindowVisible = false;
-                        Log.Information("Window minimized to tray");
-                    }
+                    if (confirmedClose) return; // user already chose Close Everything — let it through
+                    e.Cancel = true;
+                    _ = HandleMainWindowCloseAsync(mainWindow, mainViewModel, serverManagement, _services, () => confirmedClose = true);
                 };
 
                 // Auto-start servers if configured (FlipKit Hub)
                 var hubSettings = _services.GetRequiredService<ISettingsService>().Load();
-                var serverManagement = _services.GetRequiredService<IServerManagementService>();
 
                 if (hubSettings.AutoStartWebServer || hubSettings.AutoStartApiServer)
                 {
@@ -424,13 +507,22 @@ namespace FlipKit.Desktop
 
                     try
                     {
-                        // Stop any running servers first
-                        var serverManagement = _services?.GetService<IServerManagementService>();
-                        if (serverManagement != null)
+                        // Cancel any active scans FIRST so in-flight HTTP requests abort
+                        // before the HttpClient/server processes are torn down below.
+                        var bulkScanVm = _services?.GetService<BulkScanViewModel>();
+                        if (bulkScanVm != null)
+                        {
+                            Log.Information("Cancelling any active bulk scan...");
+                            bulkScanVm.Dispose();
+                        }
+
+                        // Stop any running servers
+                        var shutdownServerManagement = _services?.GetService<IServerManagementService>();
+                        if (shutdownServerManagement != null)
                         {
                             Log.Information("Stopping servers...");
-                            await serverManagement.StopWebServerAsync();
-                            await serverManagement.StopApiServerAsync();
+                            await shutdownServerManagement.StopWebServerAsync();
+                            await shutdownServerManagement.StopApiServerAsync();
                         }
 
                         // Unregister global exception handler
@@ -439,17 +531,9 @@ namespace FlipKit.Desktop
                             AppDomain.CurrentDomain.UnhandledException -= _exceptionHandler;
                         }
 
-                        // Dispose ViewModels that implement IDisposable (e.g., BulkScanViewModel)
-                        if (desktop.MainWindow?.DataContext is MainWindowViewModel mainViewModel)
-                        {
-                            // Cancel any pending operations in BulkScanViewModel
-                            if (mainViewModel.CurrentPage is IDisposable disposableViewModel)
-                            {
-                                disposableViewModel.Dispose();
-                            }
-                        }
-
                         // Dispose the service provider (closes DbContext, HttpClient, etc.)
+                        // Singletons (including BulkScanViewModel) are disposed here too, but
+                        // BulkScanViewModel was already explicitly disposed above for ordering.
                         if (_services is IDisposable disposable)
                         {
                             disposable.Dispose();
@@ -469,8 +553,45 @@ namespace FlipKit.Desktop
                     }
                 };
             }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Startup initialization failed");
+                splash.SetStatus($"Startup failed — see logs for details.");
+                // Leave splash open briefly so the user can read the message.
+                await Task.Delay(4000);
+                splash.Close();
+            }
+        }
 
-            base.OnFrameworkInitializationCompleted();
+        private static async Task HandleMainWindowCloseAsync(
+            Window mainWindow,
+            MainWindowViewModel mainViewModel,
+            IServerManagementService serverManagement,
+            IServiceProvider? services,
+            Action confirmClose)
+        {
+            var dialog = new CloseOrMinimizeDialog();
+            await dialog.ShowDialog(mainWindow);
+
+            if (dialog.Choice == CloseDialogChoice.CloseAll)
+            {
+                // Cancel any active scans FIRST so in-flight HTTP requests abort before
+                // the server processes are torn down and the HttpClient is disposed.
+                var bulkScanVm = services?.GetService<BulkScanViewModel>();
+                bulkScanVm?.Dispose();
+
+                // Stop servers here, before the window closes. ShutdownRequested fires
+                // as an async void event handler that Avalonia doesn't await, so the
+                // process can exit before Stop*Async completes if we wait until then.
+                await serverManagement.StopWebServerAsync();
+                await serverManagement.StopApiServerAsync();
+                confirmClose();
+                mainWindow.Close();
+            }
+            else
+            {
+                mainViewModel.IsWindowVisible = false;
+            }
         }
 
         private void DisableAvaloniaDataAnnotationValidation()

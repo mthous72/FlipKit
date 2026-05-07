@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using FlipKit.Core.Helpers;
 using FlipKit.Core.Services;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
@@ -87,7 +88,8 @@ namespace FlipKit.Web.Controllers
             try
             {
                 var allCards = await _cardRepository.GetAllCardsAsync();
-                var sold = await _cardRepository.GetAllCardsAsync(CardStatus.Sold);
+                // Include both Sold and SoldInSet so Surprise Set revenue rolls into reports.
+                var sold = allCards.Where(CardStatusPredicates.IsSold).ToList();
                 var inRange = FilterByDateRange(sold, start, end);
 
                 var monthly = inRange
@@ -124,7 +126,7 @@ namespace FlipKit.Web.Controllers
                     ListedCards = allCards.Count(c => c.Status == CardStatus.Listed),
                     SoldCards = sold.Count,
                     TotalInventoryValue = allCards
-                        .Where(c => c.Status != CardStatus.Sold)
+                        .Where(c => !CardStatusPredicates.IsSold(c) && c.Status != CardStatus.ReservedForSet)
                         .Sum(c => c.ListingPrice ?? 0m),
                     SoldInRange = inRange,
                     TotalRevenue = totalRevenue,

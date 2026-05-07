@@ -15,7 +15,7 @@ namespace FlipKit.Desktop.Services
     public class ServerManagementService : IServerManagementService, IDisposable
     {
         private readonly ILogger<ServerManagementService> _logger;
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient _httpClient; // dedicated health-check client — NOT the shared AI client
 
         private Process? _webProcess;
         private Process? _apiProcess;
@@ -35,12 +35,12 @@ namespace FlipKit.Desktop.Services
 
         private readonly object _lockObject = new();
 
-        public ServerManagementService(ILogger<ServerManagementService> logger, HttpClient httpClient, ISettingsService settingsService)
+        public ServerManagementService(ILogger<ServerManagementService> logger, ISettingsService settingsService)
         {
             _logger = logger;
-            _httpClient = httpClient;
-            // Phase 5.3 — read from AppSettings instead of hardcoding. Defaults to 2s.
-            _httpClient.Timeout = TimeSpan.FromSeconds(settingsService.Load().ServerHealthCheckTimeoutSeconds);
+            // Own dedicated client — never touches the shared AI HttpClient singleton.
+            var timeoutSeconds = settingsService.Load().ServerHealthCheckTimeoutSeconds;
+            _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(timeoutSeconds) };
 
             // Start health check timer
             _healthCheckTimer = new Timer(HealthCheckCallback, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
@@ -542,6 +542,7 @@ namespace FlipKit.Desktop.Services
             StopWebServerAsync().GetAwaiter().GetResult();
             StopApiServerAsync().GetAwaiter().GetResult();
 
+            _httpClient.Dispose();
             _disposed = true;
         }
     }

@@ -23,6 +23,9 @@ namespace FlipKit.Web.Controllers
         private readonly IImageUploadService _imageUploadService;
         private readonly IEbayListingImportService _ebayImportService;
         private readonly IMemoryCache _previewCache;
+        private readonly IScannerService _scannerService;
+        private readonly ISettingsService _settingsService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryController> _logger;
 
         public InventoryController(
@@ -31,13 +34,19 @@ namespace FlipKit.Web.Controllers
             IImageUploadService imageUploadService,
             IEbayListingImportService ebayImportService,
             IMemoryCache previewCache,
-            ILogger<InventoryController> logger)
+            IScannerService scannerService,
+            ISettingsService settingsService,
+            ILogger<InventoryController> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
             _env = env;
             _imageUploadService = imageUploadService;
             _ebayImportService = ebayImportService;
             _previewCache = previewCache;
+            _scannerService = scannerService;
+            _settingsService = settingsService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
         }
 
@@ -211,6 +220,80 @@ namespace FlipKit.Web.Controllers
             }
         }
 
+        // POST: /Inventory/Enhance/{id}
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Enhance(int id)
+        {
+            var card = await _cardRepository.GetCardAsync(id);
+            if (card == null)
+                return Json(new { success = false, error = "Card not found." });
+
+            if (string.IsNullOrEmpty(card.ImagePathFront) || !System.IO.File.Exists(card.ImagePathFront))
+                return Json(new { success = false, error = "Front image file not found on disk." });
+
+            try
+            {
+                // Reconstruct verified-fields hint from the saved Card —
+                // re-querying the directory at Enhance time recovers the
+                // catalog-anchored fields. Falls back to the legacy 6-field
+                // soft hint when the directory isn't ready.
+                OcrHint? hint = null;
+                if (_playerDirectory?.IsReady == true)
+                {
+                    hint = _playerDirectory.BuildHintFromCard(card);
+                }
+                else if (card.DataSource == CardDataSource.Ocr)
+                {
+                    hint = new OcrHint
+                    {
+                        PlayerName = card.PlayerName,
+                        Year = card.Year,
+                        CardNumber = card.CardNumber,
+                        Manufacturer = card.Manufacturer,
+                        Brand = card.Brand,
+                        SetName = card.SetName,
+                    };
+                }
+
+                var settings = _settingsService.Load();
+                var model = settings.DefaultModel;
+
+                var result = await _scannerService.ScanCardAsync(
+                    card.ImagePathFront,
+                    card.ImagePathBack,
+                    model,
+                    scanDepth: ScanDepth.Standard,
+                    ocrHint: hint);
+
+                var e = result.Card;
+                card.PlayerName = e.PlayerName ?? card.PlayerName;
+                card.Year = e.Year ?? card.Year;
+                card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
+                card.Brand = e.Brand ?? card.Brand;
+                card.SetName = e.SetName ?? card.SetName;
+                card.CardNumber = e.CardNumber ?? card.CardNumber;
+                card.Team = e.Team ?? card.Team;
+                card.VariationType = e.VariationType ?? card.VariationType;
+                card.ParallelName = e.ParallelName ?? card.ParallelName;
+                card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
+                card.IsRookie = e.IsRookie;
+                card.IsAuto = e.IsAuto;
+                card.IsRelic = e.IsRelic;
+                card.DataSource = CardDataSource.Ai;
+                card.UpdatedAt = DateTime.UtcNow;
+
+                await _cardRepository.UpdateCardAsync(card);
+                _logger.LogInformation("Enhanced card {CardId} with AI", card.Id);
+                return Json(new { success = true, message = "Enhanced with AI — page will reload." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Enhance failed for card {CardId}", id);
+                return Json(new { success = false, error = $"Enhance failed: {ex.Message}" });
+            }
+        }
+
         private static CardDetailsViewModel MapCardToViewModel(Card card)
         {
             return new CardDetailsViewModel
@@ -252,6 +335,7 @@ namespace FlipKit.Web.Controllers
                 WhatnotSubcategory = card.WhatnotSubcategory,
                 Notes = card.Notes,
                 Status = card.Status,
+                DataSource = card.DataSource,
                 ImagePathFront = card.ImagePathFront,
                 ImagePathBack = card.ImagePathBack,
                 ImageUrl1 = card.ImageUrl1,
@@ -283,7 +367,7 @@ namespace FlipKit.Web.Controllers
             card.CardNumber = viewModel.CardNumber;
             card.Team = viewModel.Team;
             card.SetName = viewModel.SetName;
-            card.VariationType = viewModel.VariationType;
+            card.VariationType = viewModel.VariationType ?? card.VariationType;
             card.ParallelName = viewModel.ParallelName;
             card.SerialNumbered = viewModel.SerialNumbered;
             card.IsShortPrint = viewModel.IsShortPrint;
@@ -291,7 +375,7 @@ namespace FlipKit.Web.Controllers
             card.IsRookie = viewModel.IsRookie;
             card.IsAuto = viewModel.IsAuto;
             card.IsRelic = viewModel.IsRelic;
-            card.Condition = viewModel.Condition;
+            card.Condition = viewModel.Condition ?? card.Condition;
             card.IsGraded = viewModel.IsGraded;
             card.GradeCompany = viewModel.GradeCompany;
             card.GradeValue = viewModel.GradeValue;
@@ -304,10 +388,10 @@ namespace FlipKit.Web.Controllers
             card.Quantity = viewModel.Quantity;
             card.EstimatedValue = viewModel.EstimatedValue;
             card.ListingPrice = viewModel.ListingPrice;
-            card.ListingType = viewModel.ListingType;
+            card.ListingType = viewModel.ListingType ?? card.ListingType;
             card.Offerable = viewModel.Offerable;
-            card.ShippingProfile = viewModel.ShippingProfile;
-            card.WhatnotCategory = viewModel.WhatnotCategory;
+            card.ShippingProfile = viewModel.ShippingProfile ?? card.ShippingProfile;
+            card.WhatnotCategory = viewModel.WhatnotCategory ?? card.WhatnotCategory;
             card.WhatnotSubcategory = viewModel.WhatnotSubcategory;
             card.Notes = viewModel.Notes;
             card.Status = viewModel.Status;

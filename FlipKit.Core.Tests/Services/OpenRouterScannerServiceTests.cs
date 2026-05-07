@@ -160,37 +160,26 @@ public class OpenRouterScannerServiceTests
     }
 
     [Fact]
-    public async Task Should_FallBackToNextModel_When_FirstModelReturns404()
+    public async Task Should_Throw_When_ModelReturns404()
     {
-        // The fallback chain should walk free-models in order on retryable errors.
-        // First request: 404 (model not found) → handler's 2nd response = success.
-        var responses = new Queue<HttpResponseMessage>();
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.NotFound)
-        {
-            Content = new StringContent(@"{""error"":""model not found""}"),
-        });
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(OpenRouterResponseWith(MinimalScannedCardJson)),
-        });
-
-        var handler = new StubHttpMessageHandler(_ => responses.Dequeue());
+        // GetFallbackChain now returns a single model — no silent substitution.
+        // A 404 on the explicit model should throw so the caller can handle it.
+        var handler = new StubHttpMessageHandler(HttpStatusCode.NotFound,
+            @"{""error"":""model not found""}");
         var svc = CreateService(handler);
         using var image = new TempImageFile();
 
-        var result = await svc.ScanCardAsync(image.Path);
-
-        Assert.Equal("Mike Trout", result.Card.PlayerName);
-        Assert.Equal(2, handler.Requests.Count); // proved fallback happened
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.ScanCardAsync(image.Path));
+        Assert.Contains("404", ex.Message); // actual API error is surfaced directly
+        Assert.Equal(1, handler.Requests.Count); // only one model tried
     }
 
     [Fact]
     public async Task Should_ThrowWithSummaryOfFailures_When_AllModelsFail()
     {
-        // Phase 5a fix landed — the throw site now includes the integer status code
-        // alongside the enum name, so 5xx / 429 fallback triggers correctly. This
-        // test still uses 404 for parity with the original test; see the new 5xx
-        // test below for explicit confirmation that the D2 fix works.
+        // GetFallbackChain returns a single model, so exactly one HTTP request is made
+        // before the scan fails. Multi-model rotation is the caller's responsibility.
         var handler = new StubHttpMessageHandler(_ =>
             new HttpResponseMessage(HttpStatusCode.NotFound)
             {
@@ -201,11 +190,8 @@ public class OpenRouterScannerServiceTests
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.ScanCardAsync(image.Path));
-        Assert.Contains("All", ex.Message);
-        Assert.Contains("models failed", ex.Message);
-        // Default starting model is index 3 in FreeVisionModels (nemotron 12B), so the
-        // chain walks 2 models (indices 3 and 4) before giving up.
-        Assert.Equal(2, handler.Requests.Count);
+        Assert.Contains("404", ex.Message); // last exception's message surfaced directly
+        Assert.Equal(1, handler.Requests.Count);
     }
 
     [Fact]
@@ -237,28 +223,19 @@ public class OpenRouterScannerServiceTests
     }
 
     [Fact]
-    public async Task Should_FallBackOnInvalidJson_When_ModelReturnsGarbage()
+    public async Task Should_Throw_When_ModelReturnsInvalidJson()
     {
-        // The first response is HTTP 200 but the inner content isn't valid JSON.
-        // Scanner should treat that as a JsonException and fall through to the next model.
-        var responses = new Queue<HttpResponseMessage>();
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(OpenRouterResponseWith("not even close to JSON")),
-        });
-        responses.Enqueue(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent(OpenRouterResponseWith(MinimalScannedCardJson)),
-        });
-
-        var handler = new StubHttpMessageHandler(_ => responses.Dequeue());
+        // GetFallbackChain returns a single model — invalid JSON from the chosen model
+        // surfaces as an exception rather than silently falling back to another model.
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK,
+            OpenRouterResponseWith("not even close to JSON"));
         var svc = CreateService(handler);
         using var image = new TempImageFile();
 
-        var result = await svc.ScanCardAsync(image.Path);
-
-        Assert.Equal("Mike Trout", result.Card.PlayerName);
-        Assert.Equal(2, handler.Requests.Count);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.ScanCardAsync(image.Path));
+        Assert.Contains("not even close to JSON", ex.Message); // JsonException surfaced directly
+        Assert.Equal(1, handler.Requests.Count);
     }
 
     // === Custom prompt ===
@@ -275,5 +252,164 @@ public class OpenRouterScannerServiceTests
         var result = await svc.SendCustomPromptAsync(image.Path, "Describe this image.");
 
         Assert.Equal("Just some free-text answer.", result);
+    }
+
+    // ============================================================
+    // OcrHint preamble + drift guard
+    // ============================================================
+
+    [Fact]
+    public void BuildSoftHintPreamble_Used_When_VerifiedFieldNames_Empty()
+    {
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            Year = 2024,
+            Brand = "Mosaic",
+        };
+
+        var preamble = OpenRouterScannerService.BuildOcrHintPreamble(hint);
+
+        Assert.Contains("PRELIMINARY OCR DATA", preamble);
+        Assert.DoesNotContain("CONFIRMED FIELDS", preamble);
+        Assert.Contains("Justin Herbert", preamble);
+    }
+
+    [Fact]
+    public void BuildLockedHintPreamble_Used_When_AnyField_IsVerified()
+    {
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            Year = 2024,
+            Brand = "Mosaic",
+            CardNumber = "12",   // populated but unverified
+            VerifiedFieldNames = { "player_name", "year", "brand" },
+        };
+
+        var preamble = OpenRouterScannerService.BuildOcrHintPreamble(hint);
+
+        // CONFIRMED section lists the verified fields with JSON-key labels
+        Assert.Contains("CONFIRMED FIELDS", preamble);
+        Assert.Contains("player_name: \"Justin Herbert\"", preamble);
+        Assert.Contains("year: 2024", preamble);
+        Assert.Contains("brand: \"Mosaic\"", preamble);
+        // UNVERIFIED section captures populated-but-not-verified fields
+        Assert.Contains("UNVERIFIED OCR HINTS", preamble);
+        Assert.Contains("card_number: \"12\" (unverified)", preamble);
+        // Soft-hint preamble should NOT also be appended
+        Assert.DoesNotContain("PRELIMINARY OCR DATA", preamble);
+    }
+
+    [Fact]
+    public void BuildLockedHintPreamble_IncludesRawOcrText_WhenPresent()
+    {
+        var hint = new OcrHint
+        {
+            PlayerName = "X",
+            VerifiedFieldNames = { "player_name" },
+            AllVisibleText = { "TOPPS CHROME 2024", "Aaron Judge", "New York Yankees" },
+        };
+
+        var preamble = OpenRouterScannerService.BuildOcrHintPreamble(hint);
+
+        Assert.Contains("RAW OCR TEXT", preamble);
+        Assert.Contains("TOPPS CHROME 2024", preamble);
+        Assert.Contains("Aaron Judge", preamble);
+        Assert.Contains("New York Yankees", preamble);
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_Restores_PlayerName_When_LlmDrifts()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}"); // unused
+        var svc = CreateService(handler);
+
+        var card = new Card { PlayerName = "Justin Herburt" }; // LLM mistyped
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            VerifiedFieldNames = { "player_name" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal("Justin Herbert", card.PlayerName);
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_DoesNotModify_When_LlmEchoedCorrectly()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        var card = new Card { PlayerName = "Justin Herbert" };
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            VerifiedFieldNames = { "player_name" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal("Justin Herbert", card.PlayerName); // unchanged
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_LeavesUnverifiedFields_Untouched()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        // ParallelName is populated on the hint but NOT in VerifiedFieldNames.
+        // The LLM was free to override it; the drift guard should not restore.
+        var card = new Card { PlayerName = "Justin Herbert", ParallelName = "Disco Prizm" };
+        var hint = new OcrHint
+        {
+            PlayerName = "Justin Herbert",
+            ParallelName = "Silver",
+            VerifiedFieldNames = { "player_name" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal("Justin Herbert", card.PlayerName);
+        Assert.Equal("Disco Prizm", card.ParallelName); // LLM's value kept
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_Restores_Year_When_LlmDrifts()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        var card = new Card { Year = 2023 }; // LLM picked the wrong year
+        var hint = new OcrHint
+        {
+            Year = 2024,
+            VerifiedFieldNames = { "year" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal(2024, card.Year);
+    }
+
+    [Fact]
+    public void ApplyVerifiedFieldOverrides_Restores_Sport_FromString_To_Enum()
+    {
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var svc = CreateService(handler);
+
+        var card = new Card { Sport = Sport.Baseball }; // LLM said wrong sport
+        var hint = new OcrHint
+        {
+            Sport = "Football",
+            VerifiedFieldNames = { "sport" },
+        };
+
+        svc.ApplyVerifiedFieldOverrides(card, hint);
+
+        Assert.Equal(Sport.Football, card.Sport);
     }
 }

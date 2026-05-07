@@ -104,9 +104,27 @@
             <ScrollViewer Grid.Column="0" Margin="0,0,12,0" Padding="0,0,0,40">
                 <StackPanel Spacing="8">
 
-                    <!-- Model Selection -->
+                    <!-- Scan Mode -->
                     <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
                             BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="Scan Mode" FontSize="12" FontWeight="SemiBold"/>
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <RadioButton Content="AI (Online)"
+                                             IsChecked="{Binding IsAiMode}"/>
+                                <RadioButton Content="OCR (Offline, Free)"
+                                             IsChecked="{Binding IsOcrMode}"/>
+                            </StackPanel>
+                            <TextBlock Text="OCR: fast offline scan, lower accuracy. Use Enhance after saving to upgrade."
+                                       FontSize="10" Opacity="0.6" TextWrapping="Wrap"
+                                       IsVisible="{Binding IsOcrMode}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Model Selection (AI mode only) -->
+                    <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
+                            BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8"
+                            IsVisible="{Binding IsAiMode}">
                         <StackPanel Spacing="6">
                             <TextBlock Text="AI Model" FontSize="12" FontWeight="SemiBold"/>
                             <ComboBox ItemsSource="{Binding ModelOptions}"
@@ -523,8 +541,23 @@
             <Button Content="Save to My Cards" Command="{Binding SaveCardCommand}"
                     IsEnabled="{Binding ScannedCard, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Padding="20,10"/>
+            <!-- Pre-save Enhance — only after an OCR scan, since AI scans
+                 already had the LLM pass. Re-runs with verified-fields hint
+                 (player / brand / sport / year locked when in directory)
+                 so the model focuses on visual fields. -->
+            <Button Content="Enhance with AI" Command="{Binding EnhanceCommand}"
+                    IsVisible="{Binding LastScanWasOcr}"
+                    IsEnabled="{Binding CanEnhance}"
+                    Padding="20,10"/>
             <Button Content="Clear" Command="{Binding ClearCommand}"
                     Padding="20,10"/>
+
+            <!-- Live enhance state — small inline indicator while the LLM call runs -->
+            <StackPanel Orientation="Horizontal" Spacing="6"
+                        IsVisible="{Binding IsEnhancing}" VerticalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="60" Height="6" VerticalAlignment="Center"/>
+                <TextBlock Text="Enhancing with AI…" FontSize="12" Opacity="0.75" VerticalAlignment="Center"/>
+            </StackPanel>
 
             <!-- Messages -->
             <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
@@ -533,6 +566,9 @@
             <TextBlock Text="{Binding SuccessMessage}" Foreground="Green"
                        VerticalAlignment="Center" Margin="12,0,0,0"
                        IsVisible="{Binding SuccessMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            <TextBlock Text="{Binding EnhanceMessage}" Foreground="DarkOrange"
+                       VerticalAlignment="Center" Margin="12,0,0,0"
+                       IsVisible="{Binding EnhanceMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
     </Grid>
 </UserControl>

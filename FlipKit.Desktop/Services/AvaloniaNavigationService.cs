@@ -40,6 +40,7 @@ namespace FlipKit.Desktop.Services
                 "Checklists" => _services.GetRequiredService<ChecklistManagerViewModel>(),
                 "Settings" => _services.GetRequiredService<SettingsViewModel>(),
                 "Reprice" => _services.GetRequiredService<RepriceViewModel>(),
+                "SurpriseSets" => _services.GetRequiredService<SurpriseSetListViewModel>(),
                 _ => throw new ArgumentException($"Unknown page: {pageName}", nameof(pageName))
             };
             return Task.CompletedTask;
@@ -132,6 +133,19 @@ namespace FlipKit.Desktop.Services
         public Task NavigateToRepriceAsync()
         {
             return NavigateAsync("Reprice");
+        }
+
+        public Task NavigateToSurpriseSetsAsync()
+        {
+            return NavigateAsync("SurpriseSets");
+        }
+
+        public async Task NavigateToSurpriseSetDetailAsync(int setId)
+        {
+            var vm = _services.GetRequiredService<SurpriseSetDetailViewModel>();
+            await vm.LoadAsync(setId);
+            _mainWindow.CurrentPageName = "SurpriseSetDetail";
+            _mainWindow.CurrentPage = vm;
         }
 
         public Task GoBackAsync()

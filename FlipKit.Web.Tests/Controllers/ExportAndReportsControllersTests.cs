@@ -134,14 +134,15 @@ public class ReportsControllerTests
     [Fact]
     public async Task Index_FiltersSalesByDateRange()
     {
-        var sold = new List<Card>
+        // Controller calls GetAllCardsAsync() (no status filter) and filters in memory
+        // so that both Sold and SoldInSet roll into the revenue report.
+        var allCards = new List<Card>
         {
-            new Card { Id = 10, PlayerName = "Old Sale", Status = CardStatus.Sold, SalePrice = 10m, SaleDate = DateTime.Today.AddDays(-100), UpdatedAt = DateTime.Today.AddDays(-100) },
-            new Card { Id = 11, PlayerName = "Recent Sale", Status = CardStatus.Sold, SalePrice = 20m, SaleDate = DateTime.Today.AddDays(-10), UpdatedAt = DateTime.Today.AddDays(-10) },
+            new Card { Id = 10, PlayerName = "Old Sale",    Status = CardStatus.Sold, SalePrice = 10m, SaleDate = DateTime.Today.AddDays(-100), UpdatedAt = DateTime.Today.AddDays(-100) },
+            new Card { Id = 11, PlayerName = "Recent Sale", Status = CardStatus.Sold, SalePrice = 20m, SaleDate = DateTime.Today.AddDays(-10),  UpdatedAt = DateTime.Today.AddDays(-10) },
         };
         var repo = Substitute.For<ICardRepository>();
-        repo.GetAllCardsAsync().Returns(new List<Card>());
-        repo.GetAllCardsAsync(CardStatus.Sold, null).Returns(sold);
+        repo.GetAllCardsAsync().Returns(allCards);
         var controller = Create(repo: repo);
 
         var start = DateTime.Today.AddDays(-30);

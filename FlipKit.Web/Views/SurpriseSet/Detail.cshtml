@@ -1,0 +1,230 @@
+@model FlipKit.Web.Models.SurpriseSetDetailViewModel
+@{
+    ViewData["Title"] = Model.Set.Name;
+}
+
+<div class="container-fluid py-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary mb-2">
+                <i class="bi bi-arrow-left"></i> All Sets
+            </a>
+            <h2 class="mb-0">@Model.Set.Name</h2>
+            <div class="d-flex gap-3 text-muted small mt-1">
+                @{
+                    var badgeClass = Model.Set.State.ToString() switch
+                    {
+                        "Draft"     => "bg-secondary",
+                        "Exported"  => "bg-info text-dark",
+                        "Live"      => "bg-success",
+                        "Completed" => "bg-primary",
+                        "Cancelled" => "bg-danger",
+                        _           => "bg-secondary",
+                    };
+                }
+                <span class="badge @badgeClass">@Model.Set.State</span>
+                <span>@Model.Cards.Count cards</span>
+                <span>Spot: @Model.Set.SpotPrice.ToString("C")</span>
+                <span>@Model.Set.SharedCondition</span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            @if (Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Draft)
+            {
+                <a asp-action="BulkScan" asp-route-id="@Model.Set.Id" class="btn btn-outline-secondary">
+                    <i class="bi bi-camera"></i> Scan Cards
+                </a>
+            }
+            <form asp-action="Export" asp-route-id="@Model.Set.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary" @(Model.HasErrors ? "disabled" : "")>
+                    <i class="bi bi-download"></i> Export CSV
+                </button>
+            </form>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @{
+        var canComplete = Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Draft
+            || Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Exported
+            || Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Live;
+        var cardCount = Model.Cards.Count;
+        var defaultGross = Model.Set.GrossRevenue ?? (Model.Set.SpotPrice * cardCount);
+    }
+
+    <div class="row g-3">
+
+        <!-- Cards column -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Cards in Set</span>
+                    <span class="badge bg-secondary">@Model.Cards.Count</span>
+                </div>
+                @if (Model.Cards.Count == 0)
+                {
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="bi bi-inbox display-6"></i>
+                        <p class="mt-2 mb-0">No cards yet. Use Bulk Scan to add cards to this set.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:50px">Slot</th>
+                                    <th>Player</th>
+                                    <th>Sport</th>
+                                    <th>Condition</th>
+                                    <th>Graded</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var card in Model.Cards)
+                                {
+                                    <tr>
+                                        <td class="text-muted">@card.SurpriseSetSlot</td>
+                                        <td class="fw-semibold">@card.PlayerName</td>
+                                        <td>@card.Sport</td>
+                                        <td>@card.Condition</td>
+                                        <td>
+                                            @if (card.IsGraded)
+                                            {
+                                                <span class="badge bg-success">@card.GradeCompany @card.GradeValue</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">Raw</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            @if (Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Draft)
+                                            {
+                                                <form asp-action="RemoveCard" asp-route-id="@Model.Set.Id"
+                                                      method="post" class="d-inline"
+                                                      onsubmit="return confirm('Remove this card from the set?')">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="cardId" value="@card.Id"/>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="bi bi-x"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Compliance panel -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">
+                    Compliance
+                    @if (Model.HasErrors)
+                    {
+                        <span class="badge bg-danger ms-2">@Model.Issues.Count(i => i.Severity == FlipKit.Core.Services.IssueSeverity.Error) errors</span>
+                    }
+                    else if (Model.Issues.Any())
+                    {
+                        <span class="badge bg-warning text-dark ms-2">@Model.Issues.Count warnings</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success ms-2">OK</span>
+                    }
+                </div>
+                <div class="card-body p-2">
+                    @if (!Model.Issues.Any())
+                    {
+                        <p class="text-success mb-0 p-2">
+                            <i class="bi bi-check-circle-fill"></i> No issues found
+                        </p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var issue in Model.Issues)
+                            {
+                                var itemClass = issue.Severity == FlipKit.Core.Services.IssueSeverity.Error
+                                    ? "list-group-item-danger"
+                                    : "list-group-item-warning";
+                                <li class="list-group-item @itemClass p-2">
+                                    <div class="fw-semibold small">@issue.Code</div>
+                                    <div class="small">@issue.Message</div>
+                                    @if (issue.CardId.HasValue)
+                                    {
+                                        <div class="small text-muted">Card ID: @issue.CardId</div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (canComplete)
+    {
+        <div class="card shadow-sm mt-4">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-check2-circle"></i> Mark as Completed
+            </div>
+            <div class="card-body">
+                <form asp-action="Complete" asp-route-id="@Model.Set.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-3">
+                            <label class="form-label">Spots Sold</label>
+                            <input type="number" name="SpotsSold" class="form-control"
+                                   min="0" max="@cardCount" value="@cardCount" required/>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="form-label">Gross Revenue ($)</label>
+                            <input type="number" name="GrossRevenue" class="form-control"
+                                   min="0" step="0.01" value="@defaultGross.ToString("F2")" required/>
+                        </div>
+                        <div class="col-sm-2">
+                            <label class="form-label">Fees ($)</label>
+                            <input type="number" name="TotalFees" class="form-control"
+                                   min="0" step="0.01" value="@(Model.Set.TotalFees?.ToString("F2") ?? "0.00")"/>
+                        </div>
+                        <div class="col-sm-2">
+                            <label class="form-label">Shipping ($)</label>
+                            <input type="number" name="TotalShipping" class="form-control"
+                                   min="0" step="0.01" value="@(Model.Set.TotalShipping?.ToString("F2") ?? "0.00")"/>
+                        </div>
+                        <div class="col-sm-2">
+                            <button type="submit" class="btn btn-success w-100"
+                                    onclick="return confirm('Mark this set as Completed? This cannot be undone.')">
+                                <i class="bi bi-check2-circle"></i> Complete
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Revenue is split across sold cards using the <strong>@Model.Set.AllocationMethod</strong> method.
+                        Unsold cards will be returned to your inventory.
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>

@@ -7,16 +7,20 @@ using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Desktop.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using FlipKit.Core.Helpers;
 
 namespace FlipKit.Desktop.ViewModels
 {
-    public partial class BulkScanViewModel : ViewModelBase, IDisposable
+    public partial class BulkScanViewModel : ViewModelBase, IDisposable, IKeepAliveViewModel
     {
         private readonly IScannerService _scannerService;
+        private readonly IOcrService _ocrService;
         private readonly ICardRepository _cardRepository;
+        private readonly ISurpriseSetRepository _surpriseSetRepository;
         private readonly IFileDialogService _fileDialogService;
         private readonly ISettingsService _settingsService;
         private readonly IVariationVerifier _variationVerifier;
@@ -25,6 +29,8 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IPaidModelConsentService _consentService;
         private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
+        private readonly IAppNotificationService? _notificationService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<BulkScanViewModel> _logger;
 
         private CancellationTokenSource? _scanCts;
@@ -50,7 +56,72 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isLoadingModels;
         [ObservableProperty] private string? _modelLoadError;
 
+        // Surprise Set destination
+        [ObservableProperty] private BulkScanDestination _destination = BulkScanDestination.Inventory;
+        [ObservableProperty] private int? _destinationSurpriseSetId;
+        [ObservableProperty] private ScanDepth _scanDepth = ScanDepth.Standard;
+
+        // Rate-limit banners
+        [ObservableProperty] private bool _isRateLimitPaused;
+        [ObservableProperty] private string? _rateLimitBannerMessage;
+
+        // OCR mode + bulk enhance
+        [ObservableProperty] private ScanMode _scanMode = ScanMode.Ai;
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private int _enhanceProgress;
+        [ObservableProperty] private int _enhanceTotal;
+
+        // Live ticker for the enhance pipeline — bound by the BulkScan ticker panel
+        // and the global persistent status bar in MainWindow.
+        [ObservableProperty] private BulkScanItem? _currentEnhanceItem;
+        [ObservableProperty] private string? _currentEnhanceModel;
+
+        private CancellationTokenSource? _enhanceCts;
+
         public ObservableCollection<ModelOption> ModelOptions { get; } = new();
+
+        // Typed option lists so ComboBox SelectedItem binds correctly (avoids ComboBoxItem cast exception).
+        public static IReadOnlyList<DestinationOption> DestinationOptions { get; } = new[]
+        {
+            new DestinationOption(BulkScanDestination.Inventory, "Inventory"),
+            new DestinationOption(BulkScanDestination.SurpriseSet, "Surprise Set"),
+        };
+
+        public static IReadOnlyList<ScanDepthOption> ScanDepthOptions { get; } = new[]
+        {
+            new ScanDepthOption(ScanDepth.Quick, "Quick (lot scanning)"),
+            new ScanDepthOption(ScanDepth.Standard, "Standard (full detail)"),
+        };
+
+        public static IReadOnlyList<ScanModeOption> ScanModeOptions { get; } = new[]
+        {
+            new ScanModeOption(ScanMode.Ai,  "AI (Online)"),
+            new ScanModeOption(ScanMode.Ocr, "OCR (Offline, Free)"),
+        };
+
+        public ScanModeOption SelectedScanModeOption
+        {
+            get => ScanModeOptions.First(o => o.Value == ScanMode);
+            set => ScanMode = value.Value;
+        }
+
+        public bool IsOcrMode => ScanMode == ScanMode.Ocr;
+        public bool IsAiMode => ScanMode == ScanMode.Ai;
+        public bool IsOcrAvailable => _ocrService.IsAvailable;
+        public bool IsOcrModeUnavailable => IsOcrMode && !IsOcrAvailable;
+        public bool HasOcrScannedItems => Items.Any(i => i.ScanMode == ScanMode.Ocr && i.Status == BulkScanStatus.Scanned);
+
+        public DestinationOption SelectedDestinationOption
+        {
+            get => DestinationOptions.First(o => o.Value == Destination);
+            set => Destination = value.Value;
+        }
+
+        public ScanDepthOption SelectedScanDepthOption
+        {
+            get => ScanDepthOptions.First(o => o.Value == ScanDepth);
+            set => ScanDepth = value.Value;
+        }
 
         // Treats Auto and any explicit free pick as "free": forces concurrency = 1 to
         // avoid hammering rate limits.
@@ -59,10 +130,49 @@ namespace FlipKit.Desktop.ViewModels
             || SelectedModel.IsAuto
             || (SelectedModel.Model?.IsFree ?? SelectedModel.Value.Contains(":free"));
 
+        // Show the free-model info banner when not already paused on a rate limit.
+        public bool ShowFreeModelBanner => IsSelectedModelFree && !IsRateLimitPaused;
+
         partial void OnSelectedModelChanged(ModelOption? value)
         {
             OnPropertyChanged(nameof(IsSelectedModelFree));
+            OnPropertyChanged(nameof(ShowFreeModelBanner));
             if (IsSelectedModelFree) MaxConcurrentScans = 1;
+
+            // Persist the explicit pick so it survives navigation and restarts.
+            if (value == null || value.IsAuto) return;
+            var settings = _settingsService.Load();
+            if (settings.DefaultModel == value.Value) return;
+            settings.DefaultModel = value.Value;
+            _settingsService.Save(settings);
+        }
+
+        partial void OnIsRateLimitPausedChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowFreeModelBanner));
+        }
+
+        partial void OnScanModeChanged(ScanMode value)
+        {
+            if (value == ScanMode.Ocr)
+                MaxConcurrentScans = 1;
+            OnPropertyChanged(nameof(IsOcrMode));
+            OnPropertyChanged(nameof(IsAiMode));
+            OnPropertyChanged(nameof(IsOcrModeUnavailable));
+            OnPropertyChanged(nameof(SelectedScanModeOption));
+        }
+
+        partial void OnDestinationChanged(BulkScanDestination value)
+        {
+            // Surprise Set bulk scans default to Quick depth — just enough to label each slot.
+            // The user can override after the fact from the Inventory view.
+            ScanDepth = value == BulkScanDestination.SurpriseSet ? ScanDepth.Quick : ScanDepth.Standard;
+            OnPropertyChanged(nameof(SelectedDestinationOption));
+        }
+
+        partial void OnScanDepthChanged(ScanDepth value)
+        {
+            OnPropertyChanged(nameof(SelectedScanDepthOption));
         }
 
         public ObservableCollection<BulkScanItem> Items { get; } = new();
@@ -72,11 +182,14 @@ namespace FlipKit.Desktop.ViewModels
         partial void OnSelectedItemChanged(BulkScanItem? value)
         {
             OnPropertyChanged(nameof(SelectedCard));
+            RescanSelectedCommand.NotifyCanExecuteChanged();
         }
 
         public BulkScanViewModel(
             IScannerService scannerService,
+            IOcrService ocrService,
             ICardRepository cardRepository,
+            ISurpriseSetRepository surpriseSetRepository,
             IFileDialogService fileDialogService,
             ISettingsService settingsService,
             IVariationVerifier variationVerifier,
@@ -85,10 +198,14 @@ namespace FlipKit.Desktop.ViewModels
             IPaidModelConsentService consentService,
             IAiScanConsentService aiScanConsentService,
             IImageUploadService imageUploadService,
-            ILogger<BulkScanViewModel> logger)
+            ILogger<BulkScanViewModel> logger,
+            IAppNotificationService? notificationService = null,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _scannerService = scannerService;
+            _ocrService = ocrService;
             _cardRepository = cardRepository;
+            _surpriseSetRepository = surpriseSetRepository;
             _fileDialogService = fileDialogService;
             _settingsService = settingsService;
             _variationVerifier = variationVerifier;
@@ -97,7 +214,23 @@ namespace FlipKit.Desktop.ViewModels
             _consentService = consentService;
             _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
+            _notificationService = notificationService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
+
+            // Subscribe to per-item PropertyChanged so HasSelectedOcrItems /
+            // HasOcrScannedItems / Enhance command CanExecute re-evaluate when
+            // checkboxes flip or scan-status changes. Items only ever grow
+            // (no item is recreated for an existing index), so attach-on-add
+            // is sufficient and we never need to detach.
+            Items.CollectionChanged += (_, e) =>
+            {
+                if (e.NewItems != null)
+                {
+                    foreach (BulkScanItem item in e.NewItems)
+                        item.PropertyChanged += (_, args) => OnBulkScanItemPropertyChanged(args.PropertyName);
+                }
+            };
 
             // Initialize from settings
             var settings = _settingsService.Load();
@@ -122,12 +255,7 @@ namespace FlipKit.Desktop.ViewModels
                 ModelOption? choice = null;
                 if (!string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
                     choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
-                if (choice == null && !string.IsNullOrWhiteSpace(savedId) && savedId != ModelOption.AutoValue)
-                {
-                    choice = ModelOption.Stale(savedId);
-                    ModelOptions.Add(choice);
-                }
-                SelectedModel = choice ?? ModelOptions.First();
+                SelectedModel = choice ?? ModelOptions.First(); // First() = Auto when not in catalog
 
                 if (catalog.IsEmpty)
                     ModelLoadError = "Couldn't reach OpenRouter for the live model list.";
@@ -194,13 +322,71 @@ namespace FlipKit.Desktop.ViewModels
             if (Items.Count == 0)
                 return;
 
+            // Reset Error cards to Pending so they are retried on each scan run.
+            foreach (var failed in Items.Where(i => i.Status == BulkScanStatus.Error))
+            {
+                failed.Status = BulkScanStatus.Pending;
+                failed.ErrorMessage = null;
+            }
+
             var pending = Items.Where(i => i.Status == BulkScanStatus.Pending).ToList();
             if (pending.Count == 0)
                 return;
 
+            await ScanItemsAsync(pending);
+        }
+
+        /// <summary>
+        /// Re-scans just the currently selected card through the active scan mode.
+        /// Useful when a single card returned bad fields (OCR garbage, bad AI guess)
+        /// and the user wants to redo it without re-running the whole batch.
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanRescanSelected))]
+        private async Task RescanSelectedAsync()
+        {
+            if (SelectedItem == null) return;
+            var item = SelectedItem;
+            item.Status = BulkScanStatus.Pending;
+            item.ErrorMessage = null;
+            await ScanItemsAsync(new List<BulkScanItem> { item });
+        }
+
+        private bool CanRescanSelected() =>
+            SelectedItem != null && !IsScanning && !IsEnhancing;
+
+        partial void OnIsScanningChanged(bool value)
+        {
+            RescanSelectedCommand.NotifyCanExecuteChanged();
+        }
+
+        partial void OnIsEnhancingChanged(bool value)
+        {
+            RescanSelectedCommand.NotifyCanExecuteChanged();
+        }
+
+        /// <summary>
+        /// Runs the active scan mode against the supplied items. Encapsulates the
+        /// IsScanning / rate-limit / error-tracking lifecycle so callers (ScanAll
+        /// and RescanSelected) don't duplicate it.
+        /// </summary>
+        private async Task ScanItemsAsync(List<BulkScanItem> pending)
+        {
+            if (pending.Count == 0) return;
+
             IsScanning = true;
+            IsRateLimitPaused = false;
+            RateLimitBannerMessage = null;
             ErrorMessage = null;
             SuccessMessage = null;
+
+            // OCR mode: bypass AI consent, model chain, and rate-limit logic entirely.
+            if (ScanMode == ScanMode.Ocr)
+            {
+                await ScanAllOcrAsync(pending);
+                IsScanning = false;
+                return;
+            }
+
             ScanProgress = 0;
             Interlocked.Exchange(ref _completedCount, 0);
             ScanTotal = pending.Count;
@@ -228,22 +414,12 @@ namespace FlipKit.Desktop.ViewModels
 
             var isFreeModel = IsSelectedModelFree;
 
-            // Resolve the model chain once for the whole bulk run.
-            //   • Explicit pick → single-model chain.
-            //   • Auto + paid not allowed → free-only chain.
-            //   • Auto + paid allowed → free chain + cheapest paid as final fallback.
-            var modelChain = await BuildBulkModelChainAsync();
-            if (modelChain == null)
-            {
-                // User declined paid consent; cancel cleanly.
-                IsScanning = false;
-                _scanCts = null;
-                StatusMessage = null;
-                SuccessMessage = "Bulk scan canceled — no paid model was used.";
-                return;
-            }
+            // Phase 1: scan with free models only.
+            // Explicit pick → single-element chain; Auto → all free vision models from catalog.
+            // Paid consent is never asked upfront — only after free models are actually exhausted.
+            var (freeChain, cheapestPaid) = await BuildFreeChainAsync();
 
-            if (modelChain.Count == 0)
+            if (freeChain.Count == 0)
             {
                 IsScanning = false;
                 _scanCts = null;
@@ -251,14 +427,17 @@ namespace FlipKit.Desktop.ViewModels
                 return;
             }
 
+            // Auto mode tracks per-card exhaustion; explicit picks go straight to Error on failure.
+            var freeChainOnly = SelectedModel == null || SelectedModel.IsAuto;
+
             // For free chains, force concurrency to 1 to respect rate limits.
             var maxConcurrency = isFreeModel ? 1 : MaxConcurrentScans;
 
             _logger.LogInformation("Starting bulk scan of {Count} cards with model chain {Models} (max concurrency {Concurrency})",
-                pending.Count, string.Join(",", modelChain), maxConcurrency);
+                pending.Count, string.Join(",", freeChain), maxConcurrency);
 
             // Start error tracking session — log the head model for context.
-            _errorLogger.StartSession(pending.Count, modelChain[0]);
+            _errorLogger.StartSession(pending.Count, freeChain[0]);
 
             // Create semaphore to limit concurrent scans (Moss Machine pattern)
             using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
@@ -268,7 +447,8 @@ namespace FlipKit.Desktop.ViewModels
             // nullable _scanCts field (eliminates the CS8602 suppression that
             // used to wrap the whole method body).
             var cts = _scanCts;
-            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, modelChain, isFreeModel, cts));
+            var currentScanDepth = ScanDepth;
+            var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, freeChain, isFreeModel, currentScanDepth, cts, freeChainOnly));
 
             try
             {
@@ -279,8 +459,70 @@ namespace FlipKit.Desktop.ViewModels
                 _logger.LogInformation("Bulk scan cancelled by user");
             }
 
+            // Phase 2: If auto-mode left FreeFailed items, ask once for paid consent.
+            // Only offered after ALL free models are exhausted — never upfront.
+            if (freeChainOnly && !IsRateLimitPaused && !cts.Token.IsCancellationRequested)
+            {
+                var failedItems = Items.Where(i => i.Status == BulkScanStatus.FreeFailed).ToList();
+                if (failedItems.Count > 0 && cheapestPaid != null)
+                {
+                    StatusMessage = $"Asking about paid fallback for {failedItems.Count} card(s)...";
+                    var consented = await _consentService.AskAsync(
+                        cheapestPaid,
+                        $"{failedItems.Count} card(s) exhausted all {freeChain.Count} free model(s). " +
+                        $"Retry this batch with {cheapestPaid.DisplayName} as a paid fallback?\n\n" +
+                        $"⚠️ {failedItems.Count} paid scan(s) will be charged at the rate shown below. " +
+                        $"Costs can rise rapidly on large batches — review the pricing carefully before proceeding.");
+
+                    if (consented)
+                    {
+                        _logger.LogInformation("Paid consent granted; retrying {Count} FreeFailed items with {Model}.",
+                            failedItems.Count, cheapestPaid.Id);
+                        StatusMessage = $"Retrying {failedItems.Count} card(s) with paid model...";
+                        foreach (var item in failedItems)
+                        {
+                            item.Status = BulkScanStatus.Pending;
+                            item.ErrorMessage = null;
+                        }
+                        var paidChain = new List<string> { cheapestPaid.Id };
+                        using var paidSemaphore = new SemaphoreSlim(MaxConcurrentScans, MaxConcurrentScans);
+                        var retryTasks = failedItems.Select(item =>
+                            ProcessItemAsync(item, paidSemaphore, settings, paidChain, false, currentScanDepth, cts, freeChainOnly: false));
+                        try { await Task.WhenAll(retryTasks); }
+                        catch (OperationCanceledException) { }
+                    }
+                    else
+                    {
+                        foreach (var item in failedItems)
+                        {
+                            item.Status = BulkScanStatus.Error;
+                            item.ErrorMessage = "All free models exhausted — paid fallback declined.";
+                            _errorLogger.LogError(item.Index, item.FrontImagePath, item.BackImagePath,
+                                new Exception(item.ErrorMessage), freeChain[0]);
+                        }
+                    }
+                }
+                else if (failedItems.Count > 0)
+                {
+                    // No paid models available — convert to errors
+                    foreach (var item in failedItems)
+                    {
+                        item.Status = BulkScanStatus.Error;
+                        item.ErrorMessage = "All free models exhausted — no paid models available.";
+                    }
+                }
+            }
+
+            // Ensure any remaining FreeFailed (e.g. scan cancelled during phase 1) become errors.
+            foreach (var item in Items.Where(i => i.Status == BulkScanStatus.FreeFailed).ToList())
+            {
+                item.Status = BulkScanStatus.Error;
+                item.ErrorMessage = "All free models exhausted — scan cancelled before paid fallback was offered.";
+            }
+
             var scanned = Items.Count(i => i.Status == BulkScanStatus.Scanned);
             var errors = Items.Count(i => i.Status == BulkScanStatus.Error);
+            var rateLimited = Items.Count(i => i.Status == BulkScanStatus.RateLimited);
 
             // Get log path BEFORE ending session (which clears the path)
             var logPath = _errorLogger.GetCurrentLogFilePath();
@@ -292,56 +534,42 @@ namespace FlipKit.Desktop.ViewModels
             _scanCts = null;
             StatusMessage = null;
 
-            if (errors > 0)
+            // Notify even when the user is on another tab so they know the batch is done.
+            if (!cts.Token.IsCancellationRequested)
+                _notificationService?.NotifyBulkScanComplete(scanned, errors);
+
+            if (IsRateLimitPaused)
+            {
+                ErrorMessage = $"Scanned {scanned} cards, then hit the daily OpenRouter rate limit. " +
+                               $"{rateLimited} card(s) pending. Add credits at openrouter.ai, then click Resume.";
+            }
+            else if (errors > 0)
             {
                 if (!string.IsNullOrEmpty(logPath))
-                {
                     ErrorMessage = $"Scanned {scanned} cards, {errors} failed.\n\nError log saved to:\n{logPath}";
-                }
                 else
-                {
                     ErrorMessage = $"Scanned {scanned} cards, {errors} failed";
-                }
             }
             else
                 SuccessMessage = $"Scanned {scanned} cards successfully";
         }
 
         /// <summary>
-        /// Builds the per-card model chain for a bulk run. Returns null if the user
-        /// declined paid consent, an empty list if no usable models exist, or a list
-        /// of model ids to try in order otherwise.
+        /// Returns the free-only model chain plus the cheapest paid model (for Phase 2
+        /// consent, if needed). Explicit picks return a single-element chain with no
+        /// paid model — those fail as errors, not FreeFailed, when the chain is exhausted.
         /// </summary>
-        private async Task<IReadOnlyList<string>?> BuildBulkModelChainAsync()
+        private async Task<(IReadOnlyList<string> FreeChain, OpenRouterModel? CheapestPaid)> BuildFreeChainAsync()
         {
-            // Explicit pick → trust it; single-element chain.
             if (SelectedModel != null && !SelectedModel.IsAuto)
-                return new[] { SelectedModel.Value };
+                return (new[] { SelectedModel.Value }, null);
 
             var catalog = await _modelCatalog.GetAsync();
-            if (catalog.IsEmpty) return Array.Empty<string>();
+            if (catalog.IsEmpty) return (Array.Empty<string>(), null);
 
             var chain = catalog.FreeVisionModels.Select(m => m.Id).ToList();
-
-            if (catalog.PaidVisionModels.Count > 0)
-            {
-                var cheapest = catalog.PaidVisionModels[0];
-                var consented = await _consentService.AskAsync(
-                    cheapest,
-                    $"Bulk scan: when all {catalog.FreeVisionModels.Count} free models fail for a card, " +
-                    $"should we try the cheapest paid model ({cheapest.DisplayName}) as a fallback? " +
-                    "If you decline, cards that all free models fail on will be marked as errors.");
-                if (!consented)
-                {
-                    // User said no — return null to signal "user canceled the whole run".
-                    // (Alternative: continue with free-only and let cards fail. The current
-                    // semantics of "Cancel" in the dialog reads as "don't run", so we honor that.)
-                    return null;
-                }
-                chain.Add(cheapest.Id);
-            }
-
-            return chain;
+            var cheapestPaid = catalog.PaidVisionModels.Count > 0 ? catalog.PaidVisionModels[0] : null;
+            return (chain, cheapestPaid);
         }
 
         private async Task ProcessItemAsync(
@@ -350,7 +578,9 @@ namespace FlipKit.Desktop.ViewModels
             AppSettings settings,
             IReadOnlyList<string> modelChain,
             bool isFreeModel,
-            CancellationTokenSource cts)
+            ScanDepth scanDepth,
+            CancellationTokenSource cts,
+            bool freeChainOnly = false)
         {
             // Wait for semaphore slot (rate limiting)
             await semaphore.WaitAsync(cts.Token);
@@ -368,6 +598,7 @@ namespace FlipKit.Desktop.ViewModels
                 {
                     // Walk the model chain — first model that succeeds wins. If every model
                     // throws, the outer catch records the final error.
+                    // AccountPerDay rate limits are re-thrown so the outer catch can pause.
                     ScanResult? scanResult = null;
                     Exception? lastError = null;
                     string usedModel = modelChain[0];
@@ -376,70 +607,108 @@ namespace FlipKit.Desktop.ViewModels
                         try
                         {
                             scanResult = await _scannerService.ScanCardAsync(
-                                item.FrontImagePath, item.BackImagePath, modelId);
+                                item.FrontImagePath, item.BackImagePath, modelId,
+                                scanDepth: scanDepth, ct: cts.Token);
                             usedModel = modelId;
                             break;
+                        }
+                        catch (OpenRouterRateLimitException rlEx)
+                            when (rlEx.Scope == RateLimitScope.AccountPerDay)
+                        {
+                            throw; // propagate to outer catch — pauses the whole run
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            throw; // user cancelled — don't silently walk to next model
                         }
                         catch (Exception ex)
                         {
                             lastError = ex;
-                            _logger.LogDebug("Card {Index}: model {Model} failed, trying next.", item.Index, modelId);
+                            _logger.LogWarning("Card {Index}: model {Model} failed ({Reason}), trying next.",
+                                item.Index, modelId, ex.Message);
                         }
                     }
-                    if (scanResult == null) throw lastError ?? new Exception("All models in chain failed.");
-
-                    scanResult.Card.ImagePathFront = item.FrontImagePath;
-                    if (!string.IsNullOrEmpty(item.BackImagePath))
-                        scanResult.Card.ImagePathBack = item.BackImagePath;
-
-                    item.CardDetail = CardDetailViewModel.FromCard(scanResult.Card);
-
-                    // Run verification pipeline if enabled (same as regular Scan view)
-                    if (settings.EnableVariationVerification && item.CardDetail != null)
+                    if (scanResult != null)
                     {
-                        try
+                        scanResult.Card.ImagePathFront = item.FrontImagePath;
+                        if (!string.IsNullOrEmpty(item.BackImagePath))
+                            scanResult.Card.ImagePathBack = item.BackImagePath;
+
+                        item.CardDetail = CardDetailViewModel.FromCard(scanResult.Card);
+
+                        // Run verification pipeline if enabled (same as regular Scan view)
+                        if (settings.EnableVariationVerification && item.CardDetail != null)
                         {
-                            var verification = await _variationVerifier.VerifyCardAsync(scanResult, item.FrontImagePath);
-
-                            // Run confirmation pass if needed and enabled
-                            if (settings.RunConfirmationPass && _variationVerifier.NeedsConfirmationPass(verification))
+                            try
                             {
-                                verification = await _variationVerifier.RunConfirmationPassAsync(scanResult, verification, item.FrontImagePath);
-                            }
+                                var verification = await _variationVerifier.VerifyCardAsync(scanResult, item.FrontImagePath);
 
-                            // Auto-apply high-confidence suggestions if enabled
-                            if (settings.AutoApplyHighConfidenceSuggestions)
-                            {
-                                if (verification.SuggestedPlayerName != null &&
-                                    verification.PlayerVerified == false &&
-                                    verification.FieldConfidences.Any(f =>
-                                        f.FieldName == "player_name" &&
-                                        f.Confidence == VerificationConfidence.Conflict))
+                                // Run confirmation pass if needed and enabled
+                                if (settings.RunConfirmationPass && _variationVerifier.NeedsConfirmationPass(verification))
                                 {
-                                    item.CardDetail.PlayerName = verification.SuggestedPlayerName;
+                                    verification = await _variationVerifier.RunConfirmationPassAsync(scanResult, verification, item.FrontImagePath);
                                 }
 
-                                if (verification.SuggestedVariation != null &&
-                                    verification.OverallConfidence != VerificationConfidence.Conflict)
+                                // Auto-apply high-confidence suggestions if enabled
+                                if (settings.AutoApplyHighConfidenceSuggestions)
                                 {
-                                    item.CardDetail.ParallelName = verification.SuggestedVariation;
+                                    if (verification.SuggestedPlayerName != null &&
+                                        verification.PlayerVerified == false &&
+                                        verification.FieldConfidences.Any(f =>
+                                            f.FieldName == "player_name" &&
+                                            f.Confidence == VerificationConfidence.Conflict))
+                                    {
+                                        item.CardDetail.PlayerName = verification.SuggestedPlayerName;
+                                    }
+
+                                    if (verification.SuggestedVariation != null &&
+                                        verification.OverallConfidence != VerificationConfidence.Conflict)
+                                    {
+                                        item.CardDetail.ParallelName = verification.SuggestedVariation;
+                                    }
                                 }
                             }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Verification failed for card {Index}, using unverified scan", item.Index);
+                            }
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Verification failed for card {Index}, using unverified scan", item.Index);
-                        }
+
+                        item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
+                            ? item.CardDetail.PlayerName
+                            : $"Card {item.Index}";
+                        item.Status = BulkScanStatus.Scanned;
+                        _logger.LogInformation("Successfully scanned card {Index}: {PlayerName}", item.Index, item.DisplayName);
+
+                        // Log success for tracking
+                        _errorLogger.LogSuccess(item.Index, item.FrontImagePath, item.DisplayName);
                     }
-
-                    item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
-                        ? item.CardDetail.PlayerName
-                        : $"Card {item.Index}";
-                    item.Status = BulkScanStatus.Scanned;
-                    _logger.LogInformation("Successfully scanned card {Index}: {PlayerName}", item.Index, item.DisplayName);
-
-                    // Log success for tracking
-                    _errorLogger.LogSuccess(item.Index, item.FrontImagePath, item.DisplayName);
+                    else if (freeChainOnly)
+                    {
+                        // All free models exhausted — defer to Phase 2 paid-consent prompt.
+                        item.Status = BulkScanStatus.FreeFailed;
+                        item.ErrorMessage = lastError?.Message ?? "All free models exhausted.";
+                        _logger.LogWarning("Card {Index}: all free models exhausted — will prompt for paid tier after free run.", item.Index);
+                    }
+                    else
+                    {
+                        throw lastError ?? new Exception("All models in chain failed.");
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw; // propagate to Task.WhenAll so ScanAllAsync sees the cancel
+                }
+                catch (OpenRouterRateLimitException rlEx)
+                    when (rlEx.Scope == RateLimitScope.AccountPerDay)
+                {
+                    _logger.LogError("Daily OpenRouter rate limit reached on card {Index}. Pausing bulk scan.", item.Index);
+                    item.Status = BulkScanStatus.RateLimited;
+                    item.ErrorMessage = "Daily OpenRouter rate limit reached. Add credits, then click Resume.";
+                    IsRateLimitPaused = true;
+                    RateLimitBannerMessage =
+                        "Daily OpenRouter rate limit reached. Add credits at openrouter.ai, then click Resume to continue.";
+                    cts.Cancel(); // stop remaining pending items
                 }
                 catch (Exception ex)
                 {
@@ -477,7 +746,330 @@ namespace FlipKit.Desktop.ViewModels
         [RelayCommand]
         private void CancelScan()
         {
-            _scanCts?.Cancel();
+            if (_scanCts == null || _scanCts.IsCancellationRequested) return;
+            StatusMessage = "Cancelling scan — waiting for current requests to finish...";
+            _scanCts.Cancel();
+        }
+
+        /// <summary>
+        /// Resets rate-limited items to Pending and restarts the scan.
+        /// Called after the user adds OpenRouter credits or waits for the daily reset.
+        /// </summary>
+        [RelayCommand]
+        private async Task ResumeBulkScanAsync()
+        {
+            foreach (var item in Items.Where(i => i.Status == BulkScanStatus.RateLimited))
+                item.Status = BulkScanStatus.Pending;
+
+            IsRateLimitPaused = false;
+            RateLimitBannerMessage = null;
+
+            await ScanAllAsync();
+        }
+
+        private async Task ScanAllOcrAsync(List<BulkScanItem> pending)
+        {
+            ScanProgress = 0;
+            Interlocked.Exchange(ref _completedCount, 0);
+            ScanTotal = pending.Count;
+            _scanCts = new CancellationTokenSource();
+            var cts = _scanCts;
+
+            foreach (var item in pending)
+            {
+                if (cts.Token.IsCancellationRequested) break;
+                item.Status = BulkScanStatus.Scanning;
+                StatusMessage = $"OCR scanning card {item.Index} of {ScanTotal}...";
+                try
+                {
+                    var result = await _ocrService.ScanCardAsync(item.FrontImagePath, item.BackImagePath);
+                    result.Card.ImagePathFront = item.FrontImagePath;
+                    if (!string.IsNullOrEmpty(item.BackImagePath))
+                        result.Card.ImagePathBack = item.BackImagePath;
+                    item.CardDetail = CardDetailViewModel.FromCard(result.Card);
+                    item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
+                        ? item.CardDetail.PlayerName : $"Card {item.Index}";
+                    item.ScanMode = ScanMode.Ocr;
+                    item.Confidences = result.Confidences ?? new List<FieldConfidence>();
+                    item.OcrText = result.AllVisibleText ?? new List<string>();
+                    item.Status = BulkScanStatus.Scanned;
+                    _logger.LogInformation("OCR scan succeeded for card {Index}: {Name}", item.Index, item.DisplayName);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    item.Status = BulkScanStatus.Error;
+                    item.ErrorMessage = ex.Message;
+                    _logger.LogError(ex, "OCR scan failed for card {Index}", item.Index);
+                }
+
+                var newCount = Interlocked.Increment(ref _completedCount);
+                ScanProgress = newCount;
+            }
+
+            _scanCts = null;
+            StatusMessage = null;
+
+            var scanned = Items.Count(i => i.Status == BulkScanStatus.Scanned);
+            var errors = Items.Count(i => i.Status == BulkScanStatus.Error);
+            OnPropertyChanged(nameof(HasOcrScannedItems));
+
+            if (errors > 0)
+                ErrorMessage = $"OCR scanned {scanned} cards, {errors} failed.";
+            else
+                SuccessMessage = $"OCR scanned {scanned} cards successfully.";
+        }
+
+        [RelayCommand(CanExecute = nameof(CanEnhance))]
+        private async Task EnhanceAllAsync()
+        {
+            var ocrItems = Items
+                .Where(i => i.ScanMode == ScanMode.Ocr && i.Status == BulkScanStatus.Scanned)
+                .ToList();
+            await RunBulkEnhanceAsync(ocrItems);
+        }
+
+        /// <summary>
+        /// Enhances every CHECKED OCR-scanned card. If nothing is checked,
+        /// the button is hidden (CanEnhanceSelected returns false). The
+        /// previous behavior — single-select via ListBox.SelectedItem —
+        /// only ever processed one card at a time even when the user wanted
+        /// a subset; the new model is "tick the rows you want, click Enhance Selected."
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanEnhanceSelected))]
+        private async Task EnhanceSelectedAsync()
+        {
+            var picked = SelectedOcrItems;
+            if (picked.Count == 0) return;
+            await RunBulkEnhanceAsync(picked);
+        }
+
+        /// <summary>OCR-scanned items the user has CHECKED (separate from ListBox focus).</summary>
+        public List<BulkScanItem> SelectedOcrItems =>
+            Items.Where(i => i.IsSelected && i.ScanMode == ScanMode.Ocr && i.Status == BulkScanStatus.Scanned)
+                 .ToList();
+
+        public bool HasSelectedOcrItems => SelectedOcrItems.Count > 0;
+
+        private bool CanEnhance() => !IsEnhancing && HasOcrScannedItems;
+        private bool CanEnhanceSelected() => !IsEnhancing && HasSelectedOcrItems;
+
+        // The Items collection's per-item PropertyChanged events don't bubble up
+        // to the parent VM, so HasSelectedOcrItems / HasOcrScannedItems wouldn't
+        // re-evaluate when an item's IsSelected / Status / ScanMode flips.
+        // Subscribe to each item's PropertyChanged in the constructor (see ctor)
+        // and re-broadcast when relevant fields change.
+        internal void OnBulkScanItemPropertyChanged(string? propName)
+        {
+            if (propName is nameof(BulkScanItem.IsSelected)
+                or nameof(BulkScanItem.Status)
+                or nameof(BulkScanItem.ScanMode))
+            {
+                OnPropertyChanged(nameof(HasSelectedOcrItems));
+                OnPropertyChanged(nameof(HasOcrScannedItems));
+                EnhanceSelectedCommand.NotifyCanExecuteChanged();
+                EnhanceAllCommand.NotifyCanExecuteChanged();
+            }
+        }
+
+        [RelayCommand]
+        private void CancelEnhance()
+        {
+            if (_enhanceCts == null || _enhanceCts.IsCancellationRequested) return;
+            StatusMessage = "Cancelling enhance — waiting for current request to finish...";
+            _enhanceCts.Cancel();
+        }
+
+        /// <summary>
+        /// Builds the OCR hint sent to the LLM during Enhance. Catalog-anchored
+        /// fields (player name matched against the checklist, brand normalized,
+        /// sport inferred from team, year validated, etc.) are marked
+        /// "verified" so the LLM echoes them verbatim and spends its token
+        /// budget on visual-pattern fields it actually has to look at the image
+        /// for (parallel pattern, refractor type, foil, border, etc.). Other
+        /// populated fields ride along as soft suggestions the LLM can override.
+        /// </summary>
+        private static OcrHint BuildEnhanceHint(BulkScanItem item)
+        {
+            var d = item.CardDetail;
+            var hint = new OcrHint
+            {
+                PlayerName = d?.PlayerName,
+                Year = d?.Year,
+                CardNumber = d?.CardNumber,
+                Manufacturer = d?.Manufacturer,
+                Brand = d?.Brand,
+                SetName = d?.SetName,
+                Team = d?.Team,
+                Sport = d?.Sport?.ToString(),
+                ParallelName = d?.ParallelName,
+                SerialNumbered = d?.SerialNumbered,
+                IsRookie = d?.IsRookie,
+                IsAuto = d?.IsAuto,
+                IsRelic = d?.IsRelic,
+                IsGraded = d?.IsGraded,
+                GradeCompany = d?.GradeCompany,
+                GradeValue = d?.GradeValue,
+                AllVisibleText = item.OcrText.ToList(),
+            };
+
+            // Promote any High/Medium-confidence field from the OCR scan to
+            // "verified" status — the LLM will echo these. Low-confidence
+            // values stay as suggestive (LLM may override). Field names match
+            // the JSON schema keys the prompt uses.
+            foreach (var conf in item.Confidences)
+            {
+                if (conf.Confidence == VerificationConfidence.High
+                    || conf.Confidence == VerificationConfidence.Medium)
+                {
+                    hint.VerifiedFieldNames.Add(conf.FieldName);
+                }
+            }
+            return hint;
+        }
+
+        private async Task RunBulkEnhanceAsync(List<BulkScanItem> items)
+        {
+            if (items.Count == 0) return;
+
+            IsEnhancing = true;
+            EnhanceProgress = 0;
+            EnhanceTotal = items.Count;
+            ErrorMessage = null;
+            SuccessMessage = null;
+            _enhanceCts = new CancellationTokenSource();
+            var ct = _enhanceCts.Token;
+
+            var (freeChain, _) = await BuildFreeChainAsync();
+            if (freeChain.Count == 0)
+                freeChain = new[] { OpenRouterModelDefaults.DefaultFreeModelId };
+
+            int succeeded = 0;
+            int failed = 0;
+
+            try
+            {
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (ct.IsCancellationRequested) break;
+
+                    var item = items[i];
+                    if (item.CardDetail == null) { EnhanceProgress++; continue; }
+
+                    item.Status = BulkScanStatus.Enhancing;
+                    CurrentEnhanceItem = item;
+                    StatusMessage = $"Enhancing \"{item.DisplayName}\"...";
+                    _logger.LogInformation("Enhancing card {Index} ({Name}) of {Total}", i + 1, item.DisplayName, EnhanceTotal);
+
+                    try
+                    {
+                        // Build a rich OcrHint from the post-validation Card. The
+                        // OCR pass already wrote High/Medium-confidence values for
+                        // catalog-anchored fields (player matched against checklist,
+                        // brand normalized, sport inferred from team, etc.); marking
+                        // those as "verified" tells the LLM to echo them rather than
+                        // re-derive from the image. Low-confidence values are still
+                        // sent as suggestions so the LLM has context.
+                        var hint = BuildEnhanceHint(item);
+
+                        ScanResult? result = null;
+                        foreach (var modelId in freeChain)
+                        {
+                            if (ct.IsCancellationRequested) break;
+                            CurrentEnhanceModel = modelId;
+                            try
+                            {
+                                result = await _scannerService.ScanCardAsync(
+                                    item.FrontImagePath, item.BackImagePath, modelId,
+                                    scanDepth: ScanDepth.Standard, ocrHint: hint, ct: ct);
+                                break;
+                            }
+                            catch (OpenRouterRateLimitException rlEx)
+                                when (rlEx.Scope == RateLimitScope.AccountPerDay)
+                            {
+                                item.Status = BulkScanStatus.Scanned; // restore — still has OCR data
+                                ErrorMessage = "Daily rate limit hit during enhance. Add credits and try again.";
+                                return;
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Enhance: model {Model} failed for card {Index}, trying next.", modelId, item.Index);
+                            }
+                        }
+
+                        if (result != null)
+                        {
+                            result.Card.ImagePathFront = item.FrontImagePath;
+                            if (!string.IsNullOrEmpty(item.BackImagePath))
+                                result.Card.ImagePathBack = item.BackImagePath;
+                            item.CardDetail = CardDetailViewModel.FromCard(result.Card);
+                            item.DisplayName = !string.IsNullOrEmpty(item.CardDetail?.PlayerName)
+                                ? item.CardDetail.PlayerName : $"Card {item.Index}";
+                            item.ScanMode = ScanMode.Ai;
+                            item.Confidences = result.Confidences ?? new List<FieldConfidence>();
+                            item.Status = BulkScanStatus.Scanned;
+                            item.ErrorMessage = null;
+                            succeeded++;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Enhance: all models exhausted for card {Index}.", item.Index);
+                            item.Status = BulkScanStatus.Scanned; // keep OCR data
+                            item.ErrorMessage = "Enhance failed — all free models exhausted.";
+                            failed++;
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        item.Status = BulkScanStatus.Scanned; // restore — still has OCR data
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Enhance failed for card {Index}.", item.Index);
+                        item.Status = BulkScanStatus.Scanned; // restore — still has OCR data
+                        item.ErrorMessage = $"Enhance error: {ex.Message}";
+                        failed++;
+                    }
+
+                    EnhanceProgress++;
+                    OnPropertyChanged(nameof(HasOcrScannedItems));
+
+                    if (i < items.Count - 1 && !ct.IsCancellationRequested)
+                    {
+                        try { await Task.Delay(2000, ct); }
+                        catch (OperationCanceledException) { break; }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Bulk enhance cancelled by user after {Count} of {Total}.", EnhanceProgress, EnhanceTotal);
+            }
+            finally
+            {
+                IsEnhancing = false;
+                StatusMessage = null;
+                CurrentEnhanceItem = null;
+                CurrentEnhanceModel = null;
+                _enhanceCts?.Dispose();
+                _enhanceCts = null;
+                OnPropertyChanged(nameof(HasOcrScannedItems));
+            }
+
+            if (ct.IsCancellationRequested)
+                ErrorMessage = $"Enhance cancelled after {succeeded} card(s). {items.Count - EnhanceProgress} skipped.";
+            else if (failed > 0)
+                ErrorMessage = $"Enhanced {succeeded} of {items.Count} card(s). {failed} failed — see card details for messages.";
+            else
+                SuccessMessage = $"Enhanced {succeeded} card(s) with AI.";
         }
 
         [RelayCommand]
@@ -492,6 +1084,9 @@ namespace FlipKit.Desktop.ViewModels
             SuccessMessage = null;
             int saved = 0;
 
+            var isSurpriseSetDestination =
+                Destination == BulkScanDestination.SurpriseSet && DestinationSurpriseSetId.HasValue;
+
             foreach (var item in ready)
             {
                 try
@@ -499,17 +1094,23 @@ namespace FlipKit.Desktop.ViewModels
                     var card = item.CardDetail!.ToCard();
                     card.ImagePathFront = item.FrontImagePath;
                     card.ImagePathBack = item.BackImagePath;
+                    card.DataSource = item.ScanMode == ScanMode.Ocr ? CardDataSource.Ocr : CardDataSource.Ai;
 
-                    // Auto-fill Whatnot category/subcategory from Sport when blank.
-                    FlipKit.Core.Helpers.WhatnotCategoryDefaulter.ApplyDefaults(card);
-
-                    // Auto-upload any local images that don't yet have a hosted URL.
+                    WhatnotCategoryDefaulter.ApplyDefaults(card);
                     await TryUploadMissingUrlsAsync(card);
 
-                    // Auto-status: Ready when both images and price are present; Draft otherwise.
-                    card.Status = FlipKit.Core.Helpers.CardStatusEvaluator.Evaluate(card);
-
-                    await _cardRepository.InsertCardAsync(card);
+                    if (isSurpriseSetDestination)
+                    {
+                        // Skip individual-listing price evaluation — the set handles revenue allocation.
+                        card.Status = CardStatus.ReservedForSet;
+                        await _cardRepository.InsertCardAsync(card);
+                        await _surpriseSetRepository.AddCardAsync(DestinationSurpriseSetId!.Value, card);
+                    }
+                    else
+                    {
+                        card.Status = CardStatusEvaluator.Evaluate(card);
+                        await _cardRepository.InsertCardAsync(card);
+                    }
 
                     item.Status = BulkScanStatus.Saved;
                     saved++;
@@ -522,7 +1123,18 @@ namespace FlipKit.Desktop.ViewModels
             }
 
             IsSaving = false;
-            SuccessMessage = $"Saved {saved} cards to My Cards!";
+            SuccessMessage = isSurpriseSetDestination
+                ? $"Added {saved} cards to Surprise Set!"
+                : $"Saved {saved} cards to My Cards!";
+
+            // Refresh the directory cache so the newly-saved cards' player /
+            // brand / team / set / year values are immediately available to
+            // future OCR scans in the same session — the directory grows from
+            // real usage, not just bootstrap data and imports.
+            if (saved > 0 && _playerDirectory != null)
+            {
+                _ = _playerDirectory.RefreshAsync();
+            }
         }
 
         /// <summary>
@@ -594,6 +1206,10 @@ namespace FlipKit.Desktop.ViewModels
             _scanCts?.Cancel();
             _scanCts?.Dispose();
             _scanCts = null;
+
+            _enhanceCts?.Cancel();
+            _enhanceCts?.Dispose();
+            _enhanceCts = null;
         }
     }
 
@@ -603,8 +1219,21 @@ namespace FlipKit.Desktop.ViewModels
         Scanning,
         Scanned,
         Saved,
-        Error
+        Error,
+        FreeFailed,  // All free models exhausted — awaiting paid-consent prompt at end of phase 1
+        RateLimited, // Daily limit hit — reset to Pending via ResumeBulkScan
+        Enhancing,   // OCR-scanned card currently being re-scanned through AI
     }
+
+    public enum BulkScanDestination
+    {
+        Inventory,   // Save as standalone cards in My Cards (default)
+        SurpriseSet, // Add directly to a specific Surprise Set
+    }
+
+    public record DestinationOption(BulkScanDestination Value, string Label);
+    public record ScanDepthOption(ScanDepth Value, string Label);
+    public record ScanModeOption(ScanMode Value, string Label);
 
     public partial class BulkScanItem : ObservableObject
     {
@@ -614,7 +1243,47 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _errorMessage;
         [ObservableProperty] private CardDetailViewModel? _cardDetail;
 
+        // Per-row checkbox state for multi-select Enhance / batch operations.
+        // ListBox SelectedItem still drives which card is shown in the detail
+        // pane; IsSelected is independent so the user can check several cards
+        // without losing the detail focus.
+        [ObservableProperty] private bool _isSelected;
+
+        // ScanMode used to be a plain auto-property — changes never fired
+        // PropertyChanged, so the XAML binding `SelectedItem.IsOcrScanned`
+        // got stuck at the value at-selection time and the Enhance button
+        // never appeared after a fresh OCR scan completed. Promoting it to
+        // an ObservableProperty + cascading the notification to IsOcrScanned
+        // / ShowLowConfidenceBanner fixes that.
+        [ObservableProperty] private ScanMode _scanMode = ScanMode.Ai;
+
         public string FrontImagePath { get; set; } = string.Empty;
         public string? BackImagePath { get; set; }
+
+        public List<FieldConfidence> Confidences { get; set; } = new();
+
+        /// <summary>Raw OCR text captured at scan time. Surfaced in the enhance ticker.</summary>
+        public List<string> OcrText { get; set; } = new();
+        public string OcrTextPreview =>
+            OcrText.Count == 0 ? string.Empty : string.Join("\n", OcrText.Take(20));
+
+        public bool IsOcrScanned => ScanMode == ScanMode.Ocr && Status == BulkScanStatus.Scanned;
+
+        public bool ShowLowConfidenceBanner =>
+            ScanMode == ScanMode.Ocr &&
+            Confidences.Count > 0 &&
+            Confidences.Count(c => c.Confidence == VerificationConfidence.Low) > Confidences.Count / 2;
+
+        partial void OnStatusChanged(BulkScanStatus value)
+        {
+            OnPropertyChanged(nameof(IsOcrScanned));
+            OnPropertyChanged(nameof(ShowLowConfidenceBanner));
+        }
+
+        partial void OnScanModeChanged(ScanMode value)
+        {
+            OnPropertyChanged(nameof(IsOcrScanned));
+            OnPropertyChanged(nameof(ShowLowConfidenceBanner));
+        }
     }
 }

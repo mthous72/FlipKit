@@ -13,6 +13,11 @@ namespace FlipKit.Core.Services.ApiModels
 
         [JsonPropertyName("max_tokens")]
         public int MaxTokens { get; set; } = 1024;
+
+        // Tells OpenRouter to wait up to this many seconds for the model provider.
+        // Without it, OpenRouter uses a short default that causes premature 524s on slow free/paid models.
+        [JsonPropertyName("timeout")]
+        public int Timeout { get; set; } = 270;
     }
 
     public class OpenRouterMessage

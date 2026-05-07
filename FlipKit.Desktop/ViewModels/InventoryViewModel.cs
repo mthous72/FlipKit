@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -28,9 +30,12 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IBrowserService _browserService;
         private readonly INavigationService _navigationService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IScannerService _scannerService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryViewModel> _logger;
 
         private List<Card> _allCards = new();
+        private CancellationTokenSource? _enhanceCts;
 
         [ObservableProperty] private ObservableCollection<SelectableCard> _filteredCards = new();
         [ObservableProperty] private string _searchText = string.Empty;
@@ -67,6 +72,22 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _exportError;
         [ObservableProperty] private int _selectedCount;
 
+        // Enhance
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private int _enhanceProgress;
+        [ObservableProperty] private int _enhanceTotal;
+        [ObservableProperty] private int _enhanceFailedCount;
+
+        // Live enhance ticker — bound by the My Cards enhance panel so the user
+        // can see which card / model is being processed and which fields the
+        // directory marked as verified for the current request.
+        [ObservableProperty] private Card? _currentEnhanceCard;
+        [ObservableProperty] private string? _currentEnhanceModel;
+        [ObservableProperty] private string? _currentEnhanceVerifiedFields;
+
+        public bool HasOcrSelectedCards =>
+            FilteredCards.Any(c => c.IsSelected && c.Card.DataSource == CardDataSource.Ocr);
+
         // Edit Panel (side panel for quick editing)
         [ObservableProperty] private bool _isEditPanelOpen;
         [ObservableProperty] private CardDetailViewModel? _editingCard;
@@ -88,7 +109,9 @@ namespace FlipKit.Desktop.ViewModels
             IBrowserService browserService,
             INavigationService navigationService,
             IServiceProvider serviceProvider,
-            ILogger<InventoryViewModel> logger)
+            IScannerService scannerService,
+            ILogger<InventoryViewModel> logger,
+            IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
             _settingsService = settingsService;
@@ -98,6 +121,8 @@ namespace FlipKit.Desktop.ViewModels
             _imageUploadService = imageUploadService;
             _browserService = browserService;
             _serviceProvider = serviceProvider;
+            _scannerService = scannerService;
+            _playerDirectory = playerDirectory;
             _logger = logger;
 
             LoadCardsAsync();
@@ -446,10 +471,147 @@ namespace FlipKit.Desktop.ViewModels
             SelectedCount = FilteredCards.Count(c => c.IsSelected);
             OnPropertyChanged(nameof(SelectedCard));
             OnPropertyChanged(nameof(HasSelectedItem));
+            OnPropertyChanged(nameof(HasOcrSelectedCards));
             EditSelectedCommand.NotifyCanExecuteChanged();
             RequestDeleteSelectedCommand.NotifyCanExecuteChanged();
             OpenSoldDialogCommand.NotifyCanExecuteChanged();
             RepriceSelectedCommand.NotifyCanExecuteChanged();
+        }
+
+        // === Enhance Commands ===
+
+        [RelayCommand]
+        private async Task EnhanceSelectedOcrCardsAsync()
+        {
+            var targets = FilteredCards
+                .Where(sc => sc.IsSelected
+                          && sc.Card.DataSource == CardDataSource.Ocr
+                          && !string.IsNullOrEmpty(sc.Card.ImagePathFront)
+                          && File.Exists(sc.Card.ImagePathFront))
+                .Select(sc => sc.Card)
+                .ToList();
+
+            if (targets.Count == 0) return;
+
+            _enhanceCts = new CancellationTokenSource();
+            IsEnhancing = true;
+            EnhanceProgress = 0;
+            EnhanceTotal = targets.Count;
+            ExportError = null;
+            ExportMessage = null;
+
+            var settings = _settingsService.Load();
+            var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+
+            EnhanceFailedCount = 0;
+            int succeeded = 0;
+
+            try
+            {
+                foreach (var card in targets)
+                {
+                    _enhanceCts.Token.ThrowIfCancellationRequested();
+
+                    // Reconstruct verified-fields hint from the saved Card —
+                    // re-querying the directory at Enhance time recovers the
+                    // catalog-anchored fields (player, brand, sport-by-team,
+                    // year, etc.) that the LLM should echo verbatim.
+                    var hint = _playerDirectory?.IsReady == true
+                        ? _playerDirectory.BuildHintFromCard(card)
+                        : new OcrHint
+                        {
+                            PlayerName = card.PlayerName,
+                            Year = card.Year,
+                            CardNumber = card.CardNumber,
+                            Manufacturer = card.Manufacturer,
+                            Brand = card.Brand,
+                            SetName = card.SetName,
+                        };
+
+                    // Update the live ticker so the UI shows what's currently
+                    // running. CurrentEnhanceCard drives the image + identity
+                    // panel; verified-fields list shows what's locked.
+                    CurrentEnhanceCard = card;
+                    CurrentEnhanceModel = model;
+                    CurrentEnhanceVerifiedFields = hint.VerifiedFieldNames.Count > 0
+                        ? string.Join(", ", hint.VerifiedFieldNames)
+                        : "(none — soft-hint mode)";
+
+                    try
+                    {
+                        var result = await _scannerService.ScanCardAsync(
+                            card.ImagePathFront!,
+                            card.ImagePathBack,
+                            model,
+                            scanDepth: ScanDepth.Standard,
+                            ocrHint: hint,
+                            ct: _enhanceCts.Token);
+
+                        var e = result.Card;
+                        card.PlayerName = e.PlayerName ?? card.PlayerName;
+                        card.Year = e.Year ?? card.Year;
+                        card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
+                        card.Brand = e.Brand ?? card.Brand;
+                        card.SetName = e.SetName ?? card.SetName;
+                        card.CardNumber = e.CardNumber ?? card.CardNumber;
+                        card.Team = e.Team ?? card.Team;
+                        card.VariationType = e.VariationType ?? card.VariationType;
+                        card.ParallelName = e.ParallelName ?? card.ParallelName;
+                        card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
+                        card.IsRookie = e.IsRookie;
+                        card.IsAuto = e.IsAuto;
+                        card.IsRelic = e.IsRelic;
+                        card.DataSource = CardDataSource.Ai;
+
+                        await _cardRepository.UpdateCardAsync(card);
+                        succeeded++;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Cancellation is a batch-level signal — re-throw to break the loop.
+                        throw;
+                    }
+                    catch (Exception cardEx)
+                    {
+                        // Per-card isolation: log the failure with enough context to
+                        // diagnose, increment the failed counter, and keep going.
+                        // One bad LLM response (truncation, JSON malformed, network
+                        // blip) should never abort the whole batch.
+                        _logger.LogError(cardEx,
+                            "Enhance failed for card {CardId} ({Player}); continuing batch.",
+                            card.Id, card.PlayerName);
+                        EnhanceFailedCount++;
+                    }
+                    finally
+                    {
+                        EnhanceProgress++;
+                    }
+                }
+
+                ExportMessage = EnhanceFailedCount == 0
+                    ? $"Enhanced {succeeded} card(s) with AI."
+                    : $"Enhanced {succeeded} card(s); {EnhanceFailedCount} failed (see log).";
+                LoadCardsAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                ExportMessage = $"Enhancement cancelled after {succeeded} card(s).";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Bulk enhance failed");
+                ExportError = $"Enhance failed: {ex.Message}";
+            }
+            finally
+            {
+                IsEnhancing = false;
+                CurrentEnhanceCard = null;
+                CurrentEnhanceModel = null;
+                CurrentEnhanceVerifiedFields = null;
+                _enhanceCts?.Dispose();
+                _enhanceCts = null;
+                OnPropertyChanged(nameof(HasOcrSelectedCards));
+            }
         }
 
         // === Export Commands ===
@@ -582,7 +744,9 @@ namespace FlipKit.Desktop.ViewModels
             TotalValue = _allCards.Where(c => c.ListingPrice.HasValue).Sum(c => c.ListingPrice!.Value);
             StaleCardCount = _allCards.Count(c =>
                 c.Status != CardStatus.Sold &&
+                c.Status != CardStatus.SoldInSet &&
                 c.Status != CardStatus.Draft &&
+                c.Status != CardStatus.ReservedForSet &&
                 c.PriceDate.HasValue &&
                 c.PriceDate.Value < threshold);
         }

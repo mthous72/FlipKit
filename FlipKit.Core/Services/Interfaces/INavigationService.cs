@@ -91,6 +91,16 @@ namespace FlipKit.Core.Services
         Task NavigateToRepriceAsync();
 
         /// <summary>
+        /// Navigate to the Surprise Sets list page.
+        /// </summary>
+        Task NavigateToSurpriseSetsAsync();
+
+        /// <summary>
+        /// Navigate to the detail page for a specific Surprise Set.
+        /// </summary>
+        Task NavigateToSurpriseSetDetailAsync(int setId);
+
+        /// <summary>
         /// Navigate back to the previous page (if supported by platform).
         /// </summary>
         Task GoBackAsync();

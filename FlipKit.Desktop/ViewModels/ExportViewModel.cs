@@ -154,11 +154,12 @@ namespace FlipKit.Desktop.ViewModels
         private bool MatchesFilters(ExportableCard item)
         {
             var status = item.Card.Status;
-            var statusOk = (status == CardStatus.Ready  && ShowReady)
-                        || (status == CardStatus.Listed && ShowListed)
-                        || (status == CardStatus.Draft  && ShowDraft)
-                        || (status == CardStatus.Priced && ShowReady)   // legacy "Priced" rolls into Ready
-                        || (status == CardStatus.Sold   && ShowSold);
+            var statusOk = (status == CardStatus.Ready      && ShowReady)
+                        || (status == CardStatus.Listed     && ShowListed)
+                        || (status == CardStatus.Draft      && ShowDraft)
+                        || (status == CardStatus.Priced     && ShowReady)   // legacy "Priced" rolls into Ready
+                        || (status == CardStatus.Sold       && ShowSold)
+                        || (status == CardStatus.SoldInSet  && ShowSold);   // set sales roll into Sold view
             if (!statusOk) return false;
 
             if (!string.Equals(SportFilter, AllSportsLabel, StringComparison.Ordinal))

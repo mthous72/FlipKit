@@ -1,0 +1,310 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using FlipKit.Core.Models;
+using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services;
+
+namespace FlipKit.Desktop.ViewModels
+{
+    public partial class SurpriseSetDetailViewModel : ViewModelBase
+    {
+        private readonly ISurpriseSetRepository _repository;
+        private readonly ISurpriseSetValidator _validator;
+        private readonly ISurpriseSetCsvExporter _csvExporter;
+        private readonly ISurpriseSetCompletionService _completionService;
+        private readonly IFileDialogService _fileDialog;
+        private readonly INavigationService _navigation;
+        private readonly ICardRepository _cardRepository;
+        private readonly IScannerService _scannerService;
+        private readonly ISettingsService _settingsService;
+        private readonly IPlayerNameDirectory? _playerDirectory;
+        private CancellationTokenSource? _enhanceCts;
+
+        [ObservableProperty] private SurpriseSet? _set;
+        [ObservableProperty] private ObservableCollection<Card> _cards = new();
+        [ObservableProperty] private ObservableCollection<SurpriseSetIssue> _issues = new();
+        [ObservableProperty] private bool _isLoading;
+        [ObservableProperty] private bool _isExporting;
+        [ObservableProperty] private bool _isCompleting;
+        [ObservableProperty] private bool _isEnhancing;
+        [ObservableProperty] private int _enhanceProgress;
+        [ObservableProperty] private int _enhanceTotal;
+        [ObservableProperty] private string? _statusMessage;
+        [ObservableProperty] private string? _exportStatusMessage;
+        [ObservableProperty] private string? _completeStatusMessage;
+
+        public bool HasOcrSourcedCards => Cards.Any(c => c.DataSource == CardDataSource.Ocr);
+
+        // Mark-completed form fields
+        [ObservableProperty] private int _spotsSold;
+        [ObservableProperty] private decimal _grossRevenue;
+        [ObservableProperty] private decimal _totalFees;
+        [ObservableProperty] private decimal _totalShipping;
+
+        public bool HasErrors => Issues.Any(i => i.Severity == IssueSeverity.Error);
+        public int CardCount => Cards.Count;
+        public bool CanComplete => Set?.State is SurpriseSetState.Draft
+            or SurpriseSetState.Exported
+            or SurpriseSetState.Live;
+
+        public SurpriseSetDetailViewModel(
+            ISurpriseSetRepository repository,
+            ISurpriseSetValidator validator,
+            ISurpriseSetCsvExporter csvExporter,
+            ISurpriseSetCompletionService completionService,
+            IFileDialogService fileDialog,
+            INavigationService navigation,
+            ICardRepository cardRepository,
+            IScannerService scannerService,
+            ISettingsService settingsService,
+            IPlayerNameDirectory? playerDirectory = null)
+        {
+            _repository = repository;
+            _validator = validator;
+            _csvExporter = csvExporter;
+            _completionService = completionService;
+            _fileDialog = fileDialog;
+            _navigation = navigation;
+            _cardRepository = cardRepository;
+            _scannerService = scannerService;
+            _settingsService = settingsService;
+            _playerDirectory = playerDirectory;
+        }
+
+        public async Task LoadAsync(int setId)
+        {
+            IsLoading = true;
+            StatusMessage = null;
+            ExportStatusMessage = null;
+            CompleteStatusMessage = null;
+            try
+            {
+                Set = await _repository.GetByIdWithCardsAsync(setId);
+                if (Set == null)
+                {
+                    StatusMessage = $"Set {setId} not found.";
+                    return;
+                }
+
+                var ordered = Set.Cards.OrderBy(c => c.SurpriseSetSlot ?? int.MaxValue).ToList();
+                Cards = new ObservableCollection<Card>(ordered);
+                RefreshIssues(Set, ordered);
+                OnPropertyChanged(nameof(HasOcrSourcedCards));
+                SpotsSold = ordered.Count; // default to full sell-through
+                GrossRevenue = Set.GrossRevenue ?? Set.SpotPrice * ordered.Count;
+                TotalFees = Set.TotalFees ?? 0m;
+                TotalShipping = Set.TotalShipping ?? 0m;
+                OnPropertyChanged(nameof(CanComplete));
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Failed to load: {ex.Message}";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task RemoveCardAsync(Card? card)
+        {
+            if (card == null || Set == null) return;
+            try
+            {
+                await _repository.RemoveCardAsync(Set.Id, card.Id);
+                await LoadAsync(Set.Id);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Could not remove card: {ex.Message}";
+            }
+        }
+
+        [RelayCommand]
+        private async Task ExportCsvAsync()
+        {
+            if (Set == null) return;
+
+            var path = await _fileDialog.SaveFileAsync(
+                $"Export {Set.Name}",
+                $"{Set.Name}-surprise-set.csv",
+                new[] { "csv" });
+            if (path == null) return;
+
+            IsExporting = true;
+            ExportStatusMessage = null;
+            try
+            {
+                var result = await _csvExporter.ExportAsync(Set.Id, path);
+                if (result.Success)
+                {
+                    ExportStatusMessage = $"Exported {result.RowsWritten} rows to {System.IO.Path.GetFileName(path)}.";
+                    // Reload so the State badge updates to Exported.
+                    await LoadAsync(Set.Id);
+                }
+                else
+                {
+                    var errorList = string.Join("; ", result.BlockingIssues.Select(i => i.Message));
+                    ExportStatusMessage = $"Export blocked: {errorList}";
+                }
+            }
+            catch (Exception ex)
+            {
+                ExportStatusMessage = $"Export failed: {ex.Message}";
+            }
+            finally
+            {
+                IsExporting = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task MarkCompletedAsync()
+        {
+            if (Set == null) return;
+
+            IsCompleting = true;
+            CompleteStatusMessage = null;
+            try
+            {
+                var result = await _completionService.CompleteAsync(Set.Id, new CompleteSetRequest
+                {
+                    SpotsSold = SpotsSold,
+                    GrossRevenue = GrossRevenue,
+                    TotalFees = TotalFees,
+                    TotalShipping = TotalShipping,
+                });
+
+                if (result.Success)
+                {
+                    CompleteStatusMessage = $"Set marked Completed — {result.Allocations.Count(a => a.IsSold)} cards sold.";
+                    await LoadAsync(Set.Id);
+                }
+                else
+                {
+                    CompleteStatusMessage = $"Error: {result.ErrorMessage}";
+                }
+            }
+            catch (Exception ex)
+            {
+                CompleteStatusMessage = $"Failed: {ex.Message}";
+            }
+            finally
+            {
+                IsCompleting = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task EnhanceOcrCardsAsync()
+        {
+            if (Set == null) return;
+
+            var ocrCards = Cards
+                .Where(c => c.DataSource == CardDataSource.Ocr
+                         && !string.IsNullOrEmpty(c.ImagePathFront)
+                         && File.Exists(c.ImagePathFront))
+                .ToList();
+
+            if (ocrCards.Count == 0) return;
+
+            _enhanceCts = new CancellationTokenSource();
+            IsEnhancing = true;
+            EnhanceProgress = 0;
+            EnhanceTotal = ocrCards.Count;
+            StatusMessage = null;
+
+            var settings = _settingsService.Load();
+            var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+
+            try
+            {
+                foreach (var card in ocrCards)
+                {
+                    _enhanceCts.Token.ThrowIfCancellationRequested();
+
+                    // Reconstruct verified-fields hint from the saved Card —
+                    // re-querying the directory at Enhance time recovers the
+                    // catalog-anchored fields (player, brand, sport-by-team,
+                    // year, etc.) that the LLM should echo verbatim.
+                    var hint = _playerDirectory?.IsReady == true
+                        ? _playerDirectory.BuildHintFromCard(card)
+                        : new OcrHint
+                        {
+                            PlayerName = card.PlayerName,
+                            Year = card.Year,
+                            CardNumber = card.CardNumber,
+                            Manufacturer = card.Manufacturer,
+                            Brand = card.Brand,
+                            SetName = card.SetName,
+                        };
+
+                    var result = await _scannerService.ScanCardAsync(
+                        card.ImagePathFront!,
+                        card.ImagePathBack,
+                        model,
+                        scanDepth: ScanDepth.Standard,
+                        ocrHint: hint,
+                        ct: _enhanceCts.Token);
+
+                    var e = result.Card;
+                    card.PlayerName = e.PlayerName ?? card.PlayerName;
+                    card.Year = e.Year ?? card.Year;
+                    card.Manufacturer = e.Manufacturer ?? card.Manufacturer;
+                    card.Brand = e.Brand ?? card.Brand;
+                    card.SetName = e.SetName ?? card.SetName;
+                    card.CardNumber = e.CardNumber ?? card.CardNumber;
+                    card.Team = e.Team ?? card.Team;
+                    card.VariationType = e.VariationType ?? card.VariationType;
+                    card.ParallelName = e.ParallelName ?? card.ParallelName;
+                    card.SerialNumbered = e.SerialNumbered ?? card.SerialNumbered;
+                    card.IsRookie = e.IsRookie;
+                    card.IsAuto = e.IsAuto;
+                    card.IsRelic = e.IsRelic;
+                    card.DataSource = CardDataSource.Ai;
+
+                    await _cardRepository.UpdateCardAsync(card);
+                    EnhanceProgress++;
+                }
+
+                StatusMessage = $"Enhanced {ocrCards.Count} card(s) with AI.";
+                await LoadAsync(Set.Id);
+            }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = "Enhancement cancelled.";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Enhance failed: {ex.Message}";
+            }
+            finally
+            {
+                IsEnhancing = false;
+                _enhanceCts?.Dispose();
+                _enhanceCts = null;
+                OnPropertyChanged(nameof(HasOcrSourcedCards));
+            }
+        }
+
+        [RelayCommand]
+        private async Task GoBackAsync() => await _navigation.NavigateAsync("SurpriseSets");
+
+        private void RefreshIssues(SurpriseSet set, IList<Card> cards)
+        {
+            var found = _validator.Validate(set, cards);
+            Issues = new ObservableCollection<SurpriseSetIssue>(found);
+            OnPropertyChanged(nameof(HasErrors));
+            OnPropertyChanged(nameof(CardCount));
+            OnPropertyChanged(nameof(CanComplete));
+        }
+    }
+}
