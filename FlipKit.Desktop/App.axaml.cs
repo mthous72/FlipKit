@@ -184,6 +184,9 @@ namespace FlipKit.Desktop
                 services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
                 // CSV exporter depends on the Transient repository, so it must be Transient too.
                 services.AddTransient<ISurpriseSetCsvExporter, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCsvExporter>();
+                // Completion service depends on the repository — Transient.
+                services.AddSingleton<IRevenueAllocationService, FlipKit.Core.Services.Implementations.SurpriseSets.RevenueAllocationService>();
+                services.AddTransient<ISurpriseSetCompletionService, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCompletionService>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();

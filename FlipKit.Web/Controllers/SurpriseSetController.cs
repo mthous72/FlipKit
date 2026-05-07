@@ -22,6 +22,7 @@ namespace FlipKit.Web.Controllers
         private readonly ISurpriseSetRepository _repository;
         private readonly ISurpriseSetValidator _validator;
         private readonly ISurpriseSetCsvExporter _csvExporter;
+        private readonly ISurpriseSetCompletionService _completionService;
         private readonly IScannerService _scanner;
         private readonly IMemoryCache _cache;
         private readonly ILogger<SurpriseSetController> _logger;
@@ -35,6 +36,7 @@ namespace FlipKit.Web.Controllers
             ISurpriseSetRepository repository,
             ISurpriseSetValidator validator,
             ISurpriseSetCsvExporter csvExporter,
+            ISurpriseSetCompletionService completionService,
             IScannerService scanner,
             IMemoryCache cache,
             ILogger<SurpriseSetController> logger)
@@ -42,6 +44,7 @@ namespace FlipKit.Web.Controllers
             _repository = repository;
             _validator = validator;
             _csvExporter = csvExporter;
+            _completionService = completionService;
             _scanner = scanner;
             _cache = cache;
             _logger = logger;
@@ -162,6 +165,25 @@ namespace FlipKit.Web.Controllers
                 _logger.LogError(ex, "Failed to remove card {CardId} from set {SetId}", cardId, id);
                 TempData["StatusMessage"] = $"Could not remove card: {ex.Message}";
             }
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        // POST /SurpriseSet/Complete/5
+        [HttpPost, ValidateAntiForgeryToken]
+        public async Task<IActionResult> Complete(int id, SurpriseSetCompleteFormModel form)
+        {
+            var result = await _completionService.CompleteAsync(id, new CompleteSetRequest
+            {
+                SpotsSold = form.SpotsSold,
+                GrossRevenue = form.GrossRevenue,
+                TotalFees = form.TotalFees,
+                TotalShipping = form.TotalShipping,
+            });
+
+            TempData["StatusMessage"] = result.Success
+                ? $"Set marked Completed — {result.Allocations.Count(a => a.IsSold)} cards sold."
+                : $"Error: {result.ErrorMessage}";
+
             return RedirectToAction(nameof(Detail), new { id });
         }
 

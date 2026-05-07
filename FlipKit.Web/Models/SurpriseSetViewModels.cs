@@ -33,6 +33,14 @@ namespace FlipKit.Web.Models
         public string? Error { get; set; }
     }
 
+    public class SurpriseSetCompleteFormModel
+    {
+        public int SpotsSold { get; set; }
+        public decimal GrossRevenue { get; set; }
+        public decimal TotalFees { get; set; }
+        public decimal TotalShipping { get; set; }
+    }
+
     public class SurpriseSetBulkScanViewModel
     {
         public SurpriseSet Set { get; set; } = null!;

@@ -54,6 +54,14 @@
         </div>
     }
 
+    @{
+        var canComplete = Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Draft
+            || Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Exported
+            || Model.Set.State == FlipKit.Core.Models.Enums.SurpriseSetState.Live;
+        var cardCount = Model.Cards.Count;
+        var defaultGross = Model.Set.GrossRevenue ?? (Model.Set.SpotPrice * cardCount);
+    }
+
     <div class="row g-3">
 
         <!-- Cards column -->
@@ -173,4 +181,50 @@
             </div>
         </div>
     </div>
+
+    @if (canComplete)
+    {
+        <div class="card shadow-sm mt-4">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-check2-circle"></i> Mark as Completed
+            </div>
+            <div class="card-body">
+                <form asp-action="Complete" asp-route-id="@Model.Set.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3 align-items-end">
+                        <div class="col-sm-3">
+                            <label class="form-label">Spots Sold</label>
+                            <input type="number" name="SpotsSold" class="form-control"
+                                   min="0" max="@cardCount" value="@cardCount" required/>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="form-label">Gross Revenue ($)</label>
+                            <input type="number" name="GrossRevenue" class="form-control"
+                                   min="0" step="0.01" value="@defaultGross.ToString("F2")" required/>
+                        </div>
+                        <div class="col-sm-2">
+                            <label class="form-label">Fees ($)</label>
+                            <input type="number" name="TotalFees" class="form-control"
+                                   min="0" step="0.01" value="@(Model.Set.TotalFees?.ToString("F2") ?? "0.00")"/>
+                        </div>
+                        <div class="col-sm-2">
+                            <label class="form-label">Shipping ($)</label>
+                            <input type="number" name="TotalShipping" class="form-control"
+                                   min="0" step="0.01" value="@(Model.Set.TotalShipping?.ToString("F2") ?? "0.00")"/>
+                        </div>
+                        <div class="col-sm-2">
+                            <button type="submit" class="btn btn-success w-100"
+                                    onclick="return confirm('Mark this set as Completed? This cannot be undone.')">
+                                <i class="bi bi-check2-circle"></i> Complete
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Revenue is split across sold cards using the <strong>@Model.Set.AllocationMethod</strong> method.
+                        Unsold cards will be returned to your inventory.
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
 </div>

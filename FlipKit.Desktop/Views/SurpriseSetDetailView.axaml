@@ -138,18 +138,56 @@
             </Grid>
         </Grid>
 
-        <!-- Bottom action bar -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
-            <Button Content="Export CSV to Whatnot"
-                    Command="{Binding ExportCsvCommand}"
-                    Classes="accent"
-                    IsEnabled="{Binding !IsExporting}"
-                    Padding="20,10"/>
-            <TextBlock Text="Exporting…" VerticalAlignment="Center" Opacity="0.6"
-                       IsVisible="{Binding IsExporting}"/>
-            <TextBlock Text="{Binding ExportStatusMessage}"
-                       VerticalAlignment="Center" Opacity="0.75"
-                       IsVisible="{Binding ExportStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        <!-- Bottom action bar + completion panel -->
+        <StackPanel Grid.Row="3" Spacing="12" Margin="0,12,0,0">
+
+            <!-- Export row -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Export CSV to Whatnot"
+                        Command="{Binding ExportCsvCommand}"
+                        Classes="accent"
+                        IsEnabled="{Binding !IsExporting}"
+                        Padding="20,10"/>
+                <TextBlock Text="Exporting…" VerticalAlignment="Center" Opacity="0.6"
+                           IsVisible="{Binding IsExporting}"/>
+                <TextBlock Text="{Binding ExportStatusMessage}"
+                           VerticalAlignment="Center" Opacity="0.75"
+                           IsVisible="{Binding ExportStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+
+            <!-- Mark Completed panel (hidden when already Completed/Cancelled) -->
+            <Border IsVisible="{Binding CanComplete}"
+                    BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                    BorderThickness="1" CornerRadius="6" Padding="16,12">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Mark as Completed" FontSize="14" FontWeight="SemiBold"/>
+                    <Grid ColumnDefinitions="Auto,120,Auto,120,Auto,120,Auto,120" RowDefinitions="Auto" ColumnSpacing="8">
+                        <TextBlock Grid.Column="0" Text="Spots Sold" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1" Value="{Binding SpotsSold}"
+                                       Minimum="0" FormatString="0" Padding="8,4"/>
+                        <TextBlock Grid.Column="2" Text="Gross Revenue" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <NumericUpDown Grid.Column="3" Value="{Binding GrossRevenue}"
+                                       Minimum="0" FormatString="C2" Padding="8,4"/>
+                        <TextBlock Grid.Column="4" Text="Fees" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <NumericUpDown Grid.Column="5" Value="{Binding TotalFees}"
+                                       Minimum="0" FormatString="C2" Padding="8,4"/>
+                        <TextBlock Grid.Column="6" Text="Shipping" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <NumericUpDown Grid.Column="7" Value="{Binding TotalShipping}"
+                                       Minimum="0" FormatString="C2" Padding="8,4"/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="Mark Completed"
+                                Command="{Binding MarkCompletedCommand}"
+                                IsEnabled="{Binding !IsCompleting}"
+                                Padding="16,8"/>
+                        <TextBlock Text="Saving…" VerticalAlignment="Center" Opacity="0.6"
+                                   IsVisible="{Binding IsCompleting}"/>
+                        <TextBlock Text="{Binding CompleteStatusMessage}"
+                                   VerticalAlignment="Center" Opacity="0.8"
+                                   IsVisible="{Binding CompleteStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Grid>
 </UserControl>

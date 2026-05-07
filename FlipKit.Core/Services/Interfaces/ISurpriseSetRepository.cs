@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
@@ -38,5 +39,15 @@ namespace FlipKit.Core.Services
         /// (Exported, Live, Completed, or Cancelled).
         /// </summary>
         Task<bool> IsLockedAsync(int id);
+
+        /// <summary>
+        /// Atomically marks the set as Completed and applies revenue allocations:
+        /// sold cards get SalePrice/SaleDate stamped and Status = SoldInSet;
+        /// unsold cards are returned to inventory (SurpriseSetId/Slot cleared, status re-evaluated).
+        /// </summary>
+        Task CompleteSetAsync(
+            SurpriseSet set,
+            IList<CardAllocation> allocations,
+            DateTime completedAt);
     }
 }

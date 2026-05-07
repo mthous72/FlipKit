@@ -112,6 +112,9 @@ builder.Services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Imple
 builder.Services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
 // CSV exporter depends on the Scoped repository, so it must be Scoped too.
 builder.Services.AddScoped<ISurpriseSetCsvExporter, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCsvExporter>();
+// Completion service depends on the repository — Scoped.
+builder.Services.AddSingleton<IRevenueAllocationService, FlipKit.Core.Services.Implementations.SurpriseSets.RevenueAllocationService>();
+builder.Services.AddScoped<ISurpriseSetCompletionService, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCompletionService>();
 // IMemoryCache backs the 2-step Web import preview — parse + LLM enrich on
 // upload, stash by GUID token, render the review page, commit reads back by
 // token. Avoids re-running the LLM on every commit.

@@ -150,6 +150,50 @@ namespace FlipKit.Core.Services.Implementations
                 or SurpriseSetState.Cancelled;
         }
 
+        public async Task CompleteSetAsync(
+            SurpriseSet set,
+            IList<CardAllocation> allocations,
+            DateTime completedAt)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var existing = _db.ChangeTracker.Entries<SurpriseSet>()
+                    .FirstOrDefault(e => e.Entity.Id == set.Id);
+                if (existing != null) existing.State = EntityState.Detached;
+                _db.SurpriseSets.Update(set);
+
+                foreach (var alloc in allocations)
+                {
+                    var card = await _db.Cards.FindAsync(alloc.CardId);
+                    if (card == null) continue;
+
+                    if (alloc.IsSold)
+                    {
+                        card.SalePrice = alloc.AllocatedRevenue;
+                        card.SaleDate = completedAt;
+                        card.SalePlatform = "Whatnot";
+                        card.Status = CardStatus.SoldInSet;
+                    }
+                    else
+                    {
+                        card.SurpriseSetId = null;
+                        card.SurpriseSetSlot = null;
+                        card.Status = CardStatusEvaluator.Evaluate(card);
+                    }
+                    card.UpdatedAt = completedAt;
+                }
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
         // Rebalances per-card cost for all LotSplit cards in the set.
         // N = total cards in set (including manually-costed ones) so the split
         // reflects the actual lot composition, not just the auto-split subset.
