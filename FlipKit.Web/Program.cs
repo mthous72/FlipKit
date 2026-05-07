@@ -110,6 +110,8 @@ builder.Services.AddScoped<ISurpriseSetRepository, FlipKit.Core.Services.Impleme
 builder.Services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
 // Description generator is pure template logic — no LLM, no DB, no state.
 builder.Services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
+// CSV exporter depends on the Scoped repository, so it must be Scoped too.
+builder.Services.AddScoped<ISurpriseSetCsvExporter, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCsvExporter>();
 // IMemoryCache backs the 2-step Web import preview — parse + LLM enrich on
 // upload, stash by GUID token, render the review page, commit reads back by
 // token. Avoids re-running the LLM on every commit.

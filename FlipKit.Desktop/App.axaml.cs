@@ -182,6 +182,8 @@ namespace FlipKit.Desktop
                 services.AddSingleton<ISurpriseSetValidator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetValidator>();
                 // Description generator is pure template logic — no LLM, no DB, no state.
                 services.AddSingleton<ISurpriseSetDescriptionGenerator, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetDescriptionGenerator>();
+                // CSV exporter depends on the Transient repository, so it must be Transient too.
+                services.AddTransient<ISurpriseSetCsvExporter, FlipKit.Core.Services.Implementations.SurpriseSets.SurpriseSetCsvExporter>();
 
                 // ViewModels
                 services.AddSingleton<MainWindowViewModel>();
