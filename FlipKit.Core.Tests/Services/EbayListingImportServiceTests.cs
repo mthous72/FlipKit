@@ -18,7 +18,8 @@ public class EbayListingImportServiceTests
 
     private static EbayListingImportService Build(
         IEbayTitleEnricher? enricher = null,
-        ICardRepository? repo = null)
+        ICardRepository? repo = null,
+        IPlayerNameDirectory? directory = null)
     {
         if (enricher is null)
         {
@@ -36,8 +37,40 @@ public class EbayListingImportServiceTests
         }
 
         repo ??= Substitute.For<ICardRepository>();
-        return new EbayListingImportService(enricher, repo, NullLogger<EbayListingImportService>.Instance);
+        return new EbayListingImportService(enricher, repo, NullLogger<EbayListingImportService>.Instance, directory);
     }
+
+    /// <summary>
+    /// Builds a stub directory whose <c>Manufacturers</c> matches the supplied
+    /// list. <c>IsReady</c> is true so the import service uses the dictionary.
+    /// Other directory members aren't exercised here so they return defaults.
+    /// </summary>
+    private static IPlayerNameDirectory StubDirectoryWithManufacturers(params string[] manufacturers)
+        => StubDirectory(manufacturers: manufacturers);
+
+    /// <summary>
+    /// General-purpose directory stub. Pass only the fields you care about;
+    /// others default to empty so unrelated tests don't depend on them.
+    /// </summary>
+    private static IPlayerNameDirectory StubDirectory(
+        IReadOnlyCollection<string>? manufacturers = null,
+        IReadOnlyDictionary<string, string>? leagueAcronymToSport = null)
+    {
+        var dir = Substitute.For<IPlayerNameDirectory>();
+        dir.IsReady.Returns(true);
+        dir.Manufacturers.Returns(manufacturers ?? System.Array.Empty<string>());
+        dir.LeagueAcronymToSport.Returns(
+            leagueAcronymToSport ?? new Dictionary<string, string>());
+        return dir;
+    }
+
+    private static readonly Dictionary<string, string> CommonLeagueAcronyms = new(System.StringComparer.OrdinalIgnoreCase)
+    {
+        { "NFL", "Football" }, { "NBA", "Basketball" }, { "MLB", "Baseball" },
+        { "NHL", "Hockey" }, { "MLS", "Soccer" }, { "UFC", "MMA" },
+        { "WWE", "Wrestling" }, { "PGA", "Golf" }, { "F1", "Racing" },
+        { "NASCAR", "Racing" },
+    };
 
     [Fact]
     public async Task Parse_ReturnsEmptyPreview_When_CsvHasNoRows()
@@ -52,7 +85,9 @@ public class EbayListingImportServiceTests
     public async Task Parse_RunsRulePass_AndPopulatesYearAndManufacturer()
     {
         var line = "\"1\",2025 Panini Select Jonathan Taylor #132,,,\"1\",\"FIXED_PRICE\",\"USD\",75.0,,,75.0,\"0\",,,Apr-29-26 17:04:25 PDT,May-29-26 17:04:25 PDT,,,,,Ungraded,,,,,,,,,";
-        var svc = Build();
+        // Manufacturer lookup needs the directory dictionary — without it,
+        // the rule pass intentionally leaves Manufacturer null.
+        var svc = Build(directory: StubDirectoryWithManufacturers("Panini", "Topps", "Bowman"));
 
         var preview = await svc.ParseAsync(Csv(line), "in.csv");
 
@@ -132,9 +167,11 @@ public class EbayListingImportServiceTests
     [Fact]
     public async Task Parse_StampsSport_From_TitleHeuristic()
     {
-        // "NFL Gear" in the title triggers the Football inference.
+        // "NFL Gear" in the title triggers the Football inference. Sport
+        // inference now flows through the directory's seeded LeagueAcronyms,
+        // so the test wires a directory with the relevant acronyms.
         var line = "\"123\",Blake Corum RC 2024 National Treasures NFL Gear Dual Rookie Patch Auto 02/25,,,\"1\",\"FIXED_PRICE\",\"USD\",65.0,,,65.0,\"0\",,,Apr-29-26 17:02:34 PDT,May-29-26 17:02:34 PDT,,,,,Ungraded,,,,,,,,,";
-        var svc = Build();
+        var svc = Build(directory: StubDirectory(leagueAcronymToSport: CommonLeagueAcronyms));
 
         var preview = await svc.ParseAsync(Csv(line), "in.csv");
 
