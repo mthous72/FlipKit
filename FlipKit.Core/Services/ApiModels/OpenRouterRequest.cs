@@ -18,6 +18,15 @@ namespace FlipKit.Core.Services.ApiModels
         // Without it, OpenRouter uses a short default that causes premature 524s on slow free/paid models.
         [JsonPropertyName("timeout")]
         public int Timeout { get; set; } = 270;
+
+        // Strict structured-output gate. When set, OpenRouter forwards a json_schema
+        // constraint to the model provider so the response is grammar-bound to the
+        // schema (parallel_name, variation_type, etc. emitted only as enum values).
+        // Omitted from the wire when null so callers that don't opt in (legacy
+        // scanner paths, ebay title enricher) keep their request shape unchanged.
+        [JsonPropertyName("response_format")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public object? ResponseFormat { get; set; }
     }
 
     public class OpenRouterMessage

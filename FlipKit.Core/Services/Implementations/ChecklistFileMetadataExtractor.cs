@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using FlipKit.Core.Helpers;
 using FlipKit.Core.Models;
 
 namespace FlipKit.Core.Services
@@ -36,33 +37,8 @@ namespace FlipKit.Core.Services
             "Topps", "Panini", "UpperDeck", "Upper Deck", "Fanatics", "Leaf", "Pinnacle",
         };
 
-        // Brand → manufacturer mapping for brands that don't carry the manufacturer in the
-        // filename. Covers the common modern releases that ship with Checklist Insider xlsx
-        // files. Unknown brands fall through and the user picks the manufacturer in the UI.
-        private static readonly Dictionary<string, string> BrandToManufacturer = new(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Mosaic", "Panini" },
-            { "Prizm", "Panini" },
-            { "Select", "Panini" },
-            { "Optic", "Panini" },
-            { "Donruss", "Panini" },
-            { "Score", "Panini" },
-            { "Contenders", "Panini" },
-            { "Absolute", "Panini" },
-            { "Origins", "Panini" },
-            { "Obsidian", "Panini" },
-            { "Immaculate", "Panini" },
-            { "National Treasures", "Panini" },
-            { "Bowman", "Topps" },
-            { "Chrome", "Topps" },
-            { "Heritage", "Topps" },
-            { "Stadium Club", "Topps" },
-            { "Allen and Ginter", "Topps" },
-            { "Gypsy Queen", "Topps" },
-            { "Fire", "Topps" },
-            { "Series 1", "Topps" },
-            { "Series 2", "Topps" },
-        };
+        // Brand → manufacturer lookup lives in shared BrandManufacturerMap so the
+        // checklist importer and the runtime parallel-candidate provider stay in sync.
 
         public ChecklistImportMetadata Extract(string fileName)
         {
@@ -122,29 +98,12 @@ namespace FlipKit.Core.Services
                 result.Brand = trimmed;
             }
 
-            // If we still don't have a manufacturer, infer from the brand. Try the full brand
-            // first so multi-word brands resolve directly; then fall back to a longest-prefix
-            // search over the catalog so "Donruss Elite" still maps to Panini via "Donruss".
+            // If we still don't have a manufacturer, infer from the brand via the
+            // shared BrandManufacturerMap (handles longest-prefix walks for
+            // multi-word brands like "Donruss Elite" → Panini).
             if (string.IsNullOrWhiteSpace(result.Manufacturer) && !string.IsNullOrWhiteSpace(result.Brand))
             {
-                if (BrandToManufacturer.TryGetValue(result.Brand, out var directMfr))
-                {
-                    result.Manufacturer = directMfr;
-                }
-                else
-                {
-                    // Walk the brand tokens left-to-right looking for a known root brand.
-                    var tokens = result.Brand.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    for (var take = tokens.Length; take >= 1; take--)
-                    {
-                        var prefix = string.Join(' ', tokens.Take(take));
-                        if (BrandToManufacturer.TryGetValue(prefix, out var prefixMfr))
-                        {
-                            result.Manufacturer = prefixMfr;
-                            break;
-                        }
-                    }
-                }
+                result.Manufacturer = BrandManufacturerMap.Resolve(result.Brand);
             }
 
             return result;

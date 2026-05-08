@@ -210,6 +210,9 @@ namespace FlipKit.Desktop
                 // embedded JSON at construction so only one instance is needed.
                 services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
                 services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
+                // Used by the scanner prompt builder + json_schema enum to constrain
+                // the LLM to known parallel names (per-brand list, not free-form).
+                services.AddSingleton<IParallelCandidateProvider, ParallelCandidateProvider>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
                 // eBay Seller Hub CSV import (Roadmap #3 — see Docs/17-FUTURE-ROADMAP.md item
                 // "eBay Listings Import"). Enricher uses OpenRouter for the title LLM pass;
