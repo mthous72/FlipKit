@@ -24,6 +24,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly IScannerService _scannerService;
         private readonly Services.IPaidScanGate _paidScanGate;
+        private readonly Services.IAppNotificationService? _notificationService;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<EditCardViewModel> _logger;
 
@@ -72,7 +73,9 @@ namespace FlipKit.Desktop.ViewModels
             IScannerService scannerService,
             Services.IPaidScanGate paidScanGate,
             ILogger<EditCardViewModel> logger,
-            IPlayerNameDirectory? playerDirectory = null)
+            IPlayerNameDirectory? playerDirectory = null,
+            // Optional so existing test fixtures don't have to wire it up.
+            Services.IAppNotificationService? notificationService = null)
         {
             _cardRepository = cardRepository;
             _navigationService = navigationService;
@@ -82,6 +85,7 @@ namespace FlipKit.Desktop.ViewModels
             _settingsService = settingsService;
             _scannerService = scannerService;
             _paidScanGate = paidScanGate;
+            _notificationService = notificationService;
             _playerDirectory = playerDirectory;
             _logger = logger;
 
@@ -332,6 +336,18 @@ namespace FlipKit.Desktop.ViewModels
 
                 EnhanceMessage = "Enhanced with AI — review fields and save.";
                 _logger.LogInformation("Enhanced card {CardId} with AI", _originalCard.Id);
+            }
+            catch (OpenRouterPaymentRequiredException pEx)
+            {
+                _logger.LogError(pEx, "Payment Required during edit-card enhance");
+                ErrorMessage = pEx.Message;
+                _notificationService?.NotifyPaymentRequired(pEx.ModelId, pEx.ResponseBody);
+            }
+            catch (OpenRouterRateLimitException rlEx)
+            {
+                _logger.LogError(rlEx, "Rate limit during edit-card enhance");
+                ErrorMessage = rlEx.Message;
+                _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
             }
             catch (Exception ex)
             {

@@ -316,6 +316,96 @@
                     </div>
                 </div>
 
+                @* OpenRouter Usage — server-rendered card. Shown only when an
+                   API key is configured; renders error state inline when the
+                   key-info fetch fails. Refresh button POSTs back to Index. *@
+                @if (Model.HasOpenRouterKey)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up"></i> OpenRouter Usage
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (Model.OpenRouterUsage is { } u)
+                            {
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <span class="badge @(u.IsFreeTier ? "bg-secondary" : "bg-success")">
+                                        @(u.IsFreeTier ? "Free tier" : "Paid")
+                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(u.Label))
+                                    {
+                                        <small class="text-muted">@u.Label</small>
+                                    }
+                                    <small class="text-muted ms-auto">
+                                        Refreshed @u.FetchedAt.LocalDateTime.ToString("g")
+                                    </small>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2">
+                                            <div class="text-muted small">Credits remaining</div>
+                                            <div class="fw-semibold">
+                                                @if (u.LimitRemaining is { } rem && u.Limit is { } lim)
+                                                {
+                                                    @($"${rem:F2} of ${lim:F2}")
+                                                }
+                                                else if (u.LimitRemaining is { } rem2)
+                                                {
+                                                    @($"${rem2:F2}")
+                                                }
+                                                else
+                                                {
+                                                    <text>(no credit limit)</text>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2">
+                                            <div class="text-muted small">Today</div>
+                                            <div class="fw-semibold">@($"${u.UsageDaily:F2}")</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2">
+                                            <div class="text-muted small">This week</div>
+                                            <div class="fw-semibold">@($"${u.UsageWeekly:F2}")</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="border rounded p-2">
+                                            <div class="text-muted small">This month</div>
+                                            <div class="fw-semibold">@($"${u.UsageMonthly:F2}")</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (u.IsFreeTier)
+                                {
+                                    <div class="alert alert-warning small mb-0">
+                                        Free models are limited to ~50 requests/day until you purchase ≥$10 of credits, which raises the cap to 1000/day.
+                                        See <a href="https://openrouter.ai/credits" target="_blank">openrouter.ai/credits</a>.
+                                    </div>
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(Model.OpenRouterUsageError))
+                            {
+                                <div class="alert alert-danger small mb-0">@Model.OpenRouterUsageError</div>
+                            }
+
+                            <form asp-action="RefreshUsage" method="post" class="mt-3">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+
                 <!-- AI Settings -->
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">

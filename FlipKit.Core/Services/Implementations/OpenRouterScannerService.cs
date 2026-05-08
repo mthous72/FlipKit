@@ -556,6 +556,13 @@ Return ONLY the JSON, no other text.";
                 throw OpenRouterRateLimitParser.Parse(responseBody, retryAfterHeader, model);
             }
 
+            if (response.StatusCode == HttpStatusCode.PaymentRequired)
+                // 402 = OpenRouter says the credit balance has gone negative.
+                // Surface as a typed exception so VMs can route to a sticky red
+                // toast and the user sees the billing problem even when on
+                // another tab.
+                throw new OpenRouterPaymentRequiredException(model, responseBody);
+
             if (!response.IsSuccessStatusCode)
                 // Include integer status code so Is5xxError / IsWalkableHttpError can detect
                 // the status by digit substring. Pre-Phase 5a only "404"/"NotFound" worked;

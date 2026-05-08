@@ -33,6 +33,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IServiceProvider _serviceProvider;
         private readonly IScannerService _scannerService;
         private readonly Services.IPaidScanGate _paidScanGate;
+        private readonly Services.IAppNotificationService? _notificationService;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryViewModel> _logger;
 
@@ -115,7 +116,10 @@ namespace FlipKit.Desktop.ViewModels
             IScannerService scannerService,
             Services.IPaidScanGate paidScanGate,
             ILogger<InventoryViewModel> logger,
-            IPlayerNameDirectory? playerDirectory = null)
+            IPlayerNameDirectory? playerDirectory = null,
+            // Optional so existing test fixtures don't have to wire it up.
+            // When unset, billing-error toasts are skipped.
+            Services.IAppNotificationService? notificationService = null)
         {
             _cardRepository = cardRepository;
             _surpriseSetRepository = surpriseSetRepository;
@@ -128,6 +132,7 @@ namespace FlipKit.Desktop.ViewModels
             _serviceProvider = serviceProvider;
             _scannerService = scannerService;
             _paidScanGate = paidScanGate;
+            _notificationService = notificationService;
             _playerDirectory = playerDirectory;
             _logger = logger;
 
@@ -675,6 +680,24 @@ namespace FlipKit.Desktop.ViewModels
                         // Cancellation is a batch-level signal — re-throw to break the loop.
                         throw;
                     }
+                    catch (OpenRouterPaymentRequiredException pEx)
+                    {
+                        // Negative balance — fire a sticky red toast and stop the
+                        // batch. Continuing would just multiply the error.
+                        _logger.LogError(pEx, "Payment Required during enhance of card {CardId}", card.Id);
+                        EnhanceFailedCount++;
+                        _notificationService?.NotifyPaymentRequired(pEx.ModelId, pEx.ResponseBody);
+                        throw new OperationCanceledException("Stopped after Payment Required.");
+                    }
+                    catch (OpenRouterRateLimitException rlEx)
+                    {
+                        // Daily quota or per-minute throttle — toast it, then
+                        // stop so we don't burn through more quota fruitlessly.
+                        _logger.LogError(rlEx, "Rate limit during enhance of card {CardId}", card.Id);
+                        EnhanceFailedCount++;
+                        _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
+                        throw new OperationCanceledException("Stopped after rate limit.");
+                    }
                     catch (Exception cardEx)
                     {
                         // Per-card isolation: log the failure with enough context to
@@ -714,6 +737,9 @@ namespace FlipKit.Desktop.ViewModels
                 CurrentEnhanceVerifiedFields = null;
                 _enhanceCts?.Dispose();
                 _enhanceCts = null;
+                // Tell Settings → Usage to refresh; this batch may have shifted
+                // daily/weekly burn meaningfully.
+                _notificationService?.RaiseScanBatchCompleted();
                 OnPropertyChanged(nameof(HasOcrSelectedCards));
             }
         }

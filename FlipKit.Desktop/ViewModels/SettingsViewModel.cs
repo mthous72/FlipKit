@@ -69,6 +69,14 @@ namespace FlipKit.Desktop.ViewModels
 
         public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
+        // === OpenRouter Usage panel ===
+        // Snapshot fetched from GET /api/v1/key. Null until the first successful
+        // refresh. Each display string handles null gracefully (returns "—" or
+        // similar) so XAML can bind without null guards.
+        [ObservableProperty] private OpenRouterKeyInfo? _keyInfo;
+        [ObservableProperty] private bool _isLoadingKeyInfo;
+        [ObservableProperty] private string? _keyInfoError;
+
         // Card Scanning
         [ObservableProperty] private bool _enableVariationVerification = true;
         [ObservableProperty] private bool _autoApplyHighConfidenceSuggestions = true;
@@ -163,6 +171,14 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _tailscaleStatus = "Not configured";
 
         private readonly IOpenRouterModelCatalog? _modelCatalog;
+        // Drives the OpenRouter Usage panel (credits remaining + daily/weekly/
+        // monthly burn). Optional so Settings still loads if DI registration
+        // ever changes — same pattern as _modelCatalog.
+        private readonly IOpenRouterKeyInfoService? _keyInfoService;
+        // Subscribed in ctor so post-batch auto-refresh fires while Settings
+        // is the active page. Unsubscribed in Dispose so navigating away
+        // doesn't leak the handler. Optional for the same reason as the others.
+        private readonly Services.IAppNotificationService? _appNotifications;
         private readonly ICameraService? _cameraService;
         private readonly IWebcamCaptureDialogService? _webcamCaptureDialog;
 
@@ -179,6 +195,10 @@ namespace FlipKit.Desktop.ViewModels
 
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
+            _keyInfoService = services.GetService(typeof(IOpenRouterKeyInfoService)) as IOpenRouterKeyInfoService;
+            _appNotifications = services.GetService(typeof(Services.IAppNotificationService)) as Services.IAppNotificationService;
+            if (_appNotifications != null)
+                _appNotifications.ScanBatchCompleted += OnScanBatchCompleted;
             _cameraService = services.GetService(typeof(ICameraService)) as ICameraService;
             _webcamCaptureDialog = services.GetService(typeof(IWebcamCaptureDialogService)) as IWebcamCaptureDialogService;
 
@@ -189,6 +209,9 @@ namespace FlipKit.Desktop.ViewModels
             UpdateLocalIpAddresses();
 
             _ = LoadModelsAsync();
+            // Auto-fetch on Settings open per planning. Skipped silently when
+            // no API key is configured — the panel renders the empty state.
+            _ = RefreshKeyInfoAsync();
 
             // Refresh server status every 2 seconds
             _statusRefreshTimer = new Timer(_ =>
@@ -241,6 +264,113 @@ namespace FlipKit.Desktop.ViewModels
         private async Task RefreshModelsAsync()
         {
             await LoadModelsAsync(forceRefresh: true);
+        }
+
+        // === OpenRouter key-info / Usage panel ===
+
+        /// <summary>
+        /// Display strings for the four stat tiles. Computed so that null /
+        /// no-limit cases render "—" or "(no limit)" instead of blank or "$0".
+        /// </summary>
+        public string CreditsRemainingDisplay
+        {
+            get
+            {
+                if (KeyInfo == null) return "—";
+                var rem = KeyInfo.LimitRemaining;
+                var lim = KeyInfo.Limit;
+                if (rem == null && lim == null) return "(no credit limit)";
+                if (rem != null && lim != null) return $"${rem:F2} of ${lim:F2}";
+                if (rem != null) return $"${rem:F2}";
+                return "(no limit set)";
+            }
+        }
+
+        public string UsageDailyDisplay   => KeyInfo == null ? "—" : $"${KeyInfo.UsageDaily:F2}";
+        public string UsageWeeklyDisplay  => KeyInfo == null ? "—" : $"${KeyInfo.UsageWeekly:F2}";
+        public string UsageMonthlyDisplay => KeyInfo == null ? "—" : $"${KeyInfo.UsageMonthly:F2}";
+
+        public string TierBadge => KeyInfo?.IsFreeTier == true ? "Free tier" : "Paid";
+
+        public string LastRefreshedDisplay
+        {
+            get
+            {
+                if (KeyInfo == null) return string.Empty;
+                var elapsed = DateTimeOffset.UtcNow - KeyInfo.FetchedAt;
+                if (elapsed.TotalSeconds < 5) return "just now";
+                if (elapsed.TotalMinutes < 1) return $"{(int)elapsed.TotalSeconds}s ago";
+                if (elapsed.TotalHours < 1)   return $"{(int)elapsed.TotalMinutes}m ago";
+                if (elapsed.TotalDays < 1)    return $"{(int)elapsed.TotalHours}h ago";
+                return KeyInfo.FetchedAt.LocalDateTime.ToString("g");
+            }
+        }
+
+        public bool HasKeyInfo => KeyInfo != null;
+
+        // Show the free-tier reminder when the user's still on the free RPM/RPD
+        // bucket. Anchored to is_free_tier rather than a hard credit threshold
+        // so OpenRouter changes its caps without breaking us.
+        public bool ShowFreeTierLimitReminder => KeyInfo?.IsFreeTier == true;
+
+        partial void OnKeyInfoChanged(OpenRouterKeyInfo? value)
+        {
+            // KeyInfo's display strings + computed flags need an explicit
+            // PropertyChanged when the source record swaps — the source-generator
+            // doesn't know about them.
+            OnPropertyChanged(nameof(CreditsRemainingDisplay));
+            OnPropertyChanged(nameof(UsageDailyDisplay));
+            OnPropertyChanged(nameof(UsageWeeklyDisplay));
+            OnPropertyChanged(nameof(UsageMonthlyDisplay));
+            OnPropertyChanged(nameof(TierBadge));
+            OnPropertyChanged(nameof(LastRefreshedDisplay));
+            OnPropertyChanged(nameof(HasKeyInfo));
+            OnPropertyChanged(nameof(ShowFreeTierLimitReminder));
+        }
+
+        /// <summary>
+        /// Pulls a fresh snapshot from <c>GET /api/v1/key</c> via the registered
+        /// service. Skips silently when the key isn't set yet (Settings just
+        /// opened on a fresh install). Per-call exceptions populate
+        /// <see cref="KeyInfoError"/> so the UI shows a graceful inline message.
+        /// </summary>
+        [RelayCommand]
+        public async Task RefreshKeyInfoAsync()
+        {
+            if (_keyInfoService == null) return;
+            if (string.IsNullOrWhiteSpace(OpenRouterApiKey))
+            {
+                // No key yet — clear stale state and skip the wire call. UI
+                // will fall through to the "configure key first" affordance.
+                KeyInfo = null;
+                KeyInfoError = null;
+                return;
+            }
+
+            IsLoadingKeyInfo = true;
+            KeyInfoError = null;
+            try
+            {
+                KeyInfo = await _keyInfoService.GetAsync();
+            }
+            catch (OpenRouterPaymentRequiredException pEx)
+            {
+                // Toast already fires from any scan path — here we just surface
+                // the inline status so the user sees it on the Settings tab too.
+                KeyInfoError = $"Payment required: {pEx.ResponseBody ?? "credit balance is negative."}";
+            }
+            catch (OpenRouterRateLimitException rlEx)
+            {
+                KeyInfoError = $"Rate limited (scope: {rlEx.Scope})";
+            }
+            catch (Exception ex)
+            {
+                KeyInfoError = $"Couldn't load usage: {ex.Message}";
+            }
+            finally
+            {
+                IsLoadingKeyInfo = false;
+            }
         }
 
         partial void OnSelectedDefaultModelChanged(ModelOption? value)
@@ -1031,9 +1161,17 @@ namespace FlipKit.Desktop.ViewModels
                 : $"Test capture saved: {path}";
         }
 
+        // Handler for IAppNotificationService.ScanBatchCompleted. Re-fetches
+        // the OpenRouter usage tiles whenever a Bulk Scan / Inventory Enhance
+        // / Surprise Set Enhance batch finishes. Fire-and-forget — the refresh
+        // method is idempotent and handles its own error states.
+        private void OnScanBatchCompleted(object? sender, EventArgs e) => _ = RefreshKeyInfoAsync();
+
         public void Dispose()
         {
             _statusRefreshTimer?.Dispose();
+            if (_appNotifications != null)
+                _appNotifications.ScanBatchCompleted -= OnScanBatchCompleted;
         }
     }
 }

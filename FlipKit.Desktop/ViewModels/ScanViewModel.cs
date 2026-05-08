@@ -26,6 +26,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
         private readonly Services.IPaidScanGate _paidScanGate;
+        private readonly Services.IAppNotificationService? _notificationService;
         private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
@@ -115,7 +116,11 @@ namespace FlipKit.Desktop.ViewModels
             IBrowserService browserService,
             IWebcamCaptureDialogService webcamCaptureDialog,
             ILogger<ScanViewModel> logger,
-            IPlayerNameDirectory? playerDirectory = null)
+            IPlayerNameDirectory? playerDirectory = null,
+            // Optional so existing test fixtures don't have to wire it up.
+            // When unset, billing-error toasts are skipped — the inline
+            // ErrorMessage path still surfaces the failure.
+            Services.IAppNotificationService? notificationService = null)
         {
             _scannerService = scannerService;
             _ocrService = ocrService;
@@ -128,6 +133,7 @@ namespace FlipKit.Desktop.ViewModels
             _modelCatalog = modelCatalog;
             _consentService = consentService;
             _paidScanGate = paidScanGate;
+            _notificationService = notificationService;
             _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
             _browserService = browserService;
@@ -447,6 +453,18 @@ namespace FlipKit.Desktop.ViewModels
                     }
                 }
             }
+            catch (OpenRouterPaymentRequiredException pEx)
+            {
+                _logger.LogError(pEx, "Payment Required during scan of {ImagePath}", ImagePath);
+                ErrorMessage = pEx.Message;
+                _notificationService?.NotifyPaymentRequired(pEx.ModelId, pEx.ResponseBody);
+            }
+            catch (OpenRouterRateLimitException rlEx)
+            {
+                _logger.LogError(rlEx, "Rate limit during scan of {ImagePath}", ImagePath);
+                ErrorMessage = rlEx.Message;
+                _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Scan failed for {ImagePath}", ImagePath);
@@ -559,6 +577,18 @@ namespace FlipKit.Desktop.ViewModels
 
                 EnhanceMessage = "Enhanced with AI — review fields and save.";
                 _logger.LogInformation("Enhanced single OCR scan with AI ({Player})", ScannedCard.PlayerName);
+            }
+            catch (OpenRouterPaymentRequiredException pEx)
+            {
+                _logger.LogError(pEx, "Payment Required during single-scan enhance");
+                ErrorMessage = pEx.Message;
+                _notificationService?.NotifyPaymentRequired(pEx.ModelId, pEx.ResponseBody);
+            }
+            catch (OpenRouterRateLimitException rlEx)
+            {
+                _logger.LogError(rlEx, "Rate limit during single-scan enhance");
+                ErrorMessage = rlEx.Message;
+                _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
             }
             catch (Exception ex)
             {

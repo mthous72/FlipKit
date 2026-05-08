@@ -412,4 +412,24 @@ public class OpenRouterScannerServiceTests
 
         Assert.Equal(Sport.Football, card.Sport);
     }
+
+    // === Typed billing-error exceptions (Phase 1) ===
+
+    [Fact]
+    public async Task Should_ThrowPaymentRequiredException_When_ServerReturns402()
+    {
+        // 402 = OpenRouter says the credit balance is negative. Was previously
+        // collapsed into a generic HttpRequestException; now typed so the toast
+        // path can show a sticky red notification.
+        using var image = new TempImageFile();
+        var handler = new StubHttpMessageHandler(HttpStatusCode.PaymentRequired,
+            "Insufficient credits — balance is -$0.42");
+        var svc = CreateService(handler);
+
+        var ex = await Assert.ThrowsAsync<OpenRouterPaymentRequiredException>(
+            () => svc.ScanCardAsync(image.Path, model: "openai/gpt-4o"));
+
+        Assert.Equal("openai/gpt-4o", ex.ModelId);
+        Assert.Contains("-$0.42", ex.ResponseBody);
+    }
 }

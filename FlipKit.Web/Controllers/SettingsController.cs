@@ -14,12 +14,18 @@ namespace FlipKit.Web.Controllers
     {
         private readonly ISettingsService _settingsService;
         private readonly IOpenRouterModelCatalog _modelCatalog;
+        private readonly IOpenRouterKeyInfoService _keyInfoService;
         private readonly ILogger<SettingsController> _logger;
 
-        public SettingsController(ISettingsService settingsService, IOpenRouterModelCatalog modelCatalog, ILogger<SettingsController> logger)
+        public SettingsController(
+            ISettingsService settingsService,
+            IOpenRouterModelCatalog modelCatalog,
+            IOpenRouterKeyInfoService keyInfoService,
+            ILogger<SettingsController> logger)
         {
             _settingsService = settingsService;
             _modelCatalog = modelCatalog;
+            _keyInfoService = keyInfoService;
             _logger = logger;
         }
 
@@ -80,7 +86,47 @@ namespace FlipKit.Web.Controllers
                 viewModel.CatalogError = $"Model catalog failed to load: {ex.Message}";
             }
 
+            // OpenRouter key-info / Usage panel — fetches credits remaining +
+            // daily/weekly/monthly burn so the Settings page surfaces billing
+            // visibility before the user kicks off a scan. Best-effort: any
+            // failure (no key, 402, 429, network) populates OpenRouterUsageError
+            // so the Razor view renders a graceful inline message instead of
+            // crashing the page.
+            if (viewModel.HasOpenRouterKey)
+            {
+                try
+                {
+                    viewModel.OpenRouterUsage = await _keyInfoService.GetAsync();
+                }
+                catch (OpenRouterPaymentRequiredException pEx)
+                {
+                    viewModel.OpenRouterUsageError =
+                        $"Payment required — {pEx.ResponseBody ?? "credit balance is negative."}";
+                }
+                catch (OpenRouterRateLimitException rlEx)
+                {
+                    viewModel.OpenRouterUsageError =
+                        $"Rate limited (scope: {rlEx.Scope}). Try again in a minute.";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Key-info fetch failed on Settings/Index GET");
+                    viewModel.OpenRouterUsageError = $"Couldn't load usage: {ex.Message}";
+                }
+            }
+
             return View(viewModel);
+        }
+
+        /// <summary>
+        /// POST endpoint for the Refresh button in the Usage card. Just bounces
+        /// back to <see cref="Index"/> which re-fetches.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult RefreshUsage()
+        {
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]

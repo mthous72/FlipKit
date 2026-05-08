@@ -219,6 +219,86 @@
                 </StackPanel>
             </Border>
 
+            <!-- OpenRouter Usage Panel -->
+            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                    CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="📊 OpenRouter Usage" FontSize="18" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding KeyInfo.Label}" FontSize="11" Opacity="0.6"
+                                       IsVisible="{Binding HasKeyInfo}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Refresh"
+                                Command="{Binding RefreshKeyInfoCommand}"
+                                IsEnabled="{Binding !IsLoadingKeyInfo}"
+                                Padding="12,4" FontSize="11"/>
+                    </Grid>
+
+                    <!-- Tier badge + last-refreshed timestamp -->
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding HasKeyInfo}">
+                        <Border Background="#E3F2FD" CornerRadius="3" Padding="6,2">
+                            <TextBlock Text="{Binding TierBadge}" FontSize="11" Foreground="#1565C0"/>
+                        </Border>
+                        <TextBlock Text="{Binding LastRefreshedDisplay}"
+                                   FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Four stat tiles: credits remaining + today / week / month -->
+                    <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8"
+                          IsVisible="{Binding HasKeyInfo}">
+                        <Border Grid.Column="0" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Credits remaining" FontSize="10" Opacity="0.6"/>
+                                <TextBlock Text="{Binding CreditsRemainingDisplay}" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Today" FontSize="10" Opacity="0.6"/>
+                                <TextBlock Text="{Binding UsageDailyDisplay}" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="This week" FontSize="10" Opacity="0.6"/>
+                                <TextBlock Text="{Binding UsageWeeklyDisplay}" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="3" BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,8">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="This month" FontSize="10" Opacity="0.6"/>
+                                <TextBlock Text="{Binding UsageMonthlyDisplay}" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Free-tier rate-limit reminder (only shown on free keys) -->
+                    <Border Background="#FFF3E0" CornerRadius="4" Padding="10,8"
+                            IsVisible="{Binding ShowFreeTierLimitReminder}">
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#5D4037">
+                            Free models are limited to ~50 requests/day until you purchase ≥$10 of credits, which raises the cap to 1000/day. See openrouter.ai/credits.
+                        </TextBlock>
+                    </Border>
+
+                    <!-- Empty state when no key configured yet -->
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.65"
+                               IsVisible="{Binding !HasKeyInfo}">
+                        Configure your OpenRouter API key above and click Refresh to see your credit balance and usage.
+                    </TextBlock>
+
+                    <!-- Inline error fallback (graceful — doesn't block the panel) -->
+                    <TextBlock Text="{Binding KeyInfoError}" FontSize="11" Foreground="#B71C1C"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding KeyInfoError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+
             <!-- Local Servers (Essential) -->
             <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
                     CornerRadius="8" Padding="20">

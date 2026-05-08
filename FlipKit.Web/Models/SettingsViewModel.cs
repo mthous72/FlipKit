@@ -69,6 +69,13 @@ namespace FlipKit.Web.Models
         public IReadOnlyList<OpenRouterModel> PaidModels { get; set; } = new List<OpenRouterModel>();
         public string? CatalogError { get; set; }
 
+        // OpenRouter Usage card — populated server-side in
+        // SettingsController.Index() when an API key is configured. The Razor
+        // view renders the card iff one of these two is set: snapshot for
+        // success, error string for the inline graceful-failure message.
+        public OpenRouterKeyInfo? OpenRouterUsage { get; set; }
+        public string? OpenRouterUsageError { get; set; }
+
         // Status flags (read-only for display)
         public bool HasOpenRouterKey { get; set; }
         public bool HasImgBBKey { get; set; }
