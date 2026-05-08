@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:FlipKit.Desktop.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="280"
+        x:Class="FlipKit.Desktop.Views.PickSurpriseSetDialog"
+        x:DataType="vm:PickSurpriseSetViewModel"
+        Width="440" Height="280"
+        WindowStartupLocation="CenterOwner"
+        Title="Move to Surprise Set">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24,20,24,24">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,16">
+            <TextBlock Text="Move to Surprise Set"
+                       FontSize="20" FontWeight="Bold"/>
+            <TextBlock Text="Pick a Draft set to move the selected card(s) into."
+                       FontSize="12" Opacity="0.65" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Body -->
+        <StackPanel Grid.Row="1" Spacing="10">
+            <TextBlock Text="Surprise Set" FontWeight="SemiBold" FontSize="12"/>
+            <ComboBox ItemsSource="{Binding AvailableSets}"
+                      SelectedItem="{Binding SelectedSet}"
+                      DisplayMemberBinding="{Binding Name}"
+                      PlaceholderText="Pick a Draft set…"
+                      HorizontalAlignment="Stretch"/>
+            <Button Content="Create New Set…"
+                    Click="OnCreateNewSetClick"
+                    HorizontalAlignment="Left" Padding="10,4"/>
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#B71C1C" FontSize="11"
+                       TextWrapping="Wrap"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,16,0,0">
+            <Button Grid.Column="1" Content="Cancel"
+                    Click="OnCancelClick"
+                    Padding="20,8" Margin="0,0,8,0"/>
+            <Button Grid.Column="2" Content="{Binding ConfirmButtonText}"
+                    Click="OnConfirmClick"
+                    Classes="accent"
+                    Padding="24,8"
+                    IsEnabled="{Binding IsValid}"/>
+        </Grid>
+    </Grid>
+</Window>

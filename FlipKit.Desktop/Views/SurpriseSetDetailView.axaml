@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:FlipKit.Desktop.ViewModels"
              xmlns:models="using:FlipKit.Core.Models"
+             xmlns:dmodels="using:FlipKit.Desktop.Models"
              xmlns:svc="using:FlipKit.Core.Services"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -64,27 +65,36 @@
                               CanUserResizeColumns="True"
                               GridLinesVisibility="Horizontal">
                         <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="" Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate x:DataType="dmodels:SelectableCard">
+                                        <CheckBox IsChecked="{Binding IsSelected}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Slot"
-                                                Binding="{Binding SurpriseSetSlot}"
+                                                Binding="{Binding Card.SurpriseSetSlot}"
                                                 Width="50"/>
                             <DataGridTextColumn Header="Player"
-                                                Binding="{Binding PlayerName}"
+                                                Binding="{Binding Card.PlayerName}"
                                                 Width="*"/>
                             <DataGridTextColumn Header="Sport"
-                                                Binding="{Binding Sport}"
+                                                Binding="{Binding Card.Sport}"
                                                 Width="90"/>
                             <DataGridTextColumn Header="Graded"
-                                                Binding="{Binding IsGraded}"
+                                                Binding="{Binding Card.IsGraded}"
                                                 Width="70"/>
                             <DataGridTextColumn Header="Condition"
-                                                Binding="{Binding Condition}"
+                                                Binding="{Binding Card.Condition}"
                                                 Width="100"/>
-                            <DataGridTemplateColumn Header="" Width="70">
+                            <DataGridTemplateColumn Header="" Width="150">
                                 <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate x:DataType="models:Card">
-                                        <Button Content="Remove"
-                                                Command="{Binding $parent[UserControl].((vm:SurpriseSetDetailViewModel)DataContext).RemoveCardCommand}"
+                                    <DataTemplate x:DataType="dmodels:SelectableCard">
+                                        <Button Content="Return to My Cards"
+                                                Command="{Binding $parent[UserControl].((vm:SurpriseSetDetailViewModel)DataContext).ReturnCardToInventoryCommand}"
                                                 CommandParameter="{Binding}"
+                                                ToolTip.Tip="Move this card back to My Cards. The card is not deleted."
                                                 Padding="6,2" FontSize="11"
                                                 HorizontalAlignment="Center"/>
                                     </DataTemplate>
@@ -140,6 +150,21 @@
 
         <!-- Bottom action bar + completion panel -->
         <StackPanel Grid.Row="3" Spacing="12" Margin="0,12,0,0">
+
+            <!-- Return-to-inventory row. Visible only on Draft sets (CanReturnCards),
+                 since RemoveCardAsync rejects locked states (Exported / Live / Completed). -->
+            <StackPanel Orientation="Horizontal" Spacing="8"
+                        IsVisible="{Binding CanReturnCards}">
+                <Button Content="Return Selected to My Cards"
+                        Command="{Binding ReturnSelectedToInventoryCommand}"
+                        IsVisible="{Binding HasSelectedCards}"
+                        ToolTip.Tip="Move every ticked card back to My Cards. Cards are not deleted; statuses are re-evaluated."
+                        Padding="14,8"/>
+                <Button Content="Return All Cards to My Cards"
+                        Command="{Binding DisbandCommand}"
+                        ToolTip.Tip="Empty this set without deleting it. Useful before re-populating or deleting a Draft set."
+                        Padding="14,8"/>
+            </StackPanel>
 
             <!-- Export row -->
             <StackPanel Orientation="Horizontal" Spacing="8">

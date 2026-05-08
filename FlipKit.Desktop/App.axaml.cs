@@ -167,6 +167,9 @@ namespace FlipKit.Desktop
                 // Live model catalog from OpenRouter — single instance, app-lifetime cache
                 services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
                 services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
+                // Single chokepoint that gates any scan call about to use a paid
+                // model behind the consent picker. Free models pass through silently.
+                services.AddSingleton<FlipKit.Desktop.Services.IPaidScanGate, FlipKit.Desktop.Services.PaidScanGate>();
                 services.AddSingleton<IAiScanConsentService, FlipKit.Desktop.Services.AvaloniaAiScanConsentService>();
                 services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
                 // Webcam capture (Roadmap #2 — Docs/27-WEBCAM-CAPTURE-PLAN.md). The

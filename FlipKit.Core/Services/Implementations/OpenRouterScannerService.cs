@@ -202,6 +202,21 @@ Return ONLY the JSON, no other text.";
             OcrHint? ocrHint = null,
             CancellationToken ct = default)
         {
+            // Defensive: never put the UI sentinel "auto" on the wire. OpenRouter has
+            // a real "Auto Router" provider that interprets it as routing to a
+            // (typically premium) model — caused a real $2.50/4-card billing surprise
+            // when a stale settings value leaked through. Substitute the free default
+            // and log loudly so we can find any remaining leak callsites.
+            var resolved = OpenRouterModelDefaults.ResolveModelId(model);
+            if (resolved != model)
+            {
+                _logger.LogWarning(
+                    "ScanCardAsync received UI sentinel model {Original}; substituting {Resolved}. " +
+                    "This indicates a callsite that forgot to resolve before scanning.",
+                    model, resolved);
+                model = resolved;
+            }
+
             var dataUrls = new List<string> { await EncodeImageToDataUrl(imagePath) };
 
             // Verified-fields hints unlock the slimmer Enhance prompt body that

@@ -25,6 +25,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IChecklistVerificationMatcher _checklistMatcher;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IPaidModelConsentService _consentService;
+        private readonly Services.IPaidScanGate _paidScanGate;
         private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
@@ -108,6 +109,7 @@ namespace FlipKit.Desktop.ViewModels
             IChecklistVerificationMatcher checklistMatcher,
             IOpenRouterModelCatalog modelCatalog,
             IPaidModelConsentService consentService,
+            Services.IPaidScanGate paidScanGate,
             IAiScanConsentService aiScanConsentService,
             IImageUploadService imageUploadService,
             IBrowserService browserService,
@@ -125,6 +127,7 @@ namespace FlipKit.Desktop.ViewModels
             _checklistMatcher = checklistMatcher;
             _modelCatalog = modelCatalog;
             _consentService = consentService;
+            _paidScanGate = paidScanGate;
             _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
             _browserService = browserService;
@@ -472,9 +475,22 @@ namespace FlipKit.Desktop.ViewModels
                     hint.AllVisibleText = _lastScanResult.AllVisibleText.ToList();
 
                 var settings = _settingsService.Load();
-                var model = SelectedModel?.IsAuto == false
+                // Either honor the user's explicit dropdown pick, or resolve a saved
+                // settings value (folding the "auto" sentinel down to the free default
+                // — see OpenRouterModelDefaults.ResolveModelId for the billing rationale).
+                var resolved = SelectedModel?.IsAuto == false
                     ? SelectedModel.Value
-                    : (settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId);
+                    : OpenRouterModelDefaults.ResolveModelId(settings.DefaultModel);
+                // Gate: paid models always prompt the picker. Free passes through.
+                var gated = await _paidScanGate.GateAsync(
+                    resolved,
+                    "About to enhance this card using a paid model. Pick which paid model to use, or cancel.");
+                if (gated == null)
+                {
+                    SuccessMessage = "Enhance cancelled — no paid model used.";
+                    return;
+                }
+                var model = gated;
 
                 var result = await _scannerService.ScanCardAsync(
                     ImagePath,
@@ -899,12 +915,16 @@ namespace FlipKit.Desktop.ViewModels
             }
 
             var cheapest = catalog.PaidVisionModels[0];
-            var consented = await _consentService.AskAsync(
+            // Surface the full paid-model list so the user can pick a different
+            // (more expensive but more accurate) model if they prefer — the
+            // cheapest is just the suggested default.
+            var chosenPaid = await _consentService.AskAsync(
+                catalog.PaidVisionModels,
                 cheapest,
                 $"All {catalog.FreeVisionModels.Count} free OpenRouter vision models failed for this card. " +
-                "Continue with the cheapest paid model?");
+                "Pick a paid model to continue with, or cancel.");
 
-            if (!consented)
+            if (chosenPaid == null)
             {
                 SuccessMessage = "Scan canceled — no paid model was used.";
                 return null;
@@ -912,13 +932,13 @@ namespace FlipKit.Desktop.ViewModels
 
             try
             {
-                VerificationStatus = $"Trying {cheapest.DisplayName}...";
-                return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, cheapest.Id);
+                VerificationStatus = $"Trying {chosenPaid.DisplayName}...";
+                return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, chosenPaid.Id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Cheapest paid model {Model} also failed.", cheapest.Id);
-                ErrorMessage = $"Even the paid model {cheapest.DisplayName} failed: {ex.Message}";
+                _logger.LogError(ex, "Paid model {Model} also failed.", chosenPaid.Id);
+                ErrorMessage = $"Paid model {chosenPaid.DisplayName} failed: {ex.Message}";
                 return null;
             }
         }

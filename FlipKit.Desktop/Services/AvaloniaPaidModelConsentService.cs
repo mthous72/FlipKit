@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -11,30 +11,33 @@ namespace FlipKit.Desktop.Services
 {
     /// <summary>
     /// Avalonia implementation of <see cref="IPaidModelConsentService"/> — shows a
-    /// modal dialog over the main window with the proposed paid model + estimated
-    /// cost, and returns the user's Yes/No answer. Returns false on any failure
-    /// (e.g. no main window) so the caller cancels the scan rather than crashing.
+    /// modal picker over the main window so the user can choose which paid model to
+    /// use (or cancel). Returns null on any failure (e.g. no main window) so the
+    /// caller cancels the scan rather than crashing.
     /// </summary>
     public class AvaloniaPaidModelConsentService : IPaidModelConsentService
     {
-        public async Task<bool> AskAsync(OpenRouterModel proposedModel, string contextMessage)
+        public async Task<OpenRouterModel?> AskAsync(
+            IReadOnlyList<OpenRouterModel> availableModels,
+            OpenRouterModel suggestedModel,
+            string contextMessage)
         {
             try
             {
                 return await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var owner = GetMainWindow();
-                    if (owner == null) return false;
+                    if (owner == null) return null;
 
-                    var dialog = new PaidModelConsentDialog(proposedModel, contextMessage);
+                    var dialog = new PaidModelConsentDialog(availableModels, suggestedModel, contextMessage);
                     await dialog.ShowDialog(owner);
-                    return dialog.Accepted;
+                    return dialog.Chosen;
                 });
             }
             catch
             {
                 // Dialog couldn't be shown — fail closed (cancel scan).
-                return false;
+                return null;
             }
         }
 

@@ -19,7 +19,18 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _sharedWhatnotCategory = "Sports Trading Cards";
         [ObservableProperty] private string _notes = string.Empty;
 
-        public bool Confirmed { get; set; }
+        // Set by the OK / Cancel buttons in the dialog. Kept observable so the
+        // dialog can react to value changes (the dialog code-behind is a thin
+        // wrapper that just calls Close() — historically OnCreateClick checked
+        // IsValid inline, which became dead code once IsValid was bound to
+        // IsEnabled on the Create button).
+        [ObservableProperty] private bool _confirmed;
+
+        // Validation message shown next to the Name field. Cleared as soon as
+        // the user starts typing, set on Submit-with-empty-name. Kept separate
+        // from IsValid so the field doesn't render the error pre-emptively
+        // (only after the user has tried to confirm).
+        [ObservableProperty] private string? _validationError;
 
         public SurpriseSet BuildSet() => new()
         {
@@ -37,5 +48,16 @@ namespace FlipKit.Desktop.ViewModels
         };
 
         public bool IsValid => !string.IsNullOrWhiteSpace(Name);
+
+        // Computed from Name — when Name changes, IsValid would otherwise stay
+        // stale because the source generator only raises PropertyChanged for
+        // the backing field, not for derived properties. Cascade the
+        // notification so {Binding IsValid} bindings (Create button's
+        // IsEnabled, the CreateCommand's CanExecute) react to keystrokes.
+        partial void OnNameChanged(string value)
+        {
+            OnPropertyChanged(nameof(IsValid));
+            ValidationError = null;
+        }
     }
 }

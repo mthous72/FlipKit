@@ -23,6 +23,7 @@ namespace FlipKit.Desktop.ViewModels
     public partial class InventoryViewModel : ViewModelBase
     {
         private readonly ICardRepository _cardRepository;
+        private readonly ISurpriseSetRepository _surpriseSetRepository;
         private readonly ISettingsService _settingsService;
         private readonly IExportService _exportService;
         private readonly IFileDialogService _fileDialogService;
@@ -31,6 +32,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly INavigationService _navigationService;
         private readonly IServiceProvider _serviceProvider;
         private readonly IScannerService _scannerService;
+        private readonly Services.IPaidScanGate _paidScanGate;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryViewModel> _logger;
 
@@ -102,6 +104,7 @@ namespace FlipKit.Desktop.ViewModels
 
         public InventoryViewModel(
             ICardRepository cardRepository,
+            ISurpriseSetRepository surpriseSetRepository,
             ISettingsService settingsService,
             IExportService exportService,
             IFileDialogService fileDialogService,
@@ -110,10 +113,12 @@ namespace FlipKit.Desktop.ViewModels
             INavigationService navigationService,
             IServiceProvider serviceProvider,
             IScannerService scannerService,
+            Services.IPaidScanGate paidScanGate,
             ILogger<InventoryViewModel> logger,
             IPlayerNameDirectory? playerDirectory = null)
         {
             _cardRepository = cardRepository;
+            _surpriseSetRepository = surpriseSetRepository;
             _settingsService = settingsService;
             _exportService = exportService;
             _navigationService = navigationService;
@@ -122,6 +127,7 @@ namespace FlipKit.Desktop.ViewModels
             _browserService = browserService;
             _serviceProvider = serviceProvider;
             _scannerService = scannerService;
+            _paidScanGate = paidScanGate;
             _playerDirectory = playerDirectory;
             _logger = logger;
 
@@ -268,7 +274,7 @@ namespace FlipKit.Desktop.ViewModels
         {
             try
             {
-                _allCards = await _cardRepository.GetAllCardsAsync();
+                _allCards = await LoadInventoryCardsAsync();
                 ApplyFilters();
                 UpdateSummary();
             }
@@ -281,9 +287,21 @@ namespace FlipKit.Desktop.ViewModels
         [RelayCommand]
         private async Task RefreshAsync()
         {
-            _allCards = await _cardRepository.GetAllCardsAsync();
+            _allCards = await LoadInventoryCardsAsync();
             ApplyFilters();
             UpdateSummary();
+        }
+
+        // My Cards is the *primary* inventory; cards bound to a Surprise Set
+        // (FK populated, regardless of ReservedForSet vs SoldInSet status) are
+        // viewed from the Surprise Set detail page instead. Filtering by FK
+        // rather than status catches both reservation and post-completion
+        // states without breaking Reports' SoldInSet revenue rollup, which
+        // still queries the repo unfiltered.
+        private async Task<List<Card>> LoadInventoryCardsAsync()
+        {
+            var all = await _cardRepository.GetAllCardsAsync();
+            return all.Where(c => c.SurpriseSetId == null).ToList();
         }
 
         [RelayCommand(CanExecute = nameof(HasSelectedItem))]
@@ -309,6 +327,76 @@ namespace FlipKit.Desktop.ViewModels
 
             // Otherwise delete all checked cards
             return FilteredCards.Where(c => c.IsSelected).ToList();
+        }
+
+        // Same selection rules as delete: respect explicit row-selection first,
+        // fall back to the multi-select checkbox set so the user can move a
+        // batch in one action.
+        private List<SelectableCard> GetCardsToMove()
+        {
+            if (SelectedItem != null)
+                return new List<SelectableCard> { SelectedItem };
+            return FilteredCards.Where(c => c.IsSelected).ToList();
+        }
+
+        /// <summary>
+        /// Forward path for the secondary-inventory model: move selected My Cards
+        /// rows into a Draft Surprise Set. The SurpriseSetRepository.AddCardAsync
+        /// call stamps SurpriseSetId + Slot + Status=ReservedForSet, so the cards
+        /// vanish from this view (LoadInventoryCardsAsync filters out
+        /// SurpriseSetId.HasValue) and appear in the set's detail page.
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(HasSelectedItem))]
+        private async Task MoveToSetAsync()
+        {
+            var selected = GetCardsToMove();
+            if (selected.Count == 0) return;
+
+            var pickerVm = new PickSurpriseSetViewModel(_surpriseSetRepository,
+                _serviceProvider.GetService<ILogger<PickSurpriseSetViewModel>>())
+            {
+                CardCount = selected.Count,
+            };
+            await pickerVm.LoadAsync();
+
+            var dialog = new PickSurpriseSetDialog { DataContext = pickerVm };
+            var owner = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (owner != null)
+                await dialog.ShowDialog(owner);
+            else
+                dialog.Show();
+
+            if (!pickerVm.Confirmed || pickerVm.SelectedSet == null) return;
+
+            var setId = pickerVm.SelectedSet.Id;
+            var moved = 0;
+            var failed = 0;
+
+            foreach (var item in selected)
+            {
+                try
+                {
+                    await _surpriseSetRepository.AddCardAsync(setId, item.Card);
+                    moved++;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    _logger.LogError(ex, "Failed to move card {CardId} to surprise set {SetId}", item.Card.Id, setId);
+                }
+            }
+
+            // Refresh — moved cards now have SurpriseSetId set and will be
+            // filtered out of the inventory list.
+            _allCards = await LoadInventoryCardsAsync();
+            ApplyFilters();
+            UpdateSummary();
+            SelectedItem = null;
+
+            if (failed > 0)
+                ExportError = $"Moved {moved} card(s); {failed} failed.";
+            else
+                ExportMessage = $"Moved {moved} card(s) to \"{pickerVm.SelectedSet.Name}\".";
         }
 
         [RelayCommand]
@@ -501,7 +589,23 @@ namespace FlipKit.Desktop.ViewModels
             ExportMessage = null;
 
             var settings = _settingsService.Load();
-            var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+            // ResolveModelId folds the UI's "auto" sentinel down to the free default
+            // — sending the literal string "auto" to OpenRouter triggers their Auto
+            // Router, which can pick premium models and bill the user.
+            var resolvedModel = OpenRouterModelDefaults.ResolveModelId(settings.DefaultModel);
+            // Gate: if the resolved model is paid, prompt the user to confirm or
+            // pick a different model. Free models pass through silently.
+            var gated = await _paidScanGate.GateAsync(
+                resolvedModel,
+                $"About to enhance {targets.Count} card(s) using a paid model. " +
+                $"Pick which paid model to use, or cancel to keep the cards as-is.");
+            if (gated == null)
+            {
+                IsEnhancing = false;
+                ExportMessage = "Enhance cancelled — no paid model used.";
+                return;
+            }
+            var model = gated;
 
             EnhanceFailedCount = 0;
             int succeeded = 0;

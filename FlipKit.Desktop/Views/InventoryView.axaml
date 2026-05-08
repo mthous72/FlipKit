@@ -209,6 +209,10 @@
                 <Button Content="Mark as Sold" Command="{Binding OpenSoldDialogCommand}"
                         IsEnabled="{Binding HasSelectedItem}"
                         Padding="12,4"/>
+                <Button Content="Move to Surprise Set…" Command="{Binding MoveToSetCommand}"
+                        IsEnabled="{Binding HasSelectedItem}"
+                        ToolTip.Tip="Move the selected card(s) into a Draft Surprise Set. They'll vanish from My Cards and appear in the set."
+                        Padding="12,4"/>
             </StackPanel>
         </Border>
 

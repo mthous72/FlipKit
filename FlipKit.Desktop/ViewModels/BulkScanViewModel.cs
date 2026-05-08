@@ -61,6 +61,43 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private int? _destinationSurpriseSetId;
         [ObservableProperty] private ScanDepth _scanDepth = ScanDepth.Standard;
 
+        // Saved Surprise Sets the user can target. Refreshed on construction
+        // and after the inline Create-Set flow. Only Draft sets are listed —
+        // Exported / Live / Completed sets reject AddCardAsync per the
+        // repository's IsLockedAsync gate.
+        public ObservableCollection<SurpriseSet> AvailableSurpriseSets { get; } = new();
+
+        // Currently picked target. Two-way bound by the second dropdown that
+        // appears when Destination = SurpriseSet. Mirrored into
+        // DestinationSurpriseSetId so the existing SaveAllAsync gate
+        // (DestinationSurpriseSetId.HasValue) keeps working unchanged.
+        [ObservableProperty] private SurpriseSet? _selectedSurpriseSet;
+
+        partial void OnSelectedSurpriseSetChanged(SurpriseSet? value)
+        {
+            DestinationSurpriseSetId = value?.Id;
+            OnPropertyChanged(nameof(CanSave));
+        }
+
+        /// <summary>
+        /// True only when the user has chosen Surprise Set as the destination.
+        /// Drives the saved-set picker's IsVisible binding in the XAML.
+        /// </summary>
+        public bool RequiresSetSelection => Destination == BulkScanDestination.SurpriseSet;
+
+        /// <summary>
+        /// Save All gate. Forbids saving while a scan or save is already
+        /// running, and forbids saving to Surprise-Set destination unless the
+        /// user has actually picked a set. Without this, SaveAllAsync would
+        /// silently fall through to the Inventory branch when
+        /// DestinationSurpriseSetId is null.
+        /// </summary>
+        public bool CanSave =>
+            !IsScanning && !IsSaving &&
+            (Destination != BulkScanDestination.SurpriseSet || SelectedSurpriseSet != null);
+
+        partial void OnIsSavingChanged(bool value) => OnPropertyChanged(nameof(CanSave));
+
         // Rate-limit banners
         [ObservableProperty] private bool _isRateLimitPaused;
         [ObservableProperty] private string? _rateLimitBannerMessage;
@@ -168,6 +205,8 @@ namespace FlipKit.Desktop.ViewModels
             // The user can override after the fact from the Inventory view.
             ScanDepth = value == BulkScanDestination.SurpriseSet ? ScanDepth.Quick : ScanDepth.Standard;
             OnPropertyChanged(nameof(SelectedDestinationOption));
+            OnPropertyChanged(nameof(RequiresSetSelection));
+            OnPropertyChanged(nameof(CanSave));
         }
 
         partial void OnScanDepthChanged(ScanDepth value)
@@ -237,6 +276,63 @@ namespace FlipKit.Desktop.ViewModels
             _maxConcurrentScans = settings.MaxConcurrentScans;
 
             _ = LoadModelsAsync();
+            _ = LoadAvailableSurpriseSetsAsync();
+        }
+
+        /// <summary>
+        /// Refreshes <see cref="AvailableSurpriseSets"/> from
+        /// <c>GetDraftSetsAsync</c>. Called on construction and after the
+        /// inline Create-Set flow so the picker stays current. Only Draft
+        /// sets are listed because Exported / Live / Completed sets reject
+        /// AddCardAsync at the repository layer.
+        /// </summary>
+        private async Task LoadAvailableSurpriseSetsAsync()
+        {
+            try
+            {
+                var drafts = await _surpriseSetRepository.GetDraftSetsAsync();
+                AvailableSurpriseSets.Clear();
+                foreach (var set in drafts) AvailableSurpriseSets.Add(set);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load Draft surprise sets for the BulkScan picker");
+            }
+        }
+
+        /// <summary>
+        /// Opens the New-Surprise-Set dialog from inside the BulkScan tab so
+        /// the user doesn't have to switch context. On success, refreshes the
+        /// picker and auto-selects the new set as the current target.
+        /// </summary>
+        [RelayCommand]
+        private async Task CreateSetInlineAsync()
+        {
+            var vm = new NewSurpriseSetViewModel();
+            var dialog = new Views.NewSurpriseSetDialog { DataContext = vm };
+            var owner = (Avalonia.Application.Current?.ApplicationLifetime
+                as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (owner != null)
+                await dialog.ShowDialog(owner);
+            else
+                dialog.Show();
+
+            if (!vm.Confirmed || !vm.IsValid) return;
+
+            try
+            {
+                var newSet = vm.BuildSet();
+                await _surpriseSetRepository.InsertAsync(newSet);
+                await LoadAvailableSurpriseSetsAsync();
+                // Re-select the freshly created set so the user can hit Save All immediately.
+                SelectedSurpriseSet = AvailableSurpriseSets.FirstOrDefault(s => s.Id == newSet.Id);
+                StatusMessage = $"Created \"{newSet.Name}\".";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Inline Create-Surprise-Set failed");
+                ErrorMessage = $"Could not create set: {ex.Message}";
+            }
         }
 
         private async Task LoadModelsAsync()
@@ -357,6 +453,7 @@ namespace FlipKit.Desktop.ViewModels
         partial void OnIsScanningChanged(bool value)
         {
             RescanSelectedCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(CanSave));
         }
 
         partial void OnIsEnhancingChanged(bool value)
@@ -467,24 +564,27 @@ namespace FlipKit.Desktop.ViewModels
                 if (failedItems.Count > 0 && cheapestPaid != null)
                 {
                     StatusMessage = $"Asking about paid fallback for {failedItems.Count} card(s)...";
-                    var consented = await _consentService.AskAsync(
+                    // Pull the full paid-vision-model list so the user can pick a
+                    // different model than the suggested cheapest if they prefer.
+                    var paidCatalog = (await _modelCatalog.GetAsync()).PaidVisionModels;
+                    var chosenPaid = await _consentService.AskAsync(
+                        paidCatalog,
                         cheapestPaid,
                         $"{failedItems.Count} card(s) exhausted all {freeChain.Count} free model(s). " +
-                        $"Retry this batch with {cheapestPaid.DisplayName} as a paid fallback?\n\n" +
-                        $"⚠️ {failedItems.Count} paid scan(s) will be charged at the rate shown below. " +
-                        $"Costs can rise rapidly on large batches — review the pricing carefully before proceeding.");
+                        $"Pick a paid model to retry with — or cancel to leave the cards as failed.\n\n" +
+                        $"⚠️ {failedItems.Count} paid scan(s) will be charged at the selected model's rate.");
 
-                    if (consented)
+                    if (chosenPaid != null)
                     {
                         _logger.LogInformation("Paid consent granted; retrying {Count} FreeFailed items with {Model}.",
-                            failedItems.Count, cheapestPaid.Id);
-                        StatusMessage = $"Retrying {failedItems.Count} card(s) with paid model...";
+                            failedItems.Count, chosenPaid.Id);
+                        StatusMessage = $"Retrying {failedItems.Count} card(s) with {chosenPaid.DisplayName}...";
                         foreach (var item in failedItems)
                         {
                             item.Status = BulkScanStatus.Pending;
                             item.ErrorMessage = null;
                         }
-                        var paidChain = new List<string> { cheapestPaid.Id };
+                        var paidChain = new List<string> { chosenPaid.Id };
                         using var paidSemaphore = new SemaphoreSlim(MaxConcurrentScans, MaxConcurrentScans);
                         var retryTasks = failedItems.Select(item =>
                             ProcessItemAsync(item, paidSemaphore, settings, paidChain, false, currentScanDepth, cts, freeChainOnly: false));
