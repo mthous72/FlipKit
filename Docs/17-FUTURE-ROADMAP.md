@@ -28,6 +28,25 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 
 ## High Priority (Next 3-6 Months)
 
+### 0. Documentation Cleanup — Full Restructure
+
+**Status:** ⏳ Next up — plan approved 2026-05-08, awaiting pre-execution rescan before commit 1
+**Effort:** Medium (1-2 weeks across 4 commits)
+**Plan Doc:** [32-DOCUMENTATION-CLEANUP-PLAN.md](32-DOCUMENTATION-CLEANUP-PLAN.md)
+
+Restructure `Docs/` into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), refresh stale content, add missing documentation, and consolidate overlap.
+
+**Scope:**
+- **Move/restructure** ~30 files from flat `Docs/00-…/31-…` numbering into topic folders.
+- **Heavy rewrite:** `HUB-ARCHITECTURE.md` + `10-GUI-ARCHITECTURE.md` merged into `architecture/overview.md`; `USER-GUIDE.md` (1250 lines) refreshed to v3.6.1 with screenshot placeholders resolved; `02-DATABASE-SCHEMA.md` extended with SurpriseSet/RevenueAllocationMethod/CardStatus/VerificationStatus; `14-VARIATION-VERIFICATION.md` extended with verified-fields LLM hint mode (commit `223cf95`); `07-CLAUDE-CODE-GUIDE.md` rewritten to drop the `MockScannerService` dead reference and dedupe overlap with root `CLAUDE.md`.
+- **Archive:** `01-PROJECT-PLAN.md`, `11-UX-DESIGN.md`, `26-CSV-EXPORT-IMPLEMENTATION-PLAN.md`, `References/card_listings_export_spec.md`.
+- **Delete:** `00-PROGRAM-OVERVIEW.md` (658 lines of pre-rebrand "Card Lister" content; current state covered by `README.md` + `guides/user-guide.md`).
+- **Cross-cutting:** root `README.md` (v3.6.0 → v3.6.1 download bump, drop dead Docker mention), root `CLAUDE.md` (fix v3.2.0 build example, trim § Architecture overlap), `.github/copilot-instructions.md` (replace Azure boilerplate or delete), and a new `Docs/README.md` topic index.
+
+**Why now:** Brand drift (Card Lister → FlipKit, Feb 2026), version drift (v3.1.0/v3.2.0/v3.6.0 strings scattered across active docs vs current v3.6.1), missing schema docs, and dead references have accumulated to the point where new contributors and Claude Code in future sessions waste time figuring out which docs are current. Cleanup is cheaper now than after another round of feature work compounds the drift.
+
+**Pre-execution gate:** plan starts with a mandatory rescan (refresh git state, diff each in-flight branch against the cleanup branch, re-run inventory, produce a delta) so the file-by-file action list is reconfirmed against current `master` before commit 1. Move-commit timing must be coordinated with any open doc-touching branches to avoid massive rename diffs across merges.
+
 ### 1. User-Driven Checklist Excel Import (Checklist Insider)
 
 **Status:** 🟡 Partially shipped — Phase 1 + Phase 2 vertical slice done. Remaining Phase 2 items + Phases 3-4 indefinitely deferred (2026-05-04). Re-evaluate on real user friction.
@@ -209,10 +228,11 @@ When deciding what to build next:
 
 ---
 
-**Last Updated:** 2026-05-04 (Roadmap 1 partial-ship + deferral)
+**Last Updated:** 2026-05-08 (Documentation Cleanup queued as next up)
 **Next Review:** August 2026
 
 **Recent changes:**
+- 2026-05-08 — **Roadmap #0 added: Documentation Cleanup — Full Restructure** queued as next up. Plan checked in as [32-DOCUMENTATION-CLEANUP-PLAN.md](32-DOCUMENTATION-CLEANUP-PLAN.md) on `fix/docs-cleanup`. Mandatory pre-execution rescan must run before any restructure commits to re-baseline the file-by-file action list against current `master` and any in-flight branches.
 - 2026-05-04 — **Roadmap 1 partial ship.** Phase 1 (Surface A) + Phase 2 foundation + first Phase 2 UI slice landed (commits `1053f11`, `4b9009f`, `d036bfd`). Remaining Phase 2 polish items (typeahead, parallel dropdown, picker, BulkScan tier collapsing, Web parity, round-trip JS) and Phases 3-4 deferred indefinitely; re-evaluate on real friction or when an adjacent feature needs them. Schema fields kept regardless of UI state.
 - 2026-05-04 — **Phase 6 re-baseline.** Roadmap #4 (Tests) marked Done, delivered by refactor Phase 4. Roadmap #1 effort cut from 4-5 wk → 3-4 wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering a shelved sold-price service (since removed in 2026-05-05). Roadmap #5 (COMC) re-read found more wiring than previously implied — flagged for downgrade or drop pending demand signal. Tech-debt section rewritten against actual post-Phase-5 ViewModel sizes. Pointer added to new `Docs/ADR/` directory.
 - 2026-05-02 — Promoted Webcam Capture from Medium #4 to High #2; pushed Price Scraping → #3, Tests → #4.
