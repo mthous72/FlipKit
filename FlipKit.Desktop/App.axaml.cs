@@ -166,6 +166,8 @@ namespace FlipKit.Desktop
                 services.AddSingleton<IScannerService, CompositeScannerService>();
                 // Live model catalog from OpenRouter — single instance, app-lifetime cache
                 services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
+                // Wraps GET /api/v1/key for the Settings → Usage panel + post-scan refresh.
+                services.AddSingleton<IOpenRouterKeyInfoService, FlipKit.Core.Services.Implementations.OpenRouterKeyInfoService>();
                 services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
                 // Single chokepoint that gates any scan call about to use a paid
                 // model behind the consent picker. Free models pass through silently.

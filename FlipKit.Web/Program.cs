@@ -79,6 +79,8 @@ builder.Services.AddSingleton<OpenRouterScannerService>();
 builder.Services.AddSingleton<IScannerService, CompositeScannerService>();
 // Live model catalog from OpenRouter — single instance, app-lifetime cache
 builder.Services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
+// Wraps GET /api/v1/key for the Settings → Usage panel.
+builder.Services.AddSingleton<IOpenRouterKeyInfoService, FlipKit.Core.Services.Implementations.OpenRouterKeyInfoService>();
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
 // Export pipeline — registered unconditionally (no DbContext dependency).
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
