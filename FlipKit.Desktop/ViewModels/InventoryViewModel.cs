@@ -197,6 +197,11 @@ namespace FlipKit.Desktop.ViewModels
             if (EditingCard == null || SelectedCard == null) return;
 
             var savedCardId = SelectedCard.Id;
+            // Snapshot before mutation so the diff captures user-visible
+            // edits to the model-output fields. SelectedCard is the
+            // pre-edit state; EditingCard.ToCard() will be the post-edit.
+            var preSnapshot = SelectedCard;
+            var aiModelUsed = SelectedCard.AiModelUsed;
 
             try
             {
@@ -206,8 +211,23 @@ namespace FlipKit.Desktop.ViewModels
                 card.ImagePathBack = SelectedCard.ImagePathBack;
                 card.CreatedAt = SelectedCard.CreatedAt;
                 card.UpdatedAt = DateTime.UtcNow;
+                // Preserve the AI model attribution across the edit so future
+                // edits keep crediting the original model.
+                card.AiModelUsed = aiModelUsed;
 
                 await _cardRepository.UpdateCardAsync(card);
+
+                // Scoreboard: count user corrections vs the pre-edit state
+                // and credit them back to the model that produced the card.
+                if (_scoreboard != null && !string.IsNullOrEmpty(aiModelUsed))
+                {
+                    var corrected = CardFieldDiff.CountUserCorrections(preSnapshot, card);
+                    if (corrected > 0)
+                    {
+                        try { await _scoreboard.RecordUserCorrectionsAsync(card.Id, aiModelUsed, corrected); }
+                        catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordUserCorrections failed; continuing."); }
+                    }
+                }
 
                 // Reload cards to update the display (maintains selection)
                 LoadCardsAsync();

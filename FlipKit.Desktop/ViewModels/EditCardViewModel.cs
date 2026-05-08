@@ -30,6 +30,11 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ILogger<EditCardViewModel> _logger;
 
         private Card? _originalCard;
+        // Snapshot of the model-output fields right after the card was last
+        // produced by the LLM (load time, or after a successful Enhance). Diffed
+        // against _originalCard at Save to count user corrections — the model
+        // accuracy scoreboard's strongest signal that a model got something wrong.
+        private Card? _preEditSnapshot;
 
         [ObservableProperty] private CardDetailViewModel? _cardDetail;
         [ObservableProperty] private string? _errorMessage;
@@ -108,6 +113,11 @@ namespace FlipKit.Desktop.ViewModels
                     ErrorMessage = "Card not found.";
                     return;
                 }
+
+                // Snapshot the model-output fields from the freshly-loaded card so
+                // we can diff at save-time and credit the user-correction signal
+                // back to the model that produced this row.
+                _preEditSnapshot = SnapshotModelFields(_originalCard);
 
                 CardDetail = CardDetailViewModel.FromCard(_originalCard);
                 ImagePathFront = _originalCard.ImagePathFront;
@@ -336,6 +346,11 @@ namespace FlipKit.Desktop.ViewModels
 
                 _originalCard.DataSource = CardDataSource.Ai;
                 _originalCard.AiModelUsed = result.UsedModelId ?? model;
+                // Refresh the snapshot so user corrections are scored against
+                // the *enhanced* state, not the pre-enhance load state. Without
+                // this, every Enhance would register the model's improvements
+                // as user corrections, tanking the score.
+                _preEditSnapshot = SnapshotModelFields(_originalCard);
                 OnPropertyChanged(nameof(IsOcrSourced));
 
                 EnhanceMessage = "Enhanced with AI — review fields and save.";
@@ -456,6 +471,27 @@ namespace FlipKit.Desktop.ViewModels
 
                 _logger.LogInformation("Card {CardId} updated: {PlayerName}", _originalCard.Id, _originalCard.PlayerName);
 
+                // Scoreboard: diff the saved state against the pre-edit snapshot
+                // so model-output fields the user changed are credited back to
+                // the model that produced them. Best-effort — never block the save.
+                if (_scoreboard != null && _preEditSnapshot != null && !string.IsNullOrEmpty(_originalCard.AiModelUsed))
+                {
+                    var corrected = CardFieldDiff.CountUserCorrections(_preEditSnapshot, _originalCard);
+                    if (corrected > 0)
+                    {
+                        try
+                        {
+                            await _scoreboard.RecordUserCorrectionsAsync(_originalCard.Id, _originalCard.AiModelUsed!, corrected);
+                            _logger.LogInformation("Recorded {Count} user corrections for model {Model} on card {CardId}",
+                                corrected, _originalCard.AiModelUsed, _originalCard.Id);
+                        }
+                        catch (Exception sbEx)
+                        {
+                            _logger.LogDebug(sbEx, "Scoreboard RecordUserCorrections failed; continuing.");
+                        }
+                    }
+                }
+
                 // Navigate back to Inventory
                 await _navigationService.NavigateToInventoryAsync();
             }
@@ -490,6 +526,31 @@ namespace FlipKit.Desktop.ViewModels
         {
             await _navigationService.NavigateToInventoryAsync();
         }
+
+        // Captures only the model-output fields CardFieldDiff cares about. New
+        // Card so the comparison isn't fooled by EF tracker mutations on the
+        // live entity.
+        private static Card SnapshotModelFields(Card source) => new()
+        {
+            PlayerName = source.PlayerName,
+            CardNumber = source.CardNumber,
+            Year = source.Year,
+            Sport = source.Sport,
+            Manufacturer = source.Manufacturer,
+            Brand = source.Brand,
+            SetName = source.SetName,
+            Team = source.Team,
+            VariationType = source.VariationType,
+            ParallelName = source.ParallelName,
+            SerialNumbered = source.SerialNumbered,
+            GradeCompany = source.GradeCompany,
+            GradeValue = source.GradeValue,
+            IsRookie = source.IsRookie,
+            IsAuto = source.IsAuto,
+            IsRelic = source.IsRelic,
+            IsShortPrint = source.IsShortPrint,
+            IsGraded = source.IsGraded,
+        };
 
         /// <summary>
         /// Uploads any local image paths that don't yet have a corresponding hosted URL.
