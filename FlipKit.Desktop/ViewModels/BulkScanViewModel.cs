@@ -31,6 +31,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IImageUploadService _imageUploadService;
         private readonly IAppNotificationService? _notificationService;
         private readonly IPlayerNameDirectory? _playerDirectory;
+        private readonly IModelScoreboard? _scoreboard;
         private readonly ILogger<BulkScanViewModel> _logger;
 
         private CancellationTokenSource? _scanCts;
@@ -239,7 +240,8 @@ namespace FlipKit.Desktop.ViewModels
             IImageUploadService imageUploadService,
             ILogger<BulkScanViewModel> logger,
             IAppNotificationService? notificationService = null,
-            IPlayerNameDirectory? playerDirectory = null)
+            IPlayerNameDirectory? playerDirectory = null,
+            IModelScoreboard? scoreboard = null)
         {
             _scannerService = scannerService;
             _ocrService = ocrService;
@@ -255,6 +257,7 @@ namespace FlipKit.Desktop.ViewModels
             _imageUploadService = imageUploadService;
             _notificationService = notificationService;
             _playerDirectory = playerDirectory;
+            _scoreboard = scoreboard;
             _logger = logger;
 
             // Subscribe to per-item PropertyChanged so HasSelectedOcrItems /
@@ -774,6 +777,18 @@ namespace FlipKit.Desktop.ViewModels
                             lastError = ex;
                             _logger.LogWarning("Card {Index}: model {Model} failed ({Reason}), trying next.",
                                 item.Index, modelId, ex.Message);
+                            // Scoreboard: record per-model failure so the chain
+                            // walk's loser is attributed correctly. Only count
+                            // accuracy-failures — billing / quota are already
+                            // filtered above and rethrown.
+                            if (_scoreboard != null)
+                            {
+                                var outcome = ex is System.Text.Json.JsonException
+                                    ? ScanOutcome.ParseFailure
+                                    : ScanOutcome.ModelError;
+                                try { await _scoreboard.RecordFailureAsync(modelId, outcome); }
+                                catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordFailure failed (card {Index}); continuing.", item.Index); }
+                            }
                         }
                     }
                     if (scanResult != null)
@@ -781,6 +796,9 @@ namespace FlipKit.Desktop.ViewModels
                         scanResult.Card.ImagePathFront = item.FrontImagePath;
                         if (!string.IsNullOrEmpty(item.BackImagePath))
                             scanResult.Card.ImagePathBack = item.BackImagePath;
+                        // Stamp model id so post-save user edits can attribute
+                        // corrections back to the model that produced this card.
+                        scanResult.Card.AiModelUsed = scanResult.UsedModelId ?? usedModel;
 
                         item.CardDetail = CardDetailViewModel.FromCard(scanResult.Card);
 
@@ -830,6 +848,16 @@ namespace FlipKit.Desktop.ViewModels
 
                         // Log success for tracking
                         _errorLogger.LogSuccess(item.Index, item.FrontImagePath, item.DisplayName);
+
+                        // Scoreboard: record the successful scan against the
+                        // winning model. CardId is null here — the card hasn't
+                        // been saved yet; the user-correction hook attaches
+                        // by-card attribution later if they edit it.
+                        if (_scoreboard != null && !string.IsNullOrEmpty(scanResult.UsedModelId))
+                        {
+                            try { await _scoreboard.RecordSuccessAsync(scanResult.UsedModelId, cardId: null, scanResult); }
+                            catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordSuccess failed (card {Index}); continuing.", item.Index); }
+                        }
                     }
                     else if (freeChainOnly)
                     {

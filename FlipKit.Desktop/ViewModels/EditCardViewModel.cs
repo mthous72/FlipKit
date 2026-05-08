@@ -25,6 +25,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IScannerService _scannerService;
         private readonly Services.IPaidScanGate _paidScanGate;
         private readonly Services.IAppNotificationService? _notificationService;
+        private readonly IModelScoreboard? _scoreboard;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<EditCardViewModel> _logger;
 
@@ -75,7 +76,8 @@ namespace FlipKit.Desktop.ViewModels
             ILogger<EditCardViewModel> logger,
             IPlayerNameDirectory? playerDirectory = null,
             // Optional so existing test fixtures don't have to wire it up.
-            Services.IAppNotificationService? notificationService = null)
+            Services.IAppNotificationService? notificationService = null,
+            IModelScoreboard? scoreboard = null)
         {
             _cardRepository = cardRepository;
             _navigationService = navigationService;
@@ -86,6 +88,7 @@ namespace FlipKit.Desktop.ViewModels
             _scannerService = scannerService;
             _paidScanGate = paidScanGate;
             _notificationService = notificationService;
+            _scoreboard = scoreboard;
             _playerDirectory = playerDirectory;
             _logger = logger;
 
@@ -332,10 +335,19 @@ namespace FlipKit.Desktop.ViewModels
                 if (e.Sport.HasValue) CardDetail.Sport = e.Sport;
 
                 _originalCard.DataSource = CardDataSource.Ai;
+                _originalCard.AiModelUsed = result.UsedModelId ?? model;
                 OnPropertyChanged(nameof(IsOcrSourced));
 
                 EnhanceMessage = "Enhanced with AI — review fields and save.";
                 _logger.LogInformation("Enhanced card {CardId} with AI", _originalCard.Id);
+
+                // Scoreboard: record the successful enhance against the winning
+                // model. Card is persisted so CardId is real.
+                if (_scoreboard != null && !string.IsNullOrEmpty(result.UsedModelId))
+                {
+                    try { await _scoreboard.RecordSuccessAsync(result.UsedModelId, _originalCard.Id, result); }
+                    catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordSuccess failed; continuing."); }
+                }
             }
             catch (OpenRouterPaymentRequiredException pEx)
             {
@@ -353,6 +365,16 @@ namespace FlipKit.Desktop.ViewModels
             {
                 _logger.LogError(ex, "Enhance failed for card {CardId}", _originalCard?.Id);
                 ErrorMessage = $"Enhance failed: {ex.Message}";
+                if (_scoreboard != null)
+                {
+                    var outcome = ex is System.Text.Json.JsonException
+                        ? ScanOutcome.ParseFailure
+                        : ScanOutcome.ModelError;
+                    var settingsForFailure = _settingsService.Load();
+                    var modelForFailure = OpenRouterModelDefaults.ResolveModelId(settingsForFailure.DefaultModel);
+                    try { await _scoreboard.RecordFailureAsync(modelForFailure, outcome); }
+                    catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordFailure failed; continuing."); }
+                }
             }
             finally
             {

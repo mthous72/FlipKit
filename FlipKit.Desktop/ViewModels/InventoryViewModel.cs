@@ -34,6 +34,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IScannerService _scannerService;
         private readonly Services.IPaidScanGate _paidScanGate;
         private readonly Services.IAppNotificationService? _notificationService;
+        private readonly IModelScoreboard? _scoreboard;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<InventoryViewModel> _logger;
 
@@ -119,7 +120,8 @@ namespace FlipKit.Desktop.ViewModels
             IPlayerNameDirectory? playerDirectory = null,
             // Optional so existing test fixtures don't have to wire it up.
             // When unset, billing-error toasts are skipped.
-            Services.IAppNotificationService? notificationService = null)
+            Services.IAppNotificationService? notificationService = null,
+            IModelScoreboard? scoreboard = null)
         {
             _cardRepository = cardRepository;
             _surpriseSetRepository = surpriseSetRepository;
@@ -133,6 +135,7 @@ namespace FlipKit.Desktop.ViewModels
             _scannerService = scannerService;
             _paidScanGate = paidScanGate;
             _notificationService = notificationService;
+            _scoreboard = scoreboard;
             _playerDirectory = playerDirectory;
             _logger = logger;
 
@@ -671,9 +674,22 @@ namespace FlipKit.Desktop.ViewModels
                         card.IsAuto = e.IsAuto;
                         card.IsRelic = e.IsRelic;
                         card.DataSource = CardDataSource.Ai;
+                        // Stamp model id so post-save user edits attribute
+                        // corrections back to the model that produced this enhance.
+                        card.AiModelUsed = result.UsedModelId ?? model;
 
                         await _cardRepository.UpdateCardAsync(card);
                         succeeded++;
+
+                        // Scoreboard: record the successful enhance against the
+                        // winning model. Cards are already persisted here, so
+                        // CardId is real — corrections later will land directly
+                        // on this record.
+                        if (_scoreboard != null && !string.IsNullOrEmpty(result.UsedModelId))
+                        {
+                            try { await _scoreboard.RecordSuccessAsync(result.UsedModelId, card.Id, result); }
+                            catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordSuccess failed for card {CardId}; continuing.", card.Id); }
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -708,6 +724,14 @@ namespace FlipKit.Desktop.ViewModels
                             "Enhance failed for card {CardId} ({Player}); continuing batch.",
                             card.Id, card.PlayerName);
                         EnhanceFailedCount++;
+                        if (_scoreboard != null)
+                        {
+                            var outcome = cardEx is System.Text.Json.JsonException
+                                ? ScanOutcome.ParseFailure
+                                : ScanOutcome.ModelError;
+                            try { await _scoreboard.RecordFailureAsync(model, outcome); }
+                            catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordFailure failed; continuing."); }
+                        }
                     }
                     finally
                     {

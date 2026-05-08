@@ -292,16 +292,20 @@ Return ONLY the JSON, no other text.";
                     // instruction on a directory-confirmed field, restore the
                     // verified value and log the disagreement so we can spot
                     // misbehaving model picks. No-op when no verified hint
-                    // was supplied (legacy soft-hint path).
+                    // was supplied (legacy soft-hint path). The returned count
+                    // feeds the model accuracy scoreboard's drift penalty.
+                    var driftCount = 0;
                     if (ocrHint != null && ocrHint.VerifiedFieldNames.Count > 0)
-                        ApplyVerifiedFieldOverrides(card, ocrHint);
+                        driftCount = ApplyVerifiedFieldOverrides(card, ocrHint);
 
                     return new ScanResult
                     {
                         Card = card,
                         VisualCues = MapToVisualCues(scannedData.VisualCues),
                         AllVisibleText = scannedData.AllVisibleText ?? new List<string>(),
-                        Confidences = MapToConfidences(scannedData.Confidence)
+                        Confidences = MapToConfidences(scannedData.Confidence),
+                        UsedModelId = currentModel,
+                        DriftEventCount = driftCount,
                     };
                 }
                 catch (OpenRouterRateLimitException rlEx)
@@ -868,8 +872,9 @@ Return ONLY the JSON, no other text.";
         /// insensitive; bool / int compare exact. Sport parses the hint
         /// string back to the enum before comparing.
         /// </summary>
-        internal void ApplyVerifiedFieldOverrides(Card card, OcrHint hint)
+        internal int ApplyVerifiedFieldOverrides(Card card, OcrHint hint)
         {
+            var driftCount = 0;
             void RestoreString(string field, Func<string?> read, Action<string?> write, string? hintValue)
             {
                 if (!hint.VerifiedFieldNames.Contains(field)) return;
@@ -880,6 +885,7 @@ Return ONLY the JSON, no other text.";
                     "LLM drifted on confirmed field '{Field}': returned '{Llm}', restoring '{Verified}'",
                     field, current, hintValue);
                 write(hintValue);
+                driftCount++;
             }
 
             RestoreString("player_name",     () => card.PlayerName,     v => card.PlayerName = v ?? string.Empty, hint.PlayerName);
@@ -900,6 +906,7 @@ Return ONLY the JSON, no other text.";
                     "LLM drifted on confirmed field 'year': returned '{Llm}', restoring '{Verified}'",
                     card.Year, hint.Year);
                 card.Year = hint.Year;
+                driftCount++;
             }
 
             // Sport: parse hint string to enum, compare to card.Sport (Sport?)
@@ -911,6 +918,7 @@ Return ONLY the JSON, no other text.";
                     "LLM drifted on confirmed field 'sport': returned '{Llm}', restoring '{Verified}'",
                     card.Sport, hintSport);
                 card.Sport = hintSport;
+                driftCount++;
             }
 
             // Booleans: only flag drift when hint value is non-null
@@ -924,11 +932,13 @@ Return ONLY the JSON, no other text.";
                     "LLM drifted on confirmed field '{Field}': returned '{Llm}', restoring '{Verified}'",
                     field, current, hintValue.Value);
                 write(hintValue.Value);
+                driftCount++;
             }
             RestoreBool("is_rookie", () => card.IsRookie, v => card.IsRookie = v, hint.IsRookie);
             RestoreBool("is_auto",   () => card.IsAuto,   v => card.IsAuto = v,   hint.IsAuto);
             RestoreBool("is_relic",  () => card.IsRelic,  v => card.IsRelic = v,  hint.IsRelic);
             RestoreBool("is_graded", () => card.IsGraded, v => card.IsGraded = v, hint.IsGraded);
+            return driftCount;
         }
 
         private static VisualCues? MapToVisualCues(ScannedVisualCues? cues)
