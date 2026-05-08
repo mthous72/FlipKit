@@ -569,6 +569,9 @@ namespace FlipKit.Desktop.ViewModels
                 var failedItems = Items.Where(i => i.Status == BulkScanStatus.FreeFailed).ToList();
                 if (failedItems.Count > 0 && cheapestPaid != null)
                 {
+                    // Surface a toast so the user notices on other tabs that
+                    // free models are exhausted and a paid prompt is incoming.
+                    _notificationService?.NotifyFreeModelsExhausted(failedItems.Count);
                     StatusMessage = $"Asking about paid fallback for {failedItems.Count} card(s)...";
                     // Pull the full paid-vision-model list so the user can pick a
                     // different model than the suggested cheapest if they prefer.
@@ -853,7 +856,22 @@ namespace FlipKit.Desktop.ViewModels
                     IsRateLimitPaused = true;
                     RateLimitBannerMessage =
                         "Daily OpenRouter rate limit reached. Add credits at openrouter.ai, then click Resume to continue.";
+                    // Toast in addition to the inline banner — surfaces the
+                    // problem when the user is on a different tab.
+                    _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
                     cts.Cancel(); // stop remaining pending items
+                }
+                catch (OpenRouterPaymentRequiredException pEx)
+                {
+                    // 402 — credits exhausted. Mark the card as errored, fire
+                    // a sticky red toast, and stop the batch (further attempts
+                    // will only multiply the symptom).
+                    _logger.LogError("OpenRouter Payment Required on card {Index}. Stopping bulk scan.", item.Index);
+                    item.Status = BulkScanStatus.Error;
+                    item.ErrorMessage = pEx.Message;
+                    _errorLogger.LogError(item.Index, item.FrontImagePath, item.BackImagePath, pEx, modelChain[0]);
+                    _notificationService?.NotifyPaymentRequired(pEx.ModelId, pEx.ResponseBody);
+                    cts.Cancel();
                 }
                 catch (Exception ex)
                 {

@@ -26,6 +26,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IScannerService _scannerService;
         private readonly ISettingsService _settingsService;
         private readonly Services.IPaidScanGate _paidScanGate;
+        private readonly Services.IAppNotificationService? _notificationService;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private CancellationTokenSource? _enhanceCts;
 
@@ -80,7 +81,9 @@ namespace FlipKit.Desktop.ViewModels
             IScannerService scannerService,
             ISettingsService settingsService,
             Services.IPaidScanGate paidScanGate,
-            IPlayerNameDirectory? playerDirectory = null)
+            IPlayerNameDirectory? playerDirectory = null,
+            // Optional so existing test fixtures don't have to wire it up.
+            Services.IAppNotificationService? notificationService = null)
         {
             _repository = repository;
             _validator = validator;
@@ -92,6 +95,7 @@ namespace FlipKit.Desktop.ViewModels
             _scannerService = scannerService;
             _settingsService = settingsService;
             _paidScanGate = paidScanGate;
+            _notificationService = notificationService;
             _playerDirectory = playerDirectory;
         }
 
@@ -410,6 +414,16 @@ namespace FlipKit.Desktop.ViewModels
             catch (OperationCanceledException)
             {
                 StatusMessage = "Enhancement cancelled.";
+            }
+            catch (OpenRouterPaymentRequiredException pEx)
+            {
+                StatusMessage = pEx.Message;
+                _notificationService?.NotifyPaymentRequired(pEx.ModelId, pEx.ResponseBody);
+            }
+            catch (OpenRouterRateLimitException rlEx)
+            {
+                StatusMessage = rlEx.Message;
+                _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
             }
             catch (Exception ex)
             {
