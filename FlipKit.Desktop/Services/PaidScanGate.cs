@@ -87,11 +87,24 @@ namespace FlipKit.Desktop.Services
                 return null;
             }
 
-            var suggested = (suggestedId != null
-                ? catalog.PaidVisionModels.FirstOrDefault(m => m.Id == suggestedId)
-                : null) ?? catalog.PaidVisionModels[0];
+            // Prefer models that can enforce json_schema strict mode — without it
+            // the parallel-name enum is advisory only, and we lose the hard stop
+            // against hallucinated parallels. Soft-fail to the full list when
+            // zero capable models are available rather than blocking the scan.
+            var capable = catalog.PaidVisionModels.Where(m => m.SupportsJsonSchema).ToList();
+            if (capable.Count == 0)
+            {
+                _logger?.LogWarning(
+                    "PaidScanGate: no schema-capable paid models in catalog; falling back to full paid list. " +
+                    "Parallel-name constraint will be best-effort.");
+                capable = catalog.PaidVisionModels.ToList();
+            }
 
-            var chosen = await _consent.AskAsync(catalog.PaidVisionModels, suggested, contextMessage);
+            var suggested = (suggestedId != null
+                ? capable.FirstOrDefault(m => m.Id == suggestedId)
+                : null) ?? capable[0];
+
+            var chosen = await _consent.AskAsync(capable, suggested, contextMessage);
             return chosen?.Id;
         }
     }

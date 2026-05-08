@@ -184,12 +184,21 @@ Return ONLY the JSON, no other text.";
 
         private readonly HttpClient _httpClient;
         private readonly ISettingsService _settingsService;
+        private readonly IParallelCandidateProvider? _parallelProvider;
         private readonly ILogger<OpenRouterScannerService> _logger;
 
-        public OpenRouterScannerService(HttpClient httpClient, ISettingsService settingsService, ILogger<OpenRouterScannerService> logger)
+        public OpenRouterScannerService(
+            HttpClient httpClient,
+            ISettingsService settingsService,
+            ILogger<OpenRouterScannerService> logger,
+            IParallelCandidateProvider? parallelProvider = null)
         {
             _httpClient = httpClient;
             _settingsService = settingsService;
+            // Optional so existing tests that mock the scanner don't have to wire
+            // it up. When unset (or no candidates can be produced for a card) the
+            // prompt + schema fall back to "free-form parallel name" behavior.
+            _parallelProvider = parallelProvider;
             _logger = logger;
         }
 
@@ -231,16 +240,23 @@ Return ONLY the JSON, no other text.";
             else
                 promptBody = ScanPromptBody;
 
+            // Pull the parallel candidate list once. The same list goes into the
+            // prompt preamble (as a "pick from this list" instruction) AND the
+            // json_schema enum below — they have to match or the LLM will pick
+            // a value that gets rejected by the schema.
+            var parallelCandidates = ResolveParallelCandidates(ocrHint);
             var hintPreamble = ocrHint != null ? BuildOcrHintPreamble(ocrHint) : string.Empty;
+            var candidatesPreamble = BuildParallelCandidatesPreamble(parallelCandidates);
+
             string prompt;
             if (!string.IsNullOrEmpty(backImagePath) && File.Exists(backImagePath))
             {
                 dataUrls.Add(await EncodeImageToDataUrl(backImagePath));
-                prompt = hintPreamble + "You are given the FRONT and BACK images of the same sports card. The first image is the FRONT, the second is the BACK. Analyze BOTH images together to extract all identifying information. The back often contains the card number, set name, manufacturer, and serial number." + promptBody;
+                prompt = hintPreamble + candidatesPreamble + "You are given the FRONT and BACK images of the same sports card. The first image is the FRONT, the second is the BACK. Analyze BOTH images together to extract all identifying information. The back often contains the card number, set name, manufacturer, and serial number." + promptBody;
             }
             else
             {
-                prompt = hintPreamble + "Analyze this sports card image and extract all identifying information." + promptBody;
+                prompt = hintPreamble + candidatesPreamble + "Analyze this sports card image and extract all identifying information." + promptBody;
             }
 
             var settings = _settingsService.Load();
@@ -259,7 +275,7 @@ Return ONLY the JSON, no other text.";
                 {
                     _logger.LogInformation("Attempting scan with model {Model} (depth: {Depth})...", currentModel, scanDepth);
 
-                    var rawContent = await TryScanModelAsync(dataUrls, prompt, currentModel, apiKey, ct);
+                    var rawContent = await TryScanModelAsync(dataUrls, prompt, currentModel, apiKey, parallelCandidates, ct);
                     var content = StripCodeBlocks(rawContent);
 
                     var scannedData = JsonSerializer.Deserialize<ScannedCardData>(content);
@@ -357,7 +373,8 @@ Return ONLY the JSON, no other text.";
         /// 429s are converted to <see cref="OpenRouterRateLimitException"/> and re-thrown.
         /// </summary>
         private async Task<string> TryScanModelAsync(
-            List<string> dataUrls, string prompt, string modelId, string apiKey, CancellationToken ct)
+            List<string> dataUrls, string prompt, string modelId, string apiKey,
+            IReadOnlyList<string> parallelCandidates, CancellationToken ct)
         {
             var backoffDelaysMs = new[] { 2000, 4000, 8000, 16000, 32000 };
             var attempt = 0;
@@ -367,7 +384,7 @@ Return ONLY the JSON, no other text.";
             {
                 try
                 {
-                    return await SendSingleRequestAsync(dataUrls, prompt, modelId, apiKey, ct);
+                    return await SendSingleRequestAsync(dataUrls, prompt, modelId, apiKey, parallelCandidates, ct);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -447,7 +464,10 @@ Return ONLY the JSON, no other text.";
                 try
                 {
                     _logger.LogDebug("Trying model {Model}", currentModel);
-                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey, CancellationToken.None);
+                    // Custom-prompt path (e.g. eBay title enricher) — null
+                    // candidates skip the card json_schema since the response
+                    // shape is whatever the prompt asked for, not ScannedCardData.
+                    var result = await SendSingleRequestAsync(dataUrls, prompt, currentModel, apiKey, parallelCandidates: null, CancellationToken.None);
                     _logger.LogInformation("Scan succeeded with model {Model}", currentModel);
                     return result;
                 }
@@ -476,7 +496,9 @@ Return ONLY the JSON, no other text.";
                 $"All models failed. Last error: {lastException?.Message}", lastException);
         }
 
-        private async Task<string> SendSingleRequestAsync(List<string> dataUrls, string prompt, string model, string apiKey, CancellationToken ct)
+        private async Task<string> SendSingleRequestAsync(
+            List<string> dataUrls, string prompt, string model, string apiKey,
+            IReadOnlyList<string>? parallelCandidates, CancellationToken ct)
         {
             var contentParts = new List<OpenRouterContentPart>();
             foreach (var dataUrl in dataUrls)
@@ -502,7 +524,17 @@ Return ONLY the JSON, no other text.";
                 Messages = new List<OpenRouterMessage>
                 {
                     new() { Role = "user", Content = contentParts }
-                }
+                },
+                // Strict json_schema gates the response shape when this is a card
+                // scan (parallelCandidates non-null). parallel_name's enum stops
+                // models from inventing parallel names that aren't in our reference
+                // data. OpenRouter forwards the schema to providers that support it;
+                // ones that don't ignore response_format gracefully — the existing
+                // JSON parser + StripCodeBlocks fallback covers them. Custom-prompt
+                // callers (eBay title enricher) pass null to skip the schema.
+                ResponseFormat = parallelCandidates != null
+                    ? OpenRouterCardSchemaBuilder.BuildResponseFormat(parallelCandidates)
+                    : null,
             };
 
             var jsonRequest = JsonSerializer.Serialize(request);
@@ -732,6 +764,41 @@ Return ONLY the JSON, no other text.";
                     sb.AppendLine($"  {line}");
             }
 
+            sb.AppendLine();
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Pulls the parallel candidate list from the registered provider, using
+        /// whatever metadata the OcrHint exposes. Returns an empty list when no
+        /// provider is registered (test scaffold) or no metadata is available —
+        /// callers treat empty as "skip enum constraint, free-form parallel name."
+        /// </summary>
+        private IReadOnlyList<string> ResolveParallelCandidates(OcrHint? hint)
+        {
+            if (_parallelProvider == null) return Array.Empty<string>();
+            return _parallelProvider.GetCandidates(
+                manufacturer: hint?.Manufacturer,
+                brand: hint?.Brand,
+                year: hint?.Year,
+                sport: hint?.Sport);
+        }
+
+        /// <summary>
+        /// Renders the candidate list as a prompt block. The same list is
+        /// attached to the request's response_format json_schema enum, so the
+        /// prompt and the schema agree on what's acceptable. Returns empty
+        /// string when there are no candidates — leaves the prompt unconstrained.
+        /// </summary>
+        internal static string BuildParallelCandidatesPreamble(IReadOnlyList<string> candidates)
+        {
+            if (candidates.Count == 0) return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.AppendLine("KNOWN PARALLELS (set parallel_name to one of these names, or null if no visual match):");
+            foreach (var name in candidates) sb.AppendLine($"  - {name}");
+            sb.AppendLine();
+            sb.AppendLine("If you see a clear shimmer / foil / refractor pattern but none of the listed names matches what you observe, set parallel_name to null and describe the pattern in condition_notes. Do NOT invent a parallel name that isn't on the list above.");
             sb.AppendLine();
             return sb.ToString();
         }

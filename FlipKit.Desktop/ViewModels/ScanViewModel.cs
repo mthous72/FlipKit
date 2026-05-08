@@ -319,13 +319,42 @@ namespace FlipKit.Desktop.ViewModels
                     }
                 }
 
+                // OCR pre-pass — runs Windows OCR silently before the LLM so the
+                // model gets a rich OcrHint anchored on player / brand / manufacturer.
+                // This is what feeds the parallel-candidate provider; without it
+                // the LLM has no manufacturer signal and parallels are guesswork.
+                // Best-effort: failure here just means scanning without a hint.
+                OcrHint? ocrHint = null;
+                if (_ocrService.IsAvailable)
+                {
+                    try
+                    {
+                        var ocr = await _ocrService.ScanCardAsync(ImagePath, ImagePathBack);
+                        ocrHint = _playerDirectory?.IsReady == true
+                            ? _playerDirectory.BuildHintFromCard(ocr.Card)
+                            : new OcrHint
+                            {
+                                PlayerName = ocr.Card.PlayerName,
+                                Year = ocr.Card.Year,
+                                Manufacturer = ocr.Card.Manufacturer,
+                                Brand = ocr.Card.Brand,
+                                SetName = ocr.Card.SetName,
+                            };
+                        ocrHint.AllVisibleText = ocr.AllVisibleText ?? new List<string>();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "OCR pre-pass failed; LLM will scan without hint.");
+                    }
+                }
+
                 // Resolve the model to use:
                 // - "Auto" (or no selection): rotate through free models, then ask consent for cheapest paid.
                 // - Explicit free or paid pick: single attempt with that model, no rotation.
                 ScanResult? scanResult;
                 if (SelectedModel == null || SelectedModel.IsAuto)
                 {
-                    scanResult = await ScanWithAutoRotationAsync();
+                    scanResult = await ScanWithAutoRotationAsync(ocrHint);
                     if (scanResult == null)
                     {
                         // Either user declined paid consent, or every model failed.
@@ -335,7 +364,7 @@ namespace FlipKit.Desktop.ViewModels
                 }
                 else
                 {
-                    scanResult = await _scannerService.ScanCardAsync(ImagePath, ImagePathBack, SelectedModel.Value);
+                    scanResult = await _scannerService.ScanCardAsync(ImagePath, ImagePathBack, SelectedModel.Value, ocrHint: ocrHint);
                 }
 
                 scanResult.Card.ImagePathFront = ImagePath;
@@ -881,7 +910,7 @@ namespace FlipKit.Desktop.ViewModels
         /// ScanResult, or null when the user declines the paid prompt OR every model
         /// (free + the one approved paid) failed.
         /// </summary>
-        private async Task<ScanResult?> ScanWithAutoRotationAsync()
+        private async Task<ScanResult?> ScanWithAutoRotationAsync(OcrHint? ocrHint = null)
         {
             var catalog = await _modelCatalog.GetAsync();
             if (catalog.IsEmpty)
@@ -896,7 +925,7 @@ namespace FlipKit.Desktop.ViewModels
                 try
                 {
                     VerificationStatus = $"Trying {freeModel.DisplayName}...";
-                    return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, freeModel.Id);
+                    return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, freeModel.Id, ocrHint: ocrHint);
                 }
                 catch (Exception ex)
                 {
@@ -933,7 +962,7 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 VerificationStatus = $"Trying {chosenPaid.DisplayName}...";
-                return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, chosenPaid.Id);
+                return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, chosenPaid.Id, ocrHint: ocrHint);
             }
             catch (Exception ex)
             {

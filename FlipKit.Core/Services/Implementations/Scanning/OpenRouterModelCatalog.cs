@@ -143,6 +143,12 @@ namespace FlipKit.Core.Services.Scanning
         /// </summary>
         private static ModelCatalog BuildFallbackCatalog()
         {
+            // Fallback used only when /api/v1/models is unreachable. Free models
+            // are conservatively reported without response_format support — many
+            // free providers don't honor it, and the schema is best-effort there
+            // anyway. Paid fallback ids (gpt-4o-*, gemini-2.0-*, claude-3.5-*,
+            // claude-3-opus) all support response_format per their docs as of the
+            // last verification.
             var free = OpenRouterModelDefaults.FallbackFreeModelIds
                 .Select(id => new OpenRouterModel(
                     Id: id,
@@ -151,7 +157,8 @@ namespace FlipKit.Core.Services.Scanning
                     PromptPricePerMillion: 0m,
                     CompletionPricePerMillion: 0m,
                     ImagePricePerImage: null,
-                    Description: "Fallback entry — live catalog unavailable."))
+                    Description: "Fallback entry — live catalog unavailable.",
+                    SupportedParameters: new List<string>()))
                 .ToList();
 
             var paid = OpenRouterModelDefaults.FallbackPaidModelIds
@@ -162,7 +169,8 @@ namespace FlipKit.Core.Services.Scanning
                     PromptPricePerMillion: 1m,    // unknown actual price; sentinel positive
                     CompletionPricePerMillion: 1m,
                     ImagePricePerImage: null,
-                    Description: "Fallback entry — live catalog unavailable. Actual pricing unknown."))
+                    Description: "Fallback entry — live catalog unavailable. Actual pricing unknown.",
+                    SupportedParameters: new List<string> { "response_format" }))
                 .ToList();
 
             return new ModelCatalog(free, paid, DateTime.UtcNow, IsFallback: true);
@@ -243,7 +251,8 @@ namespace FlipKit.Core.Services.Scanning
                 PromptPricePerMillion: promptPerMillion,
                 CompletionPricePerMillion: completionPerMillion,
                 ImagePricePerImage: imagePerImage,
-                Description: m.Description ?? string.Empty);
+                Description: m.Description ?? string.Empty,
+                SupportedParameters: m.SupportedParameters ?? new List<string>());
         }
 
         private static decimal? ParseDecimalSafe(string? s)
@@ -262,11 +271,15 @@ namespace FlipKit.Core.Services.Scanning
 
         private sealed class ModelEntry
         {
-            [JsonPropertyName("id")]            public string? Id { get; set; }
-            [JsonPropertyName("name")]          public string? Name { get; set; }
-            [JsonPropertyName("description")]   public string? Description { get; set; }
-            [JsonPropertyName("architecture")]  public ArchitectureInfo? Architecture { get; set; }
-            [JsonPropertyName("pricing")]       public PricingInfo? Pricing { get; set; }
+            [JsonPropertyName("id")]                   public string? Id { get; set; }
+            [JsonPropertyName("name")]                 public string? Name { get; set; }
+            [JsonPropertyName("description")]          public string? Description { get; set; }
+            [JsonPropertyName("architecture")]         public ArchitectureInfo? Architecture { get; set; }
+            [JsonPropertyName("pricing")]              public PricingInfo? Pricing { get; set; }
+            // OpenRouter's response includes a per-model "supported_parameters"
+            // array — values like "response_format", "tools", "tool_choice",
+            // "structured_outputs". Drives the schema-capable picker filter.
+            [JsonPropertyName("supported_parameters")] public List<string>? SupportedParameters { get; set; }
         }
 
         private sealed class ArchitectureInfo

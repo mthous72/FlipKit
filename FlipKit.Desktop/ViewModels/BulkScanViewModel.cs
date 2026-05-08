@@ -542,8 +542,14 @@ namespace FlipKit.Desktop.ViewModels
             // Process all items concurrently with semaphore limiting. Pass the
             // CTS through explicitly so ProcessItemAsync doesn't read the
             // nullable _scanCts field (eliminates the CS8602 suppression that
-            // used to wrap the whole method body).
+            // used to wrap the whole method body). Capture the Token as a
+            // separate value: CancellationToken is a struct, so reading
+            // IsCancellationRequested keeps working even if the source CTS gets
+            // disposed before the final notification fires (real crash seen
+            // when the VM was disposed mid-scan and the user kicked off a
+            // rescan as the prior scan's tail still ran).
             var cts = _scanCts;
+            var scanToken = cts.Token;
             var currentScanDepth = ScanDepth;
             var tasks = pending.Select(item => ProcessItemAsync(item, semaphore, settings, freeChain, isFreeModel, currentScanDepth, cts, freeChainOnly));
 
@@ -635,7 +641,10 @@ namespace FlipKit.Desktop.ViewModels
             StatusMessage = null;
 
             // Notify even when the user is on another tab so they know the batch is done.
-            if (!cts.Token.IsCancellationRequested)
+            // Use the captured Token (struct) — by this point the source CTS may have
+            // been disposed by VM.Dispose() if the user navigated away, and reading
+            // .Token on a disposed CTS throws ObjectDisposedException.
+            if (!scanToken.IsCancellationRequested)
                 _notificationService?.NotifyBulkScanComplete(scanned, errors);
 
             if (IsRateLimitPaused)
@@ -668,7 +677,12 @@ namespace FlipKit.Desktop.ViewModels
             if (catalog.IsEmpty) return (Array.Empty<string>(), null);
 
             var chain = catalog.FreeVisionModels.Select(m => m.Id).ToList();
-            var cheapestPaid = catalog.PaidVisionModels.Count > 0 ? catalog.PaidVisionModels[0] : null;
+            // Prefer schema-capable for the suggestion since the picker now
+            // shows the full schema-capable list anyway. Fall back to any paid
+            // model if nothing schema-capable is in the catalog (deprecated
+            // models, fetch failure).
+            var cheapestPaid = catalog.PaidVisionModels.FirstOrDefault(m => m.SupportsJsonSchema)
+                ?? (catalog.PaidVisionModels.Count > 0 ? catalog.PaidVisionModels[0] : null);
             return (chain, cheapestPaid);
         }
 
@@ -694,6 +708,37 @@ namespace FlipKit.Desktop.ViewModels
                 StatusMessage = $"Scanning card {item.Index} of {ScanTotal}...";
                 _logger.LogInformation("Scanning card {Index}: {Path}", item.Index, item.FrontImagePath);
 
+                // OCR pre-pass — runs Windows OCR silently before the LLM so the
+                // model gets a rich OcrHint anchored on player / brand / manufacturer
+                // pulled from the physical card text. Without this, the parallel
+                // candidate provider sees no manufacturer signal and falls back to
+                // universal-only entries — the LLM has to guess the brand from
+                // visual cues alone, which is exactly what was failing on parallels.
+                // Best-effort: failure here just means scanning without a hint.
+                OcrHint? ocrHint = null;
+                if (_ocrService.IsAvailable)
+                {
+                    try
+                    {
+                        var ocrResult = await _ocrService.ScanCardAsync(item.FrontImagePath, item.BackImagePath);
+                        ocrHint = _playerDirectory?.IsReady == true
+                            ? _playerDirectory.BuildHintFromCard(ocrResult.Card)
+                            : new OcrHint
+                            {
+                                PlayerName = ocrResult.Card.PlayerName,
+                                Year = ocrResult.Card.Year,
+                                Manufacturer = ocrResult.Card.Manufacturer,
+                                Brand = ocrResult.Card.Brand,
+                                SetName = ocrResult.Card.SetName,
+                            };
+                        ocrHint.AllVisibleText = ocrResult.AllVisibleText ?? new System.Collections.Generic.List<string>();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "OCR pre-pass failed for card {Index}; LLM will scan without hint.", item.Index);
+                    }
+                }
+
                 try
                 {
                     // Walk the model chain — first model that succeeds wins. If every model
@@ -708,7 +753,7 @@ namespace FlipKit.Desktop.ViewModels
                         {
                             scanResult = await _scannerService.ScanCardAsync(
                                 item.FrontImagePath, item.BackImagePath, modelId,
-                                scanDepth: scanDepth, ct: cts.Token);
+                                scanDepth: scanDepth, ocrHint: ocrHint, ct: cts.Token);
                             usedModel = modelId;
                             break;
                         }

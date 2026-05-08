@@ -103,6 +103,9 @@ builder.Services.AddSingleton<IChecklistImportService, ChecklistImportService>()
 // parallel-family catalog. Matcher uses IServiceProvider for scoped DbContext.
 builder.Services.AddSingleton<IChecklistVerificationMatcher, ChecklistVerificationMatcher>();
 builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
+// Combines parallels.json + IParallelFamilyService into a single candidate list
+// the scanner uses to constrain the LLM's parallel_name output.
+builder.Services.AddSingleton<IParallelCandidateProvider, ParallelCandidateProvider>();
 // eBay Seller Hub CSV import (Roadmap #3). Enricher uses OpenRouter for the LLM
 // title pass; import service composes the rule parser + enricher + repo upsert.
 // Scoped because the import service holds an ICardRepository.

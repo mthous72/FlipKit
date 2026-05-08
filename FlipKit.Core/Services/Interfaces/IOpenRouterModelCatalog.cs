@@ -41,7 +41,27 @@ namespace FlipKit.Core.Services
         decimal PromptPricePerMillion,
         decimal CompletionPricePerMillion,
         decimal? ImagePricePerImage,
-        string Description);
+        string Description,
+        // Defaulted so legacy callers (test fixtures, fallback catalog construction
+        // older than the schema-aware filter) keep compiling. Production code
+        // should always set this — empty here means "we don't know what's
+        // supported", and SupportsJsonSchema returns false in that case.
+        IReadOnlyList<string>? SupportedParameters = null)
+    {
+        public IReadOnlyList<string> SupportedParameters { get; init; } =
+            SupportedParameters ?? System.Array.Empty<string>();
+
+        /// <summary>
+        /// True when the model accepts <c>response_format</c> with a strict
+        /// json_schema. Drives the paid-model picker's filter so the user
+        /// doesn't pick a model that can't enforce the parallel-name enum.
+        /// OpenRouter's <c>/api/v1/models</c> reports both <c>response_format</c>
+        /// and <c>structured_outputs</c> as the capability flag; we accept either.
+        /// </summary>
+        public bool SupportsJsonSchema =>
+            SupportedParameters.Contains("response_format", System.StringComparer.OrdinalIgnoreCase)
+            || SupportedParameters.Contains("structured_outputs", System.StringComparer.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Static defaults for the OpenRouter scanner — the default model id used when

@@ -138,6 +138,84 @@ public class OpenRouterModelCatalogTests
             OpenRouterModelDefaults.ResolveModelId("google/gemini-2.0-flash-lite-001"));
     }
 
+    // === supported_parameters round-trip + SupportsJsonSchema computed property ===
+
+    [Fact]
+    public async Task Should_CaptureSupportedParameters_When_PresentInModelEntry()
+    {
+        const string modelsResponse = @"{
+            ""data"": [
+                {
+                    ""id"": ""anthropic/claude-3.5-sonnet"",
+                    ""name"": ""Claude 3.5 Sonnet"",
+                    ""description"": ""schema-capable"",
+                    ""architecture"": { ""input_modalities"": [""text"", ""image""], ""output_modalities"": [""text""] },
+                    ""pricing"": { ""prompt"": ""0.000003"", ""completion"": ""0.000015"" },
+                    ""supported_parameters"": [""tools"", ""tool_choice"", ""response_format""]
+                }
+            ]
+        }";
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, modelsResponse);
+        var catalog = CreateCatalog(handler);
+
+        var result = await catalog.GetAsync();
+        var model = result.PaidVisionModels.Single();
+
+        Assert.Contains("response_format", model.SupportedParameters);
+        Assert.Contains("tools", model.SupportedParameters);
+        Assert.True(model.SupportsJsonSchema);
+    }
+
+    [Fact]
+    public async Task Should_ReportNotSchemaCapable_When_ResponseFormatAbsent()
+    {
+        const string modelsResponse = @"{
+            ""data"": [
+                {
+                    ""id"": ""free-model/no-schema"",
+                    ""name"": ""Free no-schema"",
+                    ""description"": ""no structured output support"",
+                    ""architecture"": { ""input_modalities"": [""text"", ""image""], ""output_modalities"": [""text""] },
+                    ""pricing"": { ""prompt"": ""0"", ""completion"": ""0"" },
+                    ""supported_parameters"": [""max_tokens"", ""temperature""]
+                }
+            ]
+        }";
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, modelsResponse);
+        var catalog = CreateCatalog(handler);
+
+        var result = await catalog.GetAsync();
+        var model = result.FreeVisionModels.Single();
+
+        Assert.False(model.SupportsJsonSchema);
+    }
+
+    [Fact]
+    public async Task Should_AcceptStructuredOutputsAlias_When_ProviderUsesItInsteadOfResponseFormat()
+    {
+        // Some providers list "structured_outputs" instead of "response_format" —
+        // OpenRouter's catalog reports both spellings. Accept either.
+        const string modelsResponse = @"{
+            ""data"": [
+                {
+                    ""id"": ""provider/strict-structured"",
+                    ""name"": ""Strict structured"",
+                    ""description"": """",
+                    ""architecture"": { ""input_modalities"": [""text"", ""image""], ""output_modalities"": [""text""] },
+                    ""pricing"": { ""prompt"": ""0.000001"", ""completion"": ""0.000001"" },
+                    ""supported_parameters"": [""structured_outputs""]
+                }
+            ]
+        }";
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, modelsResponse);
+        var catalog = CreateCatalog(handler);
+
+        var result = await catalog.GetAsync();
+        var model = result.PaidVisionModels.Single();
+
+        Assert.True(model.SupportsJsonSchema);
+    }
+
     [Fact]
     public async Task Should_FilterOutMusicGenerationModels_When_MisClassifiedAsVision()
     {
