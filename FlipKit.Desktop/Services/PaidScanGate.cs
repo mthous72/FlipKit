@@ -27,15 +27,21 @@ namespace FlipKit.Desktop.Services
     {
         private readonly IOpenRouterModelCatalog _catalog;
         private readonly IPaidModelConsentService _consent;
+        // Optional — when present, the paid-model picker order is sorted by
+        // recent quality so better-performing models float to the top of the
+        // list. Null is fine: the catalog's default order is the fallback.
+        private readonly IModelScoreboard? _scoreboard;
         private readonly ILogger<PaidScanGate>? _logger;
 
         public PaidScanGate(
             IOpenRouterModelCatalog catalog,
             IPaidModelConsentService consent,
-            ILogger<PaidScanGate>? logger = null)
+            ILogger<PaidScanGate>? logger = null,
+            IModelScoreboard? scoreboard = null)
         {
             _catalog = catalog;
             _consent = consent;
+            _scoreboard = scoreboard;
             _logger = logger;
         }
 
@@ -98,6 +104,21 @@ namespace FlipKit.Desktop.Services
                     "PaidScanGate: no schema-capable paid models in catalog; falling back to full paid list. " +
                     "Parallel-name constraint will be best-effort.");
                 capable = catalog.PaidVisionModels.ToList();
+            }
+
+            // Sort by per-model accuracy score (descending) when scoreboard data
+            // exists. Models that haven't been used yet (null score) sort to the
+            // bottom but stay visible — the user can still pick them.
+            if (_scoreboard != null)
+            {
+                try
+                {
+                    var qualities = await _scoreboard.GetQualitiesAsync();
+                    capable = capable
+                        .OrderByDescending(m => qualities.TryGetValue(m.Id, out var q) ? (q.Score ?? -1m) : -1m)
+                        .ToList();
+                }
+                catch { /* best-effort sort: scoreboard miss = catalog order, no penalty */ }
             }
 
             var suggested = (suggestedId != null

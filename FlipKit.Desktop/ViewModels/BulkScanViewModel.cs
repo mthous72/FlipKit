@@ -345,10 +345,26 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 var catalog = await _modelCatalog.GetAsync();
+
+                // Attach scoreboard signal so the dropdown shows a per-model
+                // quality pill and sorts proven-better models to the top.
+                IReadOnlyDictionary<string, ModelQuality>? qualities = null;
+                if (_scoreboard != null)
+                {
+                    try { qualities = await _scoreboard.GetQualitiesAsync(); }
+                    catch { /* best-effort */ }
+                }
+                ModelOption WithQuality(OpenRouterModel m) =>
+                    ModelOption.FromCatalog(m, qualities != null && qualities.TryGetValue(m.Id, out var q) ? q : null);
+
                 ModelOptions.Clear();
                 ModelOptions.Add(ModelOption.Auto());
-                foreach (var m in catalog.FreeVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
-                foreach (var m in catalog.PaidVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
+                var sortedFree = catalog.FreeVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                var sortedPaid = catalog.PaidVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                foreach (var o in sortedFree) ModelOptions.Add(o);
+                foreach (var o in sortedPaid) ModelOptions.Add(o);
 
                 var savedId = _settingsService.Load().DefaultModel;
                 ModelOption? choice = null;
@@ -682,7 +698,21 @@ namespace FlipKit.Desktop.ViewModels
             var catalog = await _modelCatalog.GetAsync();
             if (catalog.IsEmpty) return (Array.Empty<string>(), null);
 
-            var chain = catalog.FreeVisionModels.Select(m => m.Id).ToList();
+            // Sort the free chain by per-model quality so proven-better models
+            // are tried first. Untested models fall to the bottom but still
+            // get tried — that's how they earn a score in the first place.
+            var freeModels = catalog.FreeVisionModels.AsEnumerable();
+            if (_scoreboard != null)
+            {
+                try
+                {
+                    var qualities = await _scoreboard.GetQualitiesAsync();
+                    freeModels = catalog.FreeVisionModels
+                        .OrderByDescending(m => qualities.TryGetValue(m.Id, out var q) ? (q.Score ?? -1m) : -1m);
+                }
+                catch { /* fall back to catalog order */ }
+            }
+            var chain = freeModels.Select(m => m.Id).ToList();
             // Prefer schema-capable for the suggestion since the picker now
             // shows the full schema-capable list anyway. Fall back to any paid
             // model if nothing schema-capable is in the catalog (deprecated

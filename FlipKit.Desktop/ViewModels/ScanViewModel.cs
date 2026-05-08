@@ -169,12 +169,26 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 var catalog = await _modelCatalog.GetAsync();
+
+                // Attach scoreboard signal — the dropdown shows a per-model
+                // quality pill and sorts higher-scoring models to the top.
+                IReadOnlyDictionary<string, ModelQuality>? qualities = null;
+                if (_scoreboard != null)
+                {
+                    try { qualities = await _scoreboard.GetQualitiesAsync(); }
+                    catch { /* best-effort */ }
+                }
+                ModelOption WithQuality(OpenRouterModel m) =>
+                    ModelOption.FromCatalog(m, qualities != null && qualities.TryGetValue(m.Id, out var q) ? q : null);
+
                 ModelOptions.Clear();
                 ModelOptions.Add(ModelOption.Auto());
-                foreach (var m in catalog.FreeVisionModels)
-                    ModelOptions.Add(ModelOption.FromCatalog(m));
-                foreach (var m in catalog.PaidVisionModels)
-                    ModelOptions.Add(ModelOption.FromCatalog(m));
+                var sortedFree = catalog.FreeVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                var sortedPaid = catalog.PaidVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                foreach (var o in sortedFree) ModelOptions.Add(o);
+                foreach (var o in sortedPaid) ModelOptions.Add(o);
 
                 // Pick a sensible default: saved settings if it's still in the live catalog;
                 // otherwise Auto. Never pre-select a stale/deprecated model — the user
@@ -981,8 +995,23 @@ namespace FlipKit.Desktop.ViewModels
                 return null;
             }
 
+            // Sort the free rotation by per-model accuracy score so the higher-
+            // performing models are tried first. Untested models still get a
+            // turn — they fall to the bottom but stay in the rotation.
+            var freeModels = (IEnumerable<OpenRouterModel>)catalog.FreeVisionModels;
+            if (_scoreboard != null)
+            {
+                try
+                {
+                    var qualities = await _scoreboard.GetQualitiesAsync();
+                    freeModels = catalog.FreeVisionModels
+                        .OrderByDescending(m => qualities.TryGetValue(m.Id, out var q) ? (q.Score ?? -1m) : -1m);
+                }
+                catch { /* fall back to catalog order */ }
+            }
+
             Exception? lastError = null;
-            foreach (var freeModel in catalog.FreeVisionModels)
+            foreach (var freeModel in freeModels)
             {
                 try
                 {
