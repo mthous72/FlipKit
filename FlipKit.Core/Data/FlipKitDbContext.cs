@@ -18,6 +18,7 @@ namespace FlipKit.Core.Data
         public DbSet<SetChecklist> SetChecklists => Set<SetChecklist>();
         public DbSet<MissingChecklist> MissingChecklists => Set<MissingChecklist>();
         public DbSet<SurpriseSet> SurpriseSets => Set<SurpriseSet>();
+        public DbSet<ModelScanRecord> ModelScanRecords => Set<ModelScanRecord>();
 
         // Reference data — bootstrap catalog seeded from JSON resources at first
         // run (see ReferenceDataSeeder). Drives OCR sport inference + catalog gates.
@@ -256,6 +257,24 @@ namespace FlipKit.Core.Data
             leagueAcronym.ToTable("league_acronyms");
             leagueAcronym.HasKey(l => l.Id);
             leagueAcronym.HasIndex(l => l.Acronym).IsUnique();
+
+            // ModelScanRecord — telemetry rows for the model accuracy scoreboard.
+            // One row per scan attempt; aggregated by IModelScoreboard into
+            // per-model quality scores. Card FK is SetNull on delete so deleting
+            // a card doesn't wipe historical signal — the model's score stays put.
+            var modelScanRecord = modelBuilder.Entity<ModelScanRecord>();
+            modelScanRecord.ToTable("model_scan_records");
+            modelScanRecord.HasKey(r => r.Id);
+            modelScanRecord.Property(r => r.ModelId).IsRequired();
+            modelScanRecord.Property(r => r.Outcome).HasConversion<string>();
+            modelScanRecord.HasIndex(r => r.ModelId);
+            modelScanRecord.HasIndex(r => r.RecordedAt);
+            modelScanRecord.HasIndex(r => new { r.ModelId, r.RecordedAt });
+
+            modelScanRecord.HasOne(r => r.Card)
+                .WithMany()
+                .HasForeignKey(r => r.CardId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

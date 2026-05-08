@@ -121,6 +121,11 @@ namespace FlipKit.Core.Models
         // === STATUS / METADATA ===
         public CardStatus Status { get; set; } = CardStatus.Draft;
         public CardDataSource DataSource { get; set; } = CardDataSource.None;
+        // OpenRouter model id stamped at save time when DataSource == Ai. Drives
+        // user-correction attribution in the model accuracy scoreboard — when the
+        // user later edits this card, the diff is credited against the model that
+        // produced it.
+        public string? AiModelUsed { get; set; }
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
