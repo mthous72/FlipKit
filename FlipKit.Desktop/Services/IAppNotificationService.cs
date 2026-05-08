@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using FlipKit.Core.Models.Enums;
 
@@ -38,5 +39,21 @@ namespace FlipKit.Desktop.Services
         /// navigates to Settings so the user can change their default model.
         /// </summary>
         void NotifyFreeModelsExhausted(int failedCount);
+
+        /// <summary>
+        /// Raised when a scan batch (Bulk Scan, Inventory Enhance, Surprise Set
+        /// Enhance) finishes — successfully or not. The Settings panel
+        /// subscribes so the OpenRouter Usage tiles re-fetch automatically
+        /// post-batch, per the user's planning direction. Subscribers MUST
+        /// unsubscribe in their Dispose to avoid leaks across navigation.
+        /// </summary>
+        event EventHandler? ScanBatchCompleted;
+
+        /// <summary>
+        /// VM-side helper to raise <see cref="ScanBatchCompleted"/>. Kept on
+        /// the interface (rather than the impl) so unit tests can verify
+        /// the event fires through a substituted service.
+        /// </summary>
+        void RaiseScanBatchCompleted();
     }
 }

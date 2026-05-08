@@ -46,8 +46,25 @@ namespace FlipKit.Desktop.Services
             };
         }
 
+        public event EventHandler? ScanBatchCompleted;
+
+        public void RaiseScanBatchCompleted()
+        {
+            // Fire-and-forget on the captured handler list. Marshalling to the
+            // UI thread is the subscriber's responsibility (Avalonia VMs can
+            // safely call Dispatcher.UIThread.Post inside their handler).
+            ScanBatchCompleted?.Invoke(this, EventArgs.Empty);
+        }
+
         public void NotifyBulkScanComplete(int scanned, int errors)
         {
+            // BulkScan is the canonical batch path — auto-fire the event so
+            // the Settings panel refreshes its OpenRouter usage tiles whether
+            // the user is on Settings during the batch or about to navigate
+            // there. Other batch flows (Inventory / SurpriseSet enhance) call
+            // RaiseScanBatchCompleted explicitly.
+            RaiseScanBatchCompleted();
+
             if (_manager == null) return;
 
             Dispatcher.UIThread.Post(() =>

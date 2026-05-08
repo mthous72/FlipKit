@@ -737,6 +737,9 @@ namespace FlipKit.Desktop.ViewModels
                 CurrentEnhanceVerifiedFields = null;
                 _enhanceCts?.Dispose();
                 _enhanceCts = null;
+                // Tell Settings → Usage to refresh; this batch may have shifted
+                // daily/weekly burn meaningfully.
+                _notificationService?.RaiseScanBatchCompleted();
                 OnPropertyChanged(nameof(HasOcrSelectedCards));
             }
         }

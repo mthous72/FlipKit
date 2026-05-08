@@ -26,7 +26,10 @@ public class SettingsControllerTests : IDisposable
         Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", _originalDbPath);
     }
 
-    private static SettingsController Create(ISettingsService? settings = null, IOpenRouterModelCatalog? catalog = null)
+    private static SettingsController Create(
+        ISettingsService? settings = null,
+        IOpenRouterModelCatalog? catalog = null,
+        IOpenRouterKeyInfoService? keyInfoService = null)
     {
         var defaultCatalog = catalog ?? Substitute.For<IOpenRouterModelCatalog>();
         defaultCatalog.GetAsync(default).ReturnsForAnyArgs(
@@ -34,6 +37,7 @@ public class SettingsControllerTests : IDisposable
         var controller = new SettingsController(
             settings ?? Substitute.For<ISettingsService>(),
             defaultCatalog,
+            keyInfoService ?? Substitute.For<IOpenRouterKeyInfoService>(),
             NullLogger<SettingsController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;
@@ -89,6 +93,87 @@ public class SettingsControllerTests : IDisposable
         var model = Assert.IsType<SettingsViewModel>(view.Model);
         Assert.Equal("", model.OpenRouterApiKey);
         Assert.False(model.HasOpenRouterKey);
+    }
+
+    // === OpenRouter Usage card (Phase 4 — usage panel) ===
+
+    [Fact]
+    public async Task Should_PopulateOpenRouterUsage_When_KeyConfiguredAndServiceSucceeds()
+    {
+        Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", "/data/cards.db");
+        var settings = Substitute.For<ISettingsService>();
+        settings.Load().Returns(new AppSettings { OpenRouterApiKey = "sk-or-real-key" });
+        var keyService = Substitute.For<IOpenRouterKeyInfoService>();
+        var info = new OpenRouterKeyInfo(
+            Label: "test-key", Limit: 25m, LimitRemaining: 17.42m, LimitReset: null,
+            Usage: 12.58m, UsageDaily: 1.25m, UsageWeekly: 4.10m, UsageMonthly: 7.58m,
+            IsFreeTier: false, FetchedAt: DateTimeOffset.UtcNow);
+        keyService.GetAsync(default).ReturnsForAnyArgs(info);
+
+        var controller = Create(settings: settings, keyInfoService: keyService);
+
+        var result = await controller.Index();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<SettingsViewModel>(view.Model);
+        Assert.NotNull(model.OpenRouterUsage);
+        Assert.Equal(17.42m, model.OpenRouterUsage!.LimitRemaining);
+        Assert.Equal(1.25m, model.OpenRouterUsage.UsageDaily);
+        Assert.Null(model.OpenRouterUsageError);
+    }
+
+    [Fact]
+    public async Task Should_PopulateUsageError_When_KeyServiceThrowsPaymentRequired()
+    {
+        // 402 = negative balance. Page should still render; the card shows the
+        // inline error message instead of stat tiles.
+        Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", "/data/cards.db");
+        var settings = Substitute.For<ISettingsService>();
+        settings.Load().Returns(new AppSettings { OpenRouterApiKey = "sk-or-real-key" });
+        var keyService = Substitute.For<IOpenRouterKeyInfoService>();
+        keyService.GetAsync(default).ReturnsForAnyArgs<OpenRouterKeyInfo>(_ =>
+            throw new OpenRouterPaymentRequiredException("openrouter/key", "balance is -$0.42"));
+
+        var controller = Create(settings: settings, keyInfoService: keyService);
+
+        var result = await controller.Index();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<SettingsViewModel>(view.Model);
+        Assert.Null(model.OpenRouterUsage);
+        Assert.NotNull(model.OpenRouterUsageError);
+        Assert.Contains("Payment", model.OpenRouterUsageError!);
+    }
+
+    [Fact]
+    public async Task Should_SkipKeyInfoFetch_When_NoApiKeyConfigured()
+    {
+        // No key = nothing to fetch. The card hides itself in the view, but
+        // the controller must not crash or call the service.
+        Environment.SetEnvironmentVariable("FLIPKIT_DB_PATH", "/data/cards.db");
+        var settings = Substitute.For<ISettingsService>();
+        settings.Load().Returns(new AppSettings { OpenRouterApiKey = "" });
+        var keyService = Substitute.For<IOpenRouterKeyInfoService>();
+
+        var controller = Create(settings: settings, keyInfoService: keyService);
+
+        var result = await controller.Index();
+
+        Assert.IsType<ViewResult>(result);
+        await keyService.DidNotReceive().GetAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void Should_RedirectToIndex_When_RefreshUsageCalled()
+    {
+        // RefreshUsage POST endpoint is just a re-render trigger — no business
+        // logic to test beyond the redirect.
+        var controller = Create();
+
+        var result = controller.RefreshUsage();
+
+        var redirect = Assert.IsType<RedirectToActionResult>(result);
+        Assert.Equal("Index", redirect.ActionName);
     }
 
     // === Save ===

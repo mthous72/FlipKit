@@ -175,6 +175,10 @@ namespace FlipKit.Desktop.ViewModels
         // monthly burn). Optional so Settings still loads if DI registration
         // ever changes — same pattern as _modelCatalog.
         private readonly IOpenRouterKeyInfoService? _keyInfoService;
+        // Subscribed in ctor so post-batch auto-refresh fires while Settings
+        // is the active page. Unsubscribed in Dispose so navigating away
+        // doesn't leak the handler. Optional for the same reason as the others.
+        private readonly Services.IAppNotificationService? _appNotifications;
         private readonly ICameraService? _cameraService;
         private readonly IWebcamCaptureDialogService? _webcamCaptureDialog;
 
@@ -192,6 +196,9 @@ namespace FlipKit.Desktop.ViewModels
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
             _keyInfoService = services.GetService(typeof(IOpenRouterKeyInfoService)) as IOpenRouterKeyInfoService;
+            _appNotifications = services.GetService(typeof(Services.IAppNotificationService)) as Services.IAppNotificationService;
+            if (_appNotifications != null)
+                _appNotifications.ScanBatchCompleted += OnScanBatchCompleted;
             _cameraService = services.GetService(typeof(ICameraService)) as ICameraService;
             _webcamCaptureDialog = services.GetService(typeof(IWebcamCaptureDialogService)) as IWebcamCaptureDialogService;
 
@@ -1154,9 +1161,17 @@ namespace FlipKit.Desktop.ViewModels
                 : $"Test capture saved: {path}";
         }
 
+        // Handler for IAppNotificationService.ScanBatchCompleted. Re-fetches
+        // the OpenRouter usage tiles whenever a Bulk Scan / Inventory Enhance
+        // / Surprise Set Enhance batch finishes. Fire-and-forget — the refresh
+        // method is idempotent and handles its own error states.
+        private void OnScanBatchCompleted(object? sender, EventArgs e) => _ = RefreshKeyInfoAsync();
+
         public void Dispose()
         {
             _statusRefreshTimer?.Dispose();
+            if (_appNotifications != null)
+                _appNotifications.ScanBatchCompleted -= OnScanBatchCompleted;
         }
     }
 }

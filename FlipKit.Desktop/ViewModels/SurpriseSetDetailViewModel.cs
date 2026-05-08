@@ -435,6 +435,7 @@ namespace FlipKit.Desktop.ViewModels
                 _enhanceCts?.Dispose();
                 _enhanceCts = null;
                 OnPropertyChanged(nameof(HasOcrSourcedCards));
+                _notificationService?.RaiseScanBatchCompleted();
             }
         }
 
