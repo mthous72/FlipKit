@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Desktop.Models;
 
 namespace FlipKit.Desktop.ViewModels
 {
@@ -24,11 +25,16 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ICardRepository _cardRepository;
         private readonly IScannerService _scannerService;
         private readonly ISettingsService _settingsService;
+        private readonly Services.IPaidScanGate _paidScanGate;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private CancellationTokenSource? _enhanceCts;
 
         [ObservableProperty] private SurpriseSet? _set;
-        [ObservableProperty] private ObservableCollection<Card> _cards = new();
+        // Wraps each Card in a SelectableCard so the detail grid can host
+        // checkboxes for the bulk-return flow. The wrapper exposes the
+        // underlying Card via .Card; bindings inside the grid go through
+        // {Binding Card.PlayerName}, etc.
+        [ObservableProperty] private ObservableCollection<SelectableCard> _cards = new();
         [ObservableProperty] private ObservableCollection<SurpriseSetIssue> _issues = new();
         [ObservableProperty] private bool _isLoading;
         [ObservableProperty] private bool _isExporting;
@@ -40,7 +46,16 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string? _exportStatusMessage;
         [ObservableProperty] private string? _completeStatusMessage;
 
-        public bool HasOcrSourcedCards => Cards.Any(c => c.DataSource == CardDataSource.Ocr);
+        public bool HasOcrSourcedCards => Cards.Any(c => c.Card.DataSource == CardDataSource.Ocr);
+
+        // True when at least one row in the grid is ticked. Drives the
+        // visibility of "Return Selected to My Cards".
+        public bool HasSelectedCards => Cards.Any(c => c.IsSelected);
+
+        // Disband / Return-all should only fire on Draft sets — once a set is
+        // Exported / Live / Completed the repository's IsLockedAsync gate
+        // refuses RemoveCardAsync. Hiding the buttons keeps the flow honest.
+        public bool CanReturnCards => Set?.State == SurpriseSetState.Draft && Cards.Count > 0;
 
         // Mark-completed form fields
         [ObservableProperty] private int _spotsSold;
@@ -64,6 +79,7 @@ namespace FlipKit.Desktop.ViewModels
             ICardRepository cardRepository,
             IScannerService scannerService,
             ISettingsService settingsService,
+            Services.IPaidScanGate paidScanGate,
             IPlayerNameDirectory? playerDirectory = null)
         {
             _repository = repository;
@@ -75,6 +91,7 @@ namespace FlipKit.Desktop.ViewModels
             _cardRepository = cardRepository;
             _scannerService = scannerService;
             _settingsService = settingsService;
+            _paidScanGate = paidScanGate;
             _playerDirectory = playerDirectory;
         }
 
@@ -94,9 +111,23 @@ namespace FlipKit.Desktop.ViewModels
                 }
 
                 var ordered = Set.Cards.OrderBy(c => c.SurpriseSetSlot ?? int.MaxValue).ToList();
-                Cards = new ObservableCollection<Card>(ordered);
+                var wrapped = ordered.Select(c =>
+                {
+                    var sc = new SelectableCard(c);
+                    // Keep HasSelectedCards in sync as the user ticks rows so
+                    // the bulk-return button shows / hides reactively.
+                    sc.PropertyChanged += (_, args) =>
+                    {
+                        if (args.PropertyName == nameof(SelectableCard.IsSelected))
+                            OnPropertyChanged(nameof(HasSelectedCards));
+                    };
+                    return sc;
+                }).ToList();
+                Cards = new ObservableCollection<SelectableCard>(wrapped);
                 RefreshIssues(Set, ordered);
                 OnPropertyChanged(nameof(HasOcrSourcedCards));
+                OnPropertyChanged(nameof(HasSelectedCards));
+                OnPropertyChanged(nameof(CanReturnCards));
                 SpotsSold = ordered.Count; // default to full sell-through
                 GrossRevenue = Set.GrossRevenue ?? Set.SpotPrice * ordered.Count;
                 TotalFees = Set.TotalFees ?? 0m;
@@ -113,19 +144,101 @@ namespace FlipKit.Desktop.ViewModels
             }
         }
 
+        // Per-row "Return to My Cards" button. Takes either a Card or a
+        // SelectableCard wrapper depending on what the XAML CommandParameter
+        // resolves to — accepting object lets the same command serve both.
+        // Returns the card to the primary inventory by clearing the FK + slot,
+        // and re-evaluating CardStatus via CardStatusEvaluator.Evaluate (handled
+        // inside SurpriseSetRepository.RemoveCardAsync).
         [RelayCommand]
-        private async Task RemoveCardAsync(Card? card)
+        private async Task ReturnCardToInventoryAsync(object? param)
         {
-            if (card == null || Set == null) return;
+            if (Set == null) return;
+            var card = param switch
+            {
+                SelectableCard sc => sc.Card,
+                Card c => c,
+                _ => null,
+            };
+            if (card == null) return;
             try
             {
                 await _repository.RemoveCardAsync(Set.Id, card.Id);
                 await LoadAsync(Set.Id);
+                StatusMessage = $"Returned {card.PlayerName} to My Cards.";
             }
             catch (Exception ex)
             {
-                StatusMessage = $"Could not remove card: {ex.Message}";
+                StatusMessage = $"Could not return card: {ex.Message}";
             }
+        }
+
+        /// <summary>
+        /// Bulk variant of <see cref="ReturnCardToInventoryAsync"/> that runs
+        /// over every ticked row. RemoveCardAsync re-evaluates each card's
+        /// status via CardStatusEvaluator (so a previously priced card
+        /// returns to Priced, etc.) and renumbers the remaining slots so the
+        /// detail view stays contiguous.
+        /// </summary>
+        [RelayCommand]
+        private async Task ReturnSelectedToInventoryAsync()
+        {
+            if (Set == null) return;
+            var selected = Cards.Where(c => c.IsSelected).Select(c => c.Card).ToList();
+            if (selected.Count == 0) return;
+
+            var returned = 0;
+            var failed = 0;
+            foreach (var card in selected)
+            {
+                try
+                {
+                    await _repository.RemoveCardAsync(Set.Id, card.Id);
+                    returned++;
+                }
+                catch (Exception)
+                {
+                    failed++;
+                }
+            }
+
+            await LoadAsync(Set.Id);
+            StatusMessage = failed > 0
+                ? $"Returned {returned} card(s) to My Cards; {failed} failed."
+                : $"Returned {returned} card(s) to My Cards.";
+        }
+
+        /// <summary>
+        /// "Return all cards to My Cards" — the full-set flavor. Empties the
+        /// set without deleting it so the user can repopulate or delete it
+        /// afterward. Only legal on Draft sets (gated by CanReturnCards).
+        /// </summary>
+        [RelayCommand]
+        private async Task DisbandAsync()
+        {
+            if (Set == null) return;
+            var all = Cards.Select(c => c.Card).ToList();
+            if (all.Count == 0) return;
+
+            var returned = 0;
+            var failed = 0;
+            foreach (var card in all)
+            {
+                try
+                {
+                    await _repository.RemoveCardAsync(Set.Id, card.Id);
+                    returned++;
+                }
+                catch (Exception)
+                {
+                    failed++;
+                }
+            }
+
+            await LoadAsync(Set.Id);
+            StatusMessage = failed > 0
+                ? $"Returned {returned} card(s); {failed} failed."
+                : $"Returned all {returned} card(s) to My Cards. Set is now empty.";
         }
 
         [RelayCommand]
@@ -209,6 +322,7 @@ namespace FlipKit.Desktop.ViewModels
             if (Set == null) return;
 
             var ocrCards = Cards
+                .Select(sc => sc.Card)
                 .Where(c => c.DataSource == CardDataSource.Ocr
                          && !string.IsNullOrEmpty(c.ImagePathFront)
                          && File.Exists(c.ImagePathFront))
@@ -223,7 +337,22 @@ namespace FlipKit.Desktop.ViewModels
             StatusMessage = null;
 
             var settings = _settingsService.Load();
-            var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+            // Resolve the UI's "auto" sentinel down to the free default, then gate
+            // through the paid-model picker if the resolved id is paid. Free models
+            // pass through silently. See OpenRouterModelDefaults.ResolveModelId and
+            // PaidScanGate for the billing-safety rationale.
+            var resolved = OpenRouterModelDefaults.ResolveModelId(settings.DefaultModel);
+            var gated = await _paidScanGate.GateAsync(
+                resolved,
+                $"About to enhance {ocrCards.Count} card(s) in this set using a paid model. " +
+                $"Pick which paid model to use, or cancel.");
+            if (gated == null)
+            {
+                IsEnhancing = false;
+                StatusMessage = "Enhance cancelled — no paid model used.";
+                return;
+            }
+            var model = gated;
 
             try
             {

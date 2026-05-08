@@ -252,4 +252,73 @@ public class BulkScanViewModelTests
         vm.Dispose();
         vm.Dispose(); // double-dispose should also not throw
     }
+
+    // === Saved-Surprise-Set picker (secondary inventory) ===
+
+    [Fact]
+    public async Task Should_LoadAvailableSurpriseSets_When_Constructed()
+    {
+        var setRepo = Substitute.For<ISurpriseSetRepository>();
+        setRepo.GetDraftSetsAsync().Returns(new List<SurpriseSet>
+        {
+            new() { Id = 1, Name = "May Baseball Lot" },
+            new() { Id = 2, Name = "PWE Bargain Bin" },
+        });
+
+        using var vm = Create(setRepo: setRepo);
+        // LoadAvailableSurpriseSetsAsync runs from the constructor — give it a tick.
+        for (int i = 0; i < 20 && vm.AvailableSurpriseSets.Count == 0; i++) await Task.Delay(10);
+
+        Assert.Equal(2, vm.AvailableSurpriseSets.Count);
+        Assert.Equal("May Baseball Lot", vm.AvailableSurpriseSets[0].Name);
+    }
+
+    [Fact]
+    public void Should_ToggleRequiresSetSelection_When_DestinationFlips()
+    {
+        using var vm = Create();
+        Assert.False(vm.RequiresSetSelection); // default Destination = Inventory
+
+        vm.Destination = BulkScanDestination.SurpriseSet;
+        Assert.True(vm.RequiresSetSelection);
+
+        vm.Destination = BulkScanDestination.Inventory;
+        Assert.False(vm.RequiresSetSelection);
+    }
+
+    [Fact]
+    public void Should_MirrorSelectedSetIntoDestinationSurpriseSetId()
+    {
+        // The XAML picker drives SelectedSurpriseSet; SaveAllAsync's
+        // existing branch checks DestinationSurpriseSetId.HasValue.
+        using var vm = Create();
+        var set = new SurpriseSet { Id = 42, Name = "Pick Me" };
+
+        vm.SelectedSurpriseSet = set;
+
+        Assert.Equal(42, vm.DestinationSurpriseSetId);
+
+        vm.SelectedSurpriseSet = null;
+        Assert.Null(vm.DestinationSurpriseSetId);
+    }
+
+    [Fact]
+    public void Should_DisableSave_When_SurpriseSetDestinationButNoSetPicked()
+    {
+        using var vm = Create();
+        vm.Destination = BulkScanDestination.SurpriseSet;
+
+        Assert.False(vm.CanSave);
+
+        vm.SelectedSurpriseSet = new SurpriseSet { Id = 1, Name = "X" };
+        Assert.True(vm.CanSave);
+    }
+
+    [Fact]
+    public void Should_AllowSave_When_InventoryDestinationWithoutSet()
+    {
+        using var vm = Create();
+        // Default destination is Inventory — picker irrelevant.
+        Assert.True(vm.CanSave);
+    }
 }

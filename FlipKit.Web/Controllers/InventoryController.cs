@@ -60,8 +60,15 @@ namespace FlipKit.Web.Controllers
         {
             try
             {
-                // Get all cards
-                var allCards = await _cardRepository.GetAllCardsAsync();
+                // Get all cards. My Cards is the *primary* inventory; cards bound to a
+                // Surprise Set (FK populated, regardless of ReservedForSet vs SoldInSet
+                // status) are viewed from the Surprise Set detail page instead.
+                // Filtering by FK rather than status catches both reservation and
+                // post-completion states without breaking Reports' SoldInSet revenue
+                // rollup, which still queries the repo unfiltered.
+                var allCards = (await _cardRepository.GetAllCardsAsync())
+                    .Where(c => c.SurpriseSetId == null)
+                    .ToList();
 
                 // Apply search filter
                 if (!string.IsNullOrWhiteSpace(search))
@@ -257,7 +264,9 @@ namespace FlipKit.Web.Controllers
                 }
 
                 var settings = _settingsService.Load();
-                var model = settings.DefaultModel;
+                // Resolve the UI's "auto" sentinel down to the free default — see
+                // OpenRouterModelDefaults.ResolveModelId for the billing rationale.
+                var model = OpenRouterModelDefaults.ResolveModelId(settings.DefaultModel);
 
                 var result = await _scannerService.ScanCardAsync(
                     card.ImagePathFront,

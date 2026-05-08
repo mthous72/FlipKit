@@ -119,7 +119,10 @@ namespace FlipKit.Core.Services
 
             try
             {
-                var response = await _scannerService.SendCustomPromptAsync(imagePath, prompt, backImagePath: null, model: settings.DefaultModel);
+                // Resolve the UI's "auto" sentinel down to the free default — see
+                // OpenRouterModelDefaults.ResolveModelId for the billing rationale.
+                var resolvedModel = OpenRouterModelDefaults.ResolveModelId(settings.DefaultModel);
+                var response = await _scannerService.SendCustomPromptAsync(imagePath, prompt, backImagePath: null, model: resolvedModel);
                 response = StripCodeBlocks(response);
 
                 using var doc = JsonDocument.Parse(response);

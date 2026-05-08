@@ -84,6 +84,24 @@
                               DisplayMemberBinding="{Binding Label}"
                               HorizontalAlignment="Stretch"/>
 
+                    <!-- Saved Surprise Set picker — appears only when destination is Surprise Set.
+                         Lists Draft sets only (Exported / Live / Completed reject AddCardAsync).
+                         Inline "Create New Set…" opens NewSurpriseSetDialog and auto-selects the new set. -->
+                    <StackPanel IsVisible="{Binding RequiresSetSelection}" Spacing="6">
+                        <TextBlock Text="Surprise Set" FontSize="12" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <ComboBox ItemsSource="{Binding AvailableSurpriseSets}"
+                                  SelectedItem="{Binding SelectedSurpriseSet}"
+                                  DisplayMemberBinding="{Binding Name}"
+                                  PlaceholderText="Pick a Draft set…"
+                                  HorizontalAlignment="Stretch"/>
+                        <Button Content="Create New Set…"
+                                Command="{Binding CreateSetInlineCommand}"
+                                HorizontalAlignment="Stretch" Padding="8,4"/>
+                        <TextBlock Text="Pick a set to enable Save All."
+                                   FontSize="10" Opacity="0.6" TextWrapping="Wrap"
+                                   IsVisible="{Binding SelectedSurpriseSet, Converter={x:Static ObjectConverters.IsNull}}"/>
+                    </StackPanel>
+
                     <!-- Scan Depth -->
                     <TextBlock Text="Scan Depth" FontSize="12" FontWeight="SemiBold"/>
                     <ComboBox ItemsSource="{Binding ScanDepthOptions}"
@@ -351,6 +369,8 @@
             <Button Content="Cancel Scan" Command="{Binding CancelScanCommand}"
                     IsVisible="{Binding IsScanning}" Padding="20,10"/>
             <Button Content="Save All" Command="{Binding SaveAllCommand}"
+                    IsEnabled="{Binding CanSave}"
+                    ToolTip.Tip="Pick a Surprise Set to enable when destination is Surprise Set"
                     Padding="20,10"/>
             <Button Content="Rescan Selected" Command="{Binding RescanSelectedCommand}"
                     IsVisible="{Binding SelectedItem, Converter={x:Static ObjectConverters.IsNotNull}}"

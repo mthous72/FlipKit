@@ -22,6 +22,7 @@ public class EditCardViewModelTests
             webcam ?? Substitute.For<IWebcamCaptureDialogService>(),
             settings ?? BuildDefaultSettings(),
             Substitute.For<IScannerService>(),
+            Substitute.For<FlipKit.Desktop.Services.IPaidScanGate>(),
             NullLogger<EditCardViewModel>.Instance);
 
     private static ISettingsService BuildDefaultSettings()

@@ -69,6 +69,24 @@ namespace FlipKit.Core.Services
         public const string AutoModelValue = "auto";
 
         /// <summary>
+        /// Resolves a saved settings value (or any UI-layer model id) into a concrete
+        /// OpenRouter model id that's safe to put on the wire. The literal string
+        /// <c>"auto"</c> is a UI sentinel meaning "let the app pick" — it must NEVER
+        /// be sent to OpenRouter, because OpenRouter has a real "Auto Router" provider
+        /// that interprets <c>"auto"</c> as routing to whatever model it picks
+        /// (typically a premium one), which is how a user can be billed for an
+        /// expensive model they didn't choose. Returning the free default keeps the
+        /// non-rotating callsites cheap; callers that want rotation should branch on
+        /// <see cref="AutoModelValue"/> explicitly before reaching here.
+        /// </summary>
+        public static string ResolveModelId(string? rawValue)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue) || rawValue == AutoModelValue)
+                return DefaultFreeModelId;
+            return rawValue;
+        }
+
+        /// <summary>
         /// Hardcoded snapshot of free vision-language model ids — used by the scanner's
         /// retry chain and as the catalog fallback when the live endpoint is down.
         /// Verified Apr 2026.

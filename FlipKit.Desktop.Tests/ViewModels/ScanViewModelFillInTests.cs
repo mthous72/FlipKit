@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -40,6 +41,7 @@ public class ScanViewModelFillInTests
             Substitute.For<IChecklistVerificationMatcher>(),
             catalog,
             consent,
+            Substitute.For<FlipKit.Desktop.Services.IPaidScanGate>(),
             aiConsent ?? Substitute.For<IAiScanConsentService>(),
             Substitute.For<IImageUploadService>(),
             Substitute.For<IBrowserService>(),
@@ -101,7 +103,10 @@ public class ScanViewModelFillInTests
             new[] { PaidModel("paid-1") }, DateTime.UtcNow)));
 
         var consent = Substitute.For<IPaidModelConsentService>();
-        consent.AskAsync(Arg.Any<OpenRouterModel>(), Arg.Any<string>()).Returns(true);
+        consent.AskAsync(
+            Arg.Any<IReadOnlyList<OpenRouterModel>>(),
+            Arg.Any<OpenRouterModel>(),
+            Arg.Any<string>()).Returns(PaidModel("paid-1"));
 
         var vm = Create(scanner, catalog, consent);
         for (int i = 0; i < 20 && vm.IsLoadingModels; i++) await Task.Delay(10);
@@ -111,7 +116,10 @@ public class ScanViewModelFillInTests
         await vm.ScanCardCommand.ExecuteAsync(null);
 
         Assert.Equal("Paid Result", vm.ScannedCard!.PlayerName);
-        await consent.Received(1).AskAsync(Arg.Any<OpenRouterModel>(), Arg.Any<string>());
+        await consent.Received(1).AskAsync(
+            Arg.Any<IReadOnlyList<OpenRouterModel>>(),
+            Arg.Any<OpenRouterModel>(),
+            Arg.Any<string>());
     }
 
     [Fact]
@@ -127,7 +135,10 @@ public class ScanViewModelFillInTests
             new[] { PaidModel("paid-1") }, DateTime.UtcNow)));
 
         var consent = Substitute.For<IPaidModelConsentService>();
-        consent.AskAsync(Arg.Any<OpenRouterModel>(), Arg.Any<string>()).Returns(false); // user says no
+        consent.AskAsync(
+            Arg.Any<IReadOnlyList<OpenRouterModel>>(),
+            Arg.Any<OpenRouterModel>(),
+            Arg.Any<string>()).Returns((OpenRouterModel?)null); // user cancels
 
         var vm = Create(scanner, catalog, consent);
         for (int i = 0; i < 20 && vm.IsLoadingModels; i++) await Task.Delay(10);

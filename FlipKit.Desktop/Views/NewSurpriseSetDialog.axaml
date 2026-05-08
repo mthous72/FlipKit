@@ -24,6 +24,8 @@
                 <TextBox Text="{Binding Name}"
                          Watermark="Internal name (e.g. May Baseball Lot)"
                          MaxLength="120"/>
+                <TextBlock Text="{Binding ValidationError}" Foreground="#B71C1C" FontSize="11"
+                           IsVisible="{Binding ValidationError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
 
                 <TextBlock Text="Show Name (optional)" FontWeight="SemiBold" FontSize="12"/>
                 <TextBox Text="{Binding ShowName}"

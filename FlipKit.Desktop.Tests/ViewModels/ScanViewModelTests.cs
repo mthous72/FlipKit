@@ -45,6 +45,7 @@ public class ScanViewModelTests
             Substitute.For<IChecklistVerificationMatcher>(),
             catalog,
             consent ?? Substitute.For<IPaidModelConsentService>(),
+            Substitute.For<FlipKit.Desktop.Services.IPaidScanGate>(),
             aiConsent ?? Substitute.For<IAiScanConsentService>(),
             upload ?? Substitute.For<IImageUploadService>(),
             Substitute.For<IBrowserService>(),

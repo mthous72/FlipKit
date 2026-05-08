@@ -23,6 +23,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IWebcamCaptureDialogService _webcamCaptureDialog;
         private readonly ISettingsService _settingsService;
         private readonly IScannerService _scannerService;
+        private readonly Services.IPaidScanGate _paidScanGate;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private readonly ILogger<EditCardViewModel> _logger;
 
@@ -69,6 +70,7 @@ namespace FlipKit.Desktop.ViewModels
             IWebcamCaptureDialogService webcamCaptureDialog,
             ISettingsService settingsService,
             IScannerService scannerService,
+            Services.IPaidScanGate paidScanGate,
             ILogger<EditCardViewModel> logger,
             IPlayerNameDirectory? playerDirectory = null)
         {
@@ -79,6 +81,7 @@ namespace FlipKit.Desktop.ViewModels
             _webcamCaptureDialog = webcamCaptureDialog;
             _settingsService = settingsService;
             _scannerService = scannerService;
+            _paidScanGate = paidScanGate;
             _playerDirectory = playerDirectory;
             _logger = logger;
 
@@ -284,7 +287,19 @@ namespace FlipKit.Desktop.ViewModels
                 }
 
                 var settings = _settingsService.Load();
-                var model = settings.DefaultModel ?? OpenRouterModelDefaults.DefaultFreeModelId;
+                // Resolve the UI's "auto" sentinel, then gate paid models through
+                // the picker. Free models pass through silently.
+                var resolved = OpenRouterModelDefaults.ResolveModelId(settings.DefaultModel);
+                var gated = await _paidScanGate.GateAsync(
+                    resolved,
+                    "About to enhance this card using a paid model. Pick which paid model to use, or cancel.");
+                if (gated == null)
+                {
+                    IsEnhancing = false;
+                    EnhanceMessage = "Enhance cancelled — no paid model used.";
+                    return;
+                }
+                var model = gated;
 
                 var result = await _scannerService.ScanCardAsync(
                     frontPath,

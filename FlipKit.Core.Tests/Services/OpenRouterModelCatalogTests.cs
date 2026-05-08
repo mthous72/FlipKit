@@ -90,6 +90,55 @@ public class OpenRouterModelCatalogTests
     }
 
     [Fact]
+    public async Task Should_FilterOutAutoRouterById_EvenWhenPositivePriced()
+    {
+        // OpenRouter's Auto Router previously reported negative pricing as a sentinel,
+        // so we filtered by price. If they ever report a positive price (or some
+        // positive-priced router shows up), id-based filter is the safety net —
+        // sending the request through a router can route to premium models the user
+        // never picked, which is the source of an actual $2.50/4-card billing surprise.
+        const string autoRouterPositivePriced = @"{
+            ""data"": [
+                {
+                    ""id"": ""openrouter/auto"",
+                    ""name"": ""Auto Router"",
+                    ""description"": ""Routes"",
+                    ""architecture"": { ""input_modalities"": [""text"", ""image""], ""output_modalities"": [""text""] },
+                    ""pricing"": { ""prompt"": ""0.0001"", ""completion"": ""0.0001"" }
+                }
+            ]
+        }";
+        var handler = new StubHttpMessageHandler(HttpStatusCode.OK, autoRouterPositivePriced);
+        var catalog = CreateCatalog(handler);
+
+        var result = await catalog.GetAsync();
+
+        Assert.DoesNotContain(result.FreeVisionModels.Concat(result.PaidVisionModels),
+            m => m.Id == "openrouter/auto");
+    }
+
+    // === ResolveModelId — defensive helper that prevents the UI sentinel "auto"
+    // from ever reaching the OpenRouter wire (where it triggers Auto Router and
+    // routes to whatever model OpenRouter picks, billing the user for it). ===
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("auto")]
+    public void Should_ResolveToFreeDefault_When_InputIsAutoOrBlank(string? raw)
+    {
+        Assert.Equal(OpenRouterModelDefaults.DefaultFreeModelId, OpenRouterModelDefaults.ResolveModelId(raw));
+    }
+
+    [Fact]
+    public void Should_PassThroughExplicitModelId_When_InputIsConcrete()
+    {
+        Assert.Equal("google/gemini-2.0-flash-lite-001",
+            OpenRouterModelDefaults.ResolveModelId("google/gemini-2.0-flash-lite-001"));
+    }
+
+    [Fact]
     public async Task Should_FilterOutMusicGenerationModels_When_MisClassifiedAsVision()
     {
         // Lyria + similar audio/music gen models incorrectly report image input.

@@ -48,6 +48,7 @@ public class MainWindowViewModelTests
             Substitute.For<IOpenRouterModelCatalog>().Tap(m => m.GetAsync(default).ReturnsForAnyArgs(Task.FromResult(
                 new ModelCatalog(Array.Empty<OpenRouterModel>(), Array.Empty<OpenRouterModel>(), DateTime.UtcNow)))),
             Substitute.For<IPaidModelConsentService>(),
+            Substitute.For<FlipKit.Desktop.Services.IPaidScanGate>(),
             Substitute.For<IAiScanConsentService>(),
             Substitute.For<IImageUploadService>(),
             Substitute.For<IBrowserService>(),

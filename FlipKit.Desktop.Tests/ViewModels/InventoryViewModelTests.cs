@@ -13,6 +13,7 @@ public class InventoryViewModelTests
 {
     private static InventoryViewModel Create(
         ICardRepository? repo = null,
+        ISurpriseSetRepository? surpriseSets = null,
         ISettingsService? settings = null,
         IExportService? export = null,
         IFileDialogService? dialog = null,
@@ -30,6 +31,7 @@ public class InventoryViewModelTests
         });
         return new InventoryViewModel(
             repo ?? Substitute.For<ICardRepository>(),
+            surpriseSets ?? Substitute.For<ISurpriseSetRepository>(),
             settings,
             export ?? Substitute.For<IExportService>(),
             dialog ?? Substitute.For<IFileDialogService>(),
@@ -38,6 +40,7 @@ public class InventoryViewModelTests
             nav ?? Substitute.For<INavigationService>(),
             services ?? Substitute.For<IServiceProvider>(),
             Substitute.For<IScannerService>(),
+            Substitute.For<FlipKit.Desktop.Services.IPaidScanGate>(),
             NullLogger<InventoryViewModel>.Instance);
     }
 
@@ -66,6 +69,29 @@ public class InventoryViewModelTests
 
         Assert.Equal(3, vm.FilteredCards.Count);
         Assert.Equal(3, vm.TotalCount);
+    }
+
+    [Fact]
+    public async Task Should_HideCardsBoundToASurpriseSet_When_SurpriseSetIdHasValue()
+    {
+        // My Cards is the *primary* inventory view; cards bound to a Surprise Set
+        // are viewed from the Surprise Set detail page instead. Filter is applied
+        // at the inventory layer (not the repo) so Reports' SoldInSet rollup keeps
+        // working off the unfiltered repo query.
+        var sample = new List<Card>
+        {
+            new() { Id = 1, PlayerName = "Free Agent", Status = CardStatus.Ready, ListingPrice = 10m },
+            new() { Id = 2, PlayerName = "Reserved", Status = CardStatus.ReservedForSet, SurpriseSetId = 99 },
+            new() { Id = 3, PlayerName = "SoldInSet", Status = CardStatus.SoldInSet, SurpriseSetId = 99, SalePrice = 5m },
+        };
+        var repo = Substitute.For<ICardRepository>();
+        repo.GetAllCardsAsync().Returns(sample);
+
+        var vm = Create(repo: repo);
+        for (int i = 0; i < 20 && vm.FilteredCards.Count == 0; i++) await Task.Delay(10);
+
+        Assert.Single(vm.FilteredCards);
+        Assert.Equal("Free Agent", vm.FilteredCards[0].Card.PlayerName);
     }
 
     [Fact]

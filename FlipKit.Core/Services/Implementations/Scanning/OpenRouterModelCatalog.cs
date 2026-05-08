@@ -194,6 +194,16 @@ namespace FlipKit.Core.Services.Scanning
 
         private static bool IsLikelyRealVisionLanguageModel(OpenRouterModel m)
         {
+            // Hard-block OpenRouter's meta-routers regardless of how their pricing is
+            // reported. Auto Router routes the request to whatever model OpenRouter
+            // picks (typically a premium one), which is how a user can be billed for
+            // a model they didn't choose. We never want it in our catalog.
+            var lowerId = m.Id.ToLowerInvariant();
+            if (lowerId == "openrouter/auto"
+                || lowerId.StartsWith("openrouter/auto:")
+                || lowerId == "auto")
+                return false;
+
             // Paid models must have actual positive prices — filters out OpenRouter's
             // "Auto Router" sentinel ($-1M) and any other meta-routers we don't want
             // to surface in the cost-sorted dropdown.
