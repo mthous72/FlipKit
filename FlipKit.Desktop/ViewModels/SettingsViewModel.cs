@@ -69,6 +69,14 @@ namespace FlipKit.Desktop.ViewModels
 
         public ObservableCollection<ModelOption> ModelOptions { get; } = new();
 
+        // === Model Performance Leaderboard ===
+        // One row per model the scoreboard has seen. Rebuilt on Settings open
+        // and after every ScanBatchCompleted event so the panel stays current
+        // without the user needing to refresh manually.
+        public ObservableCollection<ModelLeaderboardRow> LeaderboardRows { get; } = new();
+        [ObservableProperty] private bool _isLoadingLeaderboard;
+        [ObservableProperty] private string? _leaderboardError;
+
         // === OpenRouter Usage panel ===
         // Snapshot fetched from GET /api/v1/key. Null until the first successful
         // refresh. Each display string handles null gracefully (returns "—" or
@@ -175,6 +183,10 @@ namespace FlipKit.Desktop.ViewModels
         // monthly burn). Optional so Settings still loads if DI registration
         // ever changes — same pattern as _modelCatalog.
         private readonly IOpenRouterKeyInfoService? _keyInfoService;
+        // Per-model accuracy scoreboard. Drives the leaderboard panel and the
+        // sort-by-quality + score badge in the model dropdown. Optional so
+        // Settings still loads even if DI ever changes.
+        private readonly IModelScoreboard? _scoreboard;
         // Subscribed in ctor so post-batch auto-refresh fires while Settings
         // is the active page. Unsubscribed in Dispose so navigating away
         // doesn't leak the handler. Optional for the same reason as the others.
@@ -196,6 +208,7 @@ namespace FlipKit.Desktop.ViewModels
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
             _keyInfoService = services.GetService(typeof(IOpenRouterKeyInfoService)) as IOpenRouterKeyInfoService;
+            _scoreboard = services.GetService(typeof(IModelScoreboard)) as IModelScoreboard;
             _appNotifications = services.GetService(typeof(Services.IAppNotificationService)) as Services.IAppNotificationService;
             if (_appNotifications != null)
                 _appNotifications.ScanBatchCompleted += OnScanBatchCompleted;
@@ -212,6 +225,7 @@ namespace FlipKit.Desktop.ViewModels
             // Auto-fetch on Settings open per planning. Skipped silently when
             // no API key is configured — the panel renders the empty state.
             _ = RefreshKeyInfoAsync();
+            _ = LoadLeaderboardAsync();
 
             // Refresh server status every 2 seconds
             _statusRefreshTimer = new Timer(_ =>
@@ -231,10 +245,28 @@ namespace FlipKit.Desktop.ViewModels
                 if (forceRefresh) _modelCatalog.InvalidateCache();
                 var catalog = await _modelCatalog.GetAsync();
 
+                // Attach scoreboard quality so the dropdown shows a per-model
+                // pill and sorts higher-scoring models to the top of each group.
+                IReadOnlyDictionary<string, ModelQuality>? qualities = null;
+                if (_scoreboard != null)
+                {
+                    try { qualities = await _scoreboard.GetQualitiesAsync(); }
+                    catch { /* best-effort: scoreboard miss = no pills, no penalty */ }
+                }
+
+                ModelOption WithQuality(OpenRouterModel m) =>
+                    ModelOption.FromCatalog(m, qualities != null && qualities.TryGetValue(m.Id, out var q) ? q : null);
+
                 ModelOptions.Clear();
                 ModelOptions.Add(ModelOption.Auto());
-                foreach (var m in catalog.FreeVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
-                foreach (var m in catalog.PaidVisionModels) ModelOptions.Add(ModelOption.FromCatalog(m));
+                // Sort within each tier — better-performing models first, untested
+                // last. Stable order across loads keeps the dropdown predictable.
+                var sortedFree = catalog.FreeVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                var sortedPaid = catalog.PaidVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                foreach (var o in sortedFree) ModelOptions.Add(o);
+                foreach (var o in sortedPaid) ModelOptions.Add(o);
 
                 var savedId = string.IsNullOrWhiteSpace(DefaultModel) ? ModelOption.AutoValue : DefaultModel;
                 ModelOption? choice = ModelOptions.FirstOrDefault(o => o.Value == savedId);
@@ -264,6 +296,56 @@ namespace FlipKit.Desktop.ViewModels
         private async Task RefreshModelsAsync()
         {
             await LoadModelsAsync(forceRefresh: true);
+        }
+
+        // === Model Performance Leaderboard ===
+
+        public async Task LoadLeaderboardAsync()
+        {
+            if (_scoreboard == null) return;
+            IsLoadingLeaderboard = true;
+            LeaderboardError = null;
+            try
+            {
+                var qualities = await _scoreboard.GetQualitiesAsync();
+                LeaderboardRows.Clear();
+                // Sort by score desc; untested entries (null score) sort to
+                // the bottom but stay in the table so the user can reset them.
+                var ordered = qualities.Values
+                    .OrderByDescending(q => q.Score ?? -1m)
+                    .ThenByDescending(q => q.SampleCount);
+                foreach (var q in ordered)
+                    LeaderboardRows.Add(ModelLeaderboardRow.FromQuality(q));
+            }
+            catch (Exception ex)
+            {
+                LeaderboardError = $"Couldn't load leaderboard: {ex.Message}";
+            }
+            finally
+            {
+                IsLoadingLeaderboard = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task RefreshLeaderboardAsync() => await LoadLeaderboardAsync();
+
+        [RelayCommand]
+        private async Task ResetModelHistoryAsync(string? modelId)
+        {
+            if (_scoreboard == null || string.IsNullOrWhiteSpace(modelId)) return;
+            try
+            {
+                await _scoreboard.ResetHistoryAsync(modelId);
+                await LoadLeaderboardAsync();
+                // Keep the dropdown's quality pills in sync so a reset model
+                // immediately drops to the bottom of the picker.
+                _ = LoadModelsAsync();
+            }
+            catch (Exception ex)
+            {
+                LeaderboardError = $"Reset failed: {ex.Message}";
+            }
         }
 
         // === OpenRouter key-info / Usage panel ===
@@ -1165,7 +1247,11 @@ namespace FlipKit.Desktop.ViewModels
         // the OpenRouter usage tiles whenever a Bulk Scan / Inventory Enhance
         // / Surprise Set Enhance batch finishes. Fire-and-forget — the refresh
         // method is idempotent and handles its own error states.
-        private void OnScanBatchCompleted(object? sender, EventArgs e) => _ = RefreshKeyInfoAsync();
+        private void OnScanBatchCompleted(object? sender, EventArgs e)
+        {
+            _ = RefreshKeyInfoAsync();
+            _ = LoadLeaderboardAsync();
+        }
 
         public void Dispose()
         {

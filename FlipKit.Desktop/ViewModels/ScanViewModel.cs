@@ -27,6 +27,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly IPaidModelConsentService _consentService;
         private readonly Services.IPaidScanGate _paidScanGate;
         private readonly Services.IAppNotificationService? _notificationService;
+        private readonly IModelScoreboard? _scoreboard;
         private readonly IAiScanConsentService _aiScanConsentService;
         private readonly IImageUploadService _imageUploadService;
         private readonly IBrowserService _browserService;
@@ -120,7 +121,8 @@ namespace FlipKit.Desktop.ViewModels
             // Optional so existing test fixtures don't have to wire it up.
             // When unset, billing-error toasts are skipped — the inline
             // ErrorMessage path still surfaces the failure.
-            Services.IAppNotificationService? notificationService = null)
+            Services.IAppNotificationService? notificationService = null,
+            IModelScoreboard? scoreboard = null)
         {
             _scannerService = scannerService;
             _ocrService = ocrService;
@@ -134,6 +136,7 @@ namespace FlipKit.Desktop.ViewModels
             _consentService = consentService;
             _paidScanGate = paidScanGate;
             _notificationService = notificationService;
+            _scoreboard = scoreboard;
             _aiScanConsentService = aiScanConsentService;
             _imageUploadService = imageUploadService;
             _browserService = browserService;
@@ -166,12 +169,26 @@ namespace FlipKit.Desktop.ViewModels
             try
             {
                 var catalog = await _modelCatalog.GetAsync();
+
+                // Attach scoreboard signal — the dropdown shows a per-model
+                // quality pill and sorts higher-scoring models to the top.
+                IReadOnlyDictionary<string, ModelQuality>? qualities = null;
+                if (_scoreboard != null)
+                {
+                    try { qualities = await _scoreboard.GetQualitiesAsync(); }
+                    catch { /* best-effort */ }
+                }
+                ModelOption WithQuality(OpenRouterModel m) =>
+                    ModelOption.FromCatalog(m, qualities != null && qualities.TryGetValue(m.Id, out var q) ? q : null);
+
                 ModelOptions.Clear();
                 ModelOptions.Add(ModelOption.Auto());
-                foreach (var m in catalog.FreeVisionModels)
-                    ModelOptions.Add(ModelOption.FromCatalog(m));
-                foreach (var m in catalog.PaidVisionModels)
-                    ModelOptions.Add(ModelOption.FromCatalog(m));
+                var sortedFree = catalog.FreeVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                var sortedPaid = catalog.PaidVisionModels.Select(WithQuality)
+                    .OrderByDescending(o => o.QualitySortKey).ToList();
+                foreach (var o in sortedFree) ModelOptions.Add(o);
+                foreach (var o in sortedPaid) ModelOptions.Add(o);
 
                 // Pick a sensible default: saved settings if it's still in the live catalog;
                 // otherwise Auto. Never pre-select a stale/deprecated model — the user
@@ -376,10 +393,23 @@ namespace FlipKit.Desktop.ViewModels
                 scanResult.Card.ImagePathFront = ImagePath;
                 if (!string.IsNullOrEmpty(ImagePathBack))
                     scanResult.Card.ImagePathBack = ImagePathBack;
+                // Stamp model id so post-save user edits attribute corrections
+                // back to the model that produced this card.
+                scanResult.Card.AiModelUsed = scanResult.UsedModelId;
                 _lastScanResult = scanResult;
                 ScannedCard = CardDetailViewModel.FromCard(scanResult.Card);
                 MergeCustomGradingCompanies(ScannedCard);
                 LastScanWasOcr = false;
+
+                // Scoreboard: record the successful scan against the winning
+                // model. CardId is null — single-scan cards aren't saved until
+                // the user clicks Save Card; the user-correction hook attaches
+                // by-card attribution if they later edit it.
+                if (_scoreboard != null && !string.IsNullOrEmpty(scanResult.UsedModelId))
+                {
+                    try { await _scoreboard.RecordSuccessAsync(scanResult.UsedModelId, cardId: null, scanResult); }
+                    catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordSuccess failed; continuing."); }
+                }
 
                 // Phase 2 tier-aware verification (Roadmap 1 §8d). Runs alongside the
                 // existing variation verifier — produces a coloured tier badge + the
@@ -465,10 +495,26 @@ namespace FlipKit.Desktop.ViewModels
                 ErrorMessage = rlEx.Message;
                 _notificationService?.NotifyRateLimit(rlEx.ModelId, rlEx.Scope, rlEx.RetryAfterSeconds);
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Scan failed for {ImagePath}", ImagePath);
                 ErrorMessage = $"Scan failed: {ex.Message}";
+
+                // Scoreboard: when the explicit-pick path bubbles a non-billing
+                // error (auto-rotation already records per-attempt internally),
+                // attribute the failure to whichever model the user chose.
+                if (_scoreboard != null && SelectedModel != null && !SelectedModel.IsAuto)
+                {
+                    var outcome = ex is System.Text.Json.JsonException
+                        ? ScanOutcome.ParseFailure
+                        : ScanOutcome.ModelError;
+                    try { await _scoreboard.RecordFailureAsync(SelectedModel.Value, outcome); }
+                    catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordFailure failed; continuing."); }
+                }
             }
             finally
             {
@@ -949,18 +995,45 @@ namespace FlipKit.Desktop.ViewModels
                 return null;
             }
 
+            // Sort the free rotation by per-model accuracy score so the higher-
+            // performing models are tried first. Untested models still get a
+            // turn — they fall to the bottom but stay in the rotation.
+            var freeModels = (IEnumerable<OpenRouterModel>)catalog.FreeVisionModels;
+            if (_scoreboard != null)
+            {
+                try
+                {
+                    var qualities = await _scoreboard.GetQualitiesAsync();
+                    freeModels = catalog.FreeVisionModels
+                        .OrderByDescending(m => qualities.TryGetValue(m.Id, out var q) ? (q.Score ?? -1m) : -1m);
+                }
+                catch { /* fall back to catalog order */ }
+            }
+
             Exception? lastError = null;
-            foreach (var freeModel in catalog.FreeVisionModels)
+            foreach (var freeModel in freeModels)
             {
                 try
                 {
                     VerificationStatus = $"Trying {freeModel.DisplayName}...";
                     return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, freeModel.Id, ocrHint: ocrHint);
                 }
+                catch (OpenRouterPaymentRequiredException) { throw; }
+                catch (OpenRouterRateLimitException) { throw; }
+                catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
                 {
                     lastError = ex;
                     _logger.LogWarning(ex, "Free model {Model} failed; trying next.", freeModel.Id);
+                    // Scoreboard: each free-chain loser gets attributed.
+                    if (_scoreboard != null)
+                    {
+                        var outcome = ex is System.Text.Json.JsonException
+                            ? ScanOutcome.ParseFailure
+                            : ScanOutcome.ModelError;
+                        try { await _scoreboard.RecordFailureAsync(freeModel.Id, outcome); }
+                        catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordFailure failed; continuing."); }
+                    }
                 }
             }
 
@@ -994,10 +1067,21 @@ namespace FlipKit.Desktop.ViewModels
                 VerificationStatus = $"Trying {chosenPaid.DisplayName}...";
                 return await _scannerService.ScanCardAsync(ImagePath!, ImagePathBack, chosenPaid.Id, ocrHint: ocrHint);
             }
+            catch (OpenRouterPaymentRequiredException) { throw; }
+            catch (OpenRouterRateLimitException) { throw; }
+            catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Paid model {Model} also failed.", chosenPaid.Id);
                 ErrorMessage = $"Paid model {chosenPaid.DisplayName} failed: {ex.Message}";
+                if (_scoreboard != null)
+                {
+                    var outcome = ex is System.Text.Json.JsonException
+                        ? ScanOutcome.ParseFailure
+                        : ScanOutcome.ModelError;
+                    try { await _scoreboard.RecordFailureAsync(chosenPaid.Id, outcome); }
+                    catch (Exception sbEx) { _logger.LogDebug(sbEx, "Scoreboard RecordFailure failed; continuing."); }
+                }
                 return null;
             }
         }

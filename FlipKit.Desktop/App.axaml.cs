@@ -216,6 +216,10 @@ namespace FlipKit.Desktop
                 // the LLM to known parallel names (per-brand list, not free-form).
                 services.AddSingleton<IParallelCandidateProvider, ParallelCandidateProvider>();
                 services.AddSingleton<IBulkScanErrorLogger, BulkScanErrorLogger>();
+                // Per-model scan accuracy scoreboard. Singleton — the service
+                // owns no state; it spins up scoped DbContexts on demand via
+                // IServiceProvider, mirroring ChecklistLearningService.
+                services.AddSingleton<IModelScoreboard, FlipKit.Core.Services.Implementations.ModelScoreboard>();
                 // eBay Seller Hub CSV import (Roadmap #3 — see Docs/17-FUTURE-ROADMAP.md item
                 // "eBay Listings Import"). Enricher uses OpenRouter for the title LLM pass;
                 // import service composes the rule parser + enricher + repo upsert.

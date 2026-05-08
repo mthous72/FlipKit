@@ -108,6 +108,10 @@ builder.Services.AddSingleton<IParallelFamilyService, ParallelFamilyService>();
 // Combines parallels.json + IParallelFamilyService into a single candidate list
 // the scanner uses to constrain the LLM's parallel_name output.
 builder.Services.AddSingleton<IParallelCandidateProvider, ParallelCandidateProvider>();
+// Per-model scan accuracy scoreboard. Web doesn't surface a leaderboard UI yet,
+// but scans that run in this process still need to record their outcomes so the
+// data accumulates wherever scanning happens.
+builder.Services.AddSingleton<IModelScoreboard, FlipKit.Core.Services.Implementations.ModelScoreboard>();
 // eBay Seller Hub CSV import (Roadmap #3). Enricher uses OpenRouter for the LLM
 // title pass; import service composes the rule parser + enricher + repo upsert.
 // Scoped because the import service holds an ICardRepository.

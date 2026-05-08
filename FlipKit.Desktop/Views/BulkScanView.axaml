@@ -52,9 +52,26 @@
                         <TextBlock Text="AI Model" FontSize="12" FontWeight="SemiBold"/>
                         <ComboBox ItemsSource="{Binding ModelOptions}"
                                   SelectedItem="{Binding SelectedModel}"
-                                  DisplayMemberBinding="{Binding Label}"
                                   IsEnabled="{Binding !IsLoadingModels}"
-                                  HorizontalAlignment="Stretch"/>
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ModelOption">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center"/>
+                                        <Border Grid.Column="1"
+                                                Background="#E3F2FD" CornerRadius="3" Padding="4,1"
+                                                VerticalAlignment="Center"
+                                                IsVisible="{Binding ShowQualityPill}"
+                                                ToolTip.Tip="{Binding ConfidenceLabel}">
+                                            <TextBlock Text="{Binding QualityScoreDisplay}"
+                                                       FontSize="10" Foreground="#0D47A1"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Text="Loading model catalog..." FontSize="10" Opacity="0.6"
                                    IsVisible="{Binding IsLoadingModels}"/>
                         <TextBlock Text="{Binding ModelLoadError}" FontSize="10" Foreground="#E53935"

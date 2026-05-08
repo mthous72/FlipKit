@@ -27,6 +27,7 @@ namespace FlipKit.Desktop.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly Services.IPaidScanGate _paidScanGate;
         private readonly Services.IAppNotificationService? _notificationService;
+        private readonly IModelScoreboard? _scoreboard;
         private readonly IPlayerNameDirectory? _playerDirectory;
         private CancellationTokenSource? _enhanceCts;
 
@@ -83,7 +84,8 @@ namespace FlipKit.Desktop.ViewModels
             Services.IPaidScanGate paidScanGate,
             IPlayerNameDirectory? playerDirectory = null,
             // Optional so existing test fixtures don't have to wire it up.
-            Services.IAppNotificationService? notificationService = null)
+            Services.IAppNotificationService? notificationService = null,
+            IModelScoreboard? scoreboard = null)
         {
             _repository = repository;
             _validator = validator;
@@ -96,6 +98,7 @@ namespace FlipKit.Desktop.ViewModels
             _settingsService = settingsService;
             _paidScanGate = paidScanGate;
             _notificationService = notificationService;
+            _scoreboard = scoreboard;
             _playerDirectory = playerDirectory;
         }
 
@@ -380,13 +383,34 @@ namespace FlipKit.Desktop.ViewModels
                             SetName = card.SetName,
                         };
 
-                    var result = await _scannerService.ScanCardAsync(
-                        card.ImagePathFront!,
-                        card.ImagePathBack,
-                        model,
-                        scanDepth: ScanDepth.Standard,
-                        ocrHint: hint,
-                        ct: _enhanceCts.Token);
+                    ScanResult? result = null;
+                    try
+                    {
+                        result = await _scannerService.ScanCardAsync(
+                            card.ImagePathFront!,
+                            card.ImagePathBack,
+                            model,
+                            scanDepth: ScanDepth.Standard,
+                            ocrHint: hint,
+                            ct: _enhanceCts.Token);
+                    }
+                    catch (OpenRouterPaymentRequiredException) { throw; }
+                    catch (OpenRouterRateLimitException) { throw; }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception cardEx)
+                    {
+                        // Per-card scoreboard failure attribution. Outer catch
+                        // surfaces the user-facing message.
+                        if (_scoreboard != null)
+                        {
+                            var outcome = cardEx is System.Text.Json.JsonException
+                                ? ScanOutcome.ParseFailure
+                                : ScanOutcome.ModelError;
+                            try { await _scoreboard.RecordFailureAsync(model, outcome); }
+                            catch { /* scoreboard is best-effort */ }
+                        }
+                        throw;
+                    }
 
                     var e = result.Card;
                     card.PlayerName = e.PlayerName ?? card.PlayerName;
@@ -403,8 +427,17 @@ namespace FlipKit.Desktop.ViewModels
                     card.IsAuto = e.IsAuto;
                     card.IsRelic = e.IsRelic;
                     card.DataSource = CardDataSource.Ai;
+                    card.AiModelUsed = result.UsedModelId ?? model;
 
                     await _cardRepository.UpdateCardAsync(card);
+
+                    // Scoreboard: record the successful enhance against the
+                    // winning model. Cards are persisted, so CardId is real.
+                    if (_scoreboard != null && !string.IsNullOrEmpty(result.UsedModelId))
+                    {
+                        try { await _scoreboard.RecordSuccessAsync(result.UsedModelId, card.Id, result); }
+                        catch { /* scoreboard is best-effort */ }
+                    }
                     EnhanceProgress++;
                 }
 
