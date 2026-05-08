@@ -572,6 +572,68 @@
                 </Border>
             </Expander>
 
+            <!-- Model Performance Leaderboard (Collapsible) — surfaces per-model
+                 accuracy data the scoreboard collects from every scan. Same
+                 quality pills shown in the model dropdowns above, but with the
+                 underlying breakdown (samples, success rate, completeness,
+                 last-used) and per-row reset to start a model's history clean. -->
+            <Expander Header="📊 Model Performance Leaderboard">
+                <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                        CornerRadius="8" Padding="20" Margin="0,8,0,0">
+                    <StackPanel Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" TextWrapping="Wrap" FontSize="11" Opacity="0.7">
+                                Score is the rolling average over the most recent 50 scans per model.
+                                A model needs at least 3 scans before a numeric score is shown — until then it shows "Untested".
+                                Reset clears that model's history, sending it back to "Untested" everywhere.
+                            </TextBlock>
+                            <Button Grid.Column="1" Content="Refresh"
+                                    Command="{Binding RefreshLeaderboardCommand}"
+                                    IsEnabled="{Binding !IsLoadingLeaderboard}"
+                                    Padding="12,4" FontSize="11" VerticalAlignment="Top"/>
+                        </Grid>
+
+                        <TextBlock Text="{Binding LeaderboardError}" FontSize="11" Foreground="#E53935"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding LeaderboardError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                        <TextBlock Text="No scans recorded yet. Run a scan to start populating the leaderboard."
+                                   FontSize="12" Opacity="0.6" FontStyle="Italic"
+                                   IsVisible="{Binding LeaderboardRows.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"/>
+
+                        <DataGrid ItemsSource="{Binding LeaderboardRows}"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  GridLinesVisibility="Horizontal"
+                                  HeadersVisibility="Column"
+                                  CanUserResizeColumns="True"
+                                  CanUserSortColumns="False"
+                                  IsVisible="{Binding LeaderboardRows.Count, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter=0}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Model" Binding="{Binding ModelId}" Width="2*"/>
+                                <DataGridTextColumn Header="Score" Binding="{Binding ScoreDisplay}" Width="100"/>
+                                <DataGridTextColumn Header="Samples" Binding="{Binding SampleCount}" Width="80"/>
+                                <DataGridTextColumn Header="Success" Binding="{Binding SuccessRateDisplay}" Width="80"/>
+                                <DataGridTextColumn Header="Complete" Binding="{Binding CompletenessDisplay}" Width="90"/>
+                                <DataGridTextColumn Header="Last used" Binding="{Binding LastUsedDisplay}" Width="100"/>
+                                <DataGridTemplateColumn Header="" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate x:DataType="vm:ModelLeaderboardRow">
+                                            <Button Content="Reset"
+                                                    FontSize="10"
+                                                    Padding="8,2"
+                                                    Margin="4,2"
+                                                    Command="{Binding $parent[DataGrid].((vm:SettingsViewModel)DataContext).ResetModelHistoryCommand}"
+                                                    CommandParameter="{Binding ModelId}"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Border>
+            </Expander>
+
             <!-- Webcam Capture (Collapsible) — Roadmap #2 / Docs/27-WEBCAM-CAPTURE-PLAN.md -->
             <Expander Header="📷 Webcam Capture">
                 <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
