@@ -73,8 +73,10 @@ else
         return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
     });
 }
-// Scanner services - Ximilar checked first, then falls back to OpenRouter LLM
+// Scanner services — CardSight checked first (free 750/mo quota, sports-card-tuned),
+// then falls back to OpenRouter LLM. Ximilar service retained but no longer in the chain.
 builder.Services.AddSingleton<IXimilarService, XimilarService>();
+builder.Services.AddSingleton<FlipKit.Core.Services.Implementations.CardsightScannerService>();
 builder.Services.AddSingleton<OpenRouterScannerService>();
 builder.Services.AddSingleton<IScannerService, CompositeScannerService>();
 // Live model catalog from OpenRouter — single instance, app-lifetime cache

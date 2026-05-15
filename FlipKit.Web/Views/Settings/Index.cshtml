@@ -169,6 +169,66 @@
                             </div>
                         </div>
 
+                        <!-- CardSight API Key -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label asp-for="CardsightApiKey" class="form-label fw-bold"></label>
+                                @if (isEditable)
+                                {
+                                    <div class="input-group">
+                                        <input type="password" asp-for="CardsightApiKey" class="form-control"
+                                               placeholder="@(Model.HasCardsightKey ? "Enter new key to update" : "Optional — runs before OpenRouter")">
+                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="input-group-text">
+                                            @if (Model.HasCardsightKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        Optional — sports-card recognition via CardSight (<strong>750 free identifications/month</strong>).
+                                        Tried <em>before</em> OpenRouter; on miss or low confidence, FlipKit falls back to OpenRouter automatically.
+                                        Sign up at <a href="https://cardsight.ai/" target="_blank">cardsight.ai</a>, then grab your key from the dashboard
+                                        (see the <a href="https://api.cardsight.ai/documentation" target="_blank">API docs</a> for reference).
+                                    </small>
+                                }
+                                else
+                                {
+                                    <div class="input-group">
+                                        <input type="text" class="form-control"
+                                               value="@(Model.HasCardsightKey ? "••••••••••••••••••••" : "Not configured")"
+                                               readonly>
+                                        <span class="input-group-text">
+                                            @if (Model.HasCardsightKey)
+                                            {
+                                                <i class="bi bi-check-circle-fill text-success"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-x-circle-fill text-warning"></i>
+                                            }
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">Optional — sports-card recognition via CardSight (750 free/month)</small>
+                                }
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                @if (Model.HasCardsightKey)
+                                {
+                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="cardsight">
+                                        <i class="bi bi-lightning"></i> Test Connection
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
                         <!-- Ximilar API Key -->
                         <div class="row mb-3">
                             <div class="col-md-8">
@@ -192,7 +252,7 @@
                                             }
                                         </span>
                                     </div>
-                                    <small class="text-muted">Optional - card recognition via Ximilar database (saves AI tokens). <a href="https://www.ximilar.com/" target="_blank">Get a key</a></small>
+                                    <small class="text-muted">Not used in the active scan chain (CardSight replaced it). Key is retained for legacy/manual use. <a href="https://www.ximilar.com/" target="_blank">Get a key</a></small>
                                 }
                                 else
                                 {
@@ -646,11 +706,19 @@
                                 </tr>
                                 <tr>
                                     <td>
+                                        <strong>CardSight</strong><br>
+                                        <span class="text-muted">api.cardsight.ai</span>
+                                    </td>
+                                    <td>Card images only (multipart upload).</td>
+                                    <td>First-pass sports-card scanner when a CardSight key is configured. 750 free identifications/month; on miss or low confidence FlipKit falls back to OpenRouter.</td>
+                                </tr>
+                                <tr>
+                                    <td>
                                         <strong>Ximilar</strong><br>
                                         <span class="text-muted">api.ximilar.com</span>
                                     </td>
                                     <td>Card images only.</td>
-                                    <td>First-pass scanner when Ximilar mode is enabled in scan settings (disabled by default).</td>
+                                    <td>Not used in the active scan chain (CardSight replaced it). Key field retained for legacy/manual use.</td>
                                 </tr>
                                 <tr>
                                     <td>

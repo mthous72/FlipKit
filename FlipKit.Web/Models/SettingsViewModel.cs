@@ -17,6 +17,9 @@ namespace FlipKit.Web.Models
         [Display(Name = "Ximilar API Key")]
         public string? XimilarApiKey { get; set; }
 
+        [Display(Name = "CardSight API Key")]
+        public string? CardsightApiKey { get; set; }
+
         [Display(Name = "eBay Client ID")]
         public string? EbayClientId { get; set; }
 
@@ -80,6 +83,7 @@ namespace FlipKit.Web.Models
         public bool HasOpenRouterKey { get; set; }
         public bool HasImgBBKey { get; set; }
         public bool HasXimilarKey { get; set; }
+        public bool HasCardsightKey { get; set; }
         public bool HasEbayCredentials { get; set; }
         public bool IsDockerEnvironment { get; set; }
     }

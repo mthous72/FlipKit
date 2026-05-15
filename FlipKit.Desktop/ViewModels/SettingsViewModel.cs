@@ -39,18 +39,21 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private string _openRouterApiKey = string.Empty;
         [ObservableProperty] private string _imgBBApiKey = string.Empty;
         [ObservableProperty] private string _ximilarApiKey = string.Empty;
+        [ObservableProperty] private string _cardsightApiKey = string.Empty;
         [ObservableProperty] private string _ebayClientId = string.Empty;
         [ObservableProperty] private string _ebayClientSecret = string.Empty;
         [ObservableProperty] private string _ebayRuName = string.Empty;
         [ObservableProperty] private string _openRouterStatus = "Not configured";
         [ObservableProperty] private string _imgBBStatus = "Not configured";
         [ObservableProperty] private string _ximilarStatus = "Not configured";
+        [ObservableProperty] private string _cardsightStatus = "Not configured";
         [ObservableProperty] private string _ebayStatus = "Not configured";
         [ObservableProperty] private string _ebayConnectStatus = "Not connected";
         [ObservableProperty] private string _ebayPoliciesStatus = "Not fetched";
         [ObservableProperty] private bool _isTestingOpenRouter;
         [ObservableProperty] private bool _isTestingImgBB;
         [ObservableProperty] private bool _isTestingXimilar;
+        [ObservableProperty] private bool _isTestingCardsight;
         [ObservableProperty] private bool _isTestingEbay;
         [ObservableProperty] private bool _isConnectingEbay;
         [ObservableProperty] private bool _isFetchingEbayPolicies;
@@ -472,6 +475,7 @@ namespace FlipKit.Desktop.ViewModels
             OpenRouterApiKey = s.OpenRouterApiKey ?? string.Empty;
             ImgBBApiKey = s.ImgBBApiKey ?? string.Empty;
             XimilarApiKey = s.XimilarApiKey ?? string.Empty;
+            CardsightApiKey = s.CardsightApiKey ?? string.Empty;
             EbayClientId = s.EbayClientId ?? string.Empty;
             EbayClientSecret = s.EbayClientSecret ?? string.Empty;
             EbayRuName = s.EbayRuName ?? string.Empty;
@@ -527,6 +531,7 @@ namespace FlipKit.Desktop.ViewModels
             OpenRouterStatus = string.IsNullOrWhiteSpace(OpenRouterApiKey) ? "Not configured" : "Configured (not tested)";
             ImgBBStatus = string.IsNullOrWhiteSpace(ImgBBApiKey) ? "Not configured" : "Configured (not tested)";
             XimilarStatus = string.IsNullOrWhiteSpace(XimilarApiKey) ? "Not configured" : "Configured (not tested)";
+            CardsightStatus = string.IsNullOrWhiteSpace(CardsightApiKey) ? "Not configured" : "Configured (not tested)";
             EbayStatus = (string.IsNullOrWhiteSpace(EbayClientId) || string.IsNullOrWhiteSpace(EbayClientSecret))
                 ? "Not configured"
                 : "Configured (not tested)";
@@ -585,6 +590,8 @@ namespace FlipKit.Desktop.ViewModels
                 OpenRouterApiKey = OpenRouterApiKey,
                 ImgBBApiKey = ImgBBApiKey,
                 XimilarApiKey = XimilarApiKey,
+                CardsightApiKey = CardsightApiKey,
+                MinCardsightConfidence = current.MinCardsightConfidence,
                 EbayClientId = EbayClientId,
                 EbayClientSecret = EbayClientSecret,
                 EbayRuName = EbayRuName,
@@ -676,6 +683,18 @@ namespace FlipKit.Desktop.ViewModels
             XimilarStatus = success ? "Connected!" : "Connection failed";
 
             IsTestingXimilar = false;
+        }
+
+        [RelayCommand]
+        private async Task TestCardsightAsync()
+        {
+            IsTestingCardsight = true;
+            CardsightStatus = "Testing...";
+
+            var success = await _settingsService.TestCardsightConnectionAsync(CardsightApiKey);
+            CardsightStatus = success ? "Connected!" : "Connection failed";
+
+            IsTestingCardsight = false;
         }
 
         [RelayCommand]

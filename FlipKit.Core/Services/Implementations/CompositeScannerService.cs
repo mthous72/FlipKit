@@ -1,28 +1,29 @@
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
+using FlipKit.Core.Services.Implementations;
 using Microsoft.Extensions.Logging;
 
 namespace FlipKit.Core.Services
 {
     /// <summary>
-    /// Composite scanner that tries Ximilar first (if configured) for cost efficiency,
-    /// then falls back to OpenRouter LLM if Ximilar doesn't find a match.
+    /// Tries CardSight first (free 750/mo quota, purpose-built sports-card recognition),
+    /// then falls back to OpenRouter LLM on miss / low confidence / error.
+    /// Ximilar is no longer in the active chain (code retained in repo).
     /// </summary>
     public class CompositeScannerService : IScannerService
     {
-        private readonly IXimilarService _ximilarService;
+        private readonly CardsightScannerService _cardsightService;
         private readonly OpenRouterScannerService _openRouterService;
         private readonly ILogger<CompositeScannerService> _logger;
 
         public CompositeScannerService(
-            IXimilarService ximilarService,
+            CardsightScannerService cardsightService,
             OpenRouterScannerService openRouterService,
             ILogger<CompositeScannerService> logger)
         {
-            _ximilarService = ximilarService;
+            _cardsightService = cardsightService;
             _openRouterService = openRouterService;
             _logger = logger;
         }
@@ -36,68 +37,33 @@ namespace FlipKit.Core.Services
             OcrHint? ocrHint = null,
             CancellationToken ct = default)
         {
-            // Check if Ximilar should be used based on mode
-            var useXimilar = ximilarMode != XimilarScanMode.Disabled && _ximilarService.IsConfigured;
-            var useMagicAi = ximilarMode == XimilarScanMode.Magic;
-
-            // Try Ximilar first if enabled and configured (cheaper, uses existing card database)
-            if (useXimilar)
+            if (_cardsightService.IsConfigured)
             {
-                _logger.LogInformation("Attempting Ximilar recognition (mode: {Mode}, magic_ai: {MagicAi})...",
-                    ximilarMode, useMagicAi);
-
-                var ximilarResult = await _ximilarService.RecognizeCardAsync(imagePath, useMagicAi);
-
-                if (ximilarResult?.Success == true && ximilarResult.Card != null && ximilarResult.Confidence >= 0.8)
+                try
                 {
-                    _logger.LogInformation("Ximilar found high-confidence match ({Confidence:P0}), using Ximilar result",
-                        ximilarResult.Confidence);
-
-                    // Set back image if provided
-                    if (!string.IsNullOrEmpty(backImagePath))
-                        ximilarResult.Card.ImagePathBack = backImagePath;
-
-                    ximilarResult.Card.DataSource = CardDataSource.Ai;
-
-                    return new ScanResult
-                    {
-                        Card = ximilarResult.Card,
-                        VisualCues = null,
-                        AllVisibleText = new List<string>(),
-                        Confidences = new List<FieldConfidence>
-                        {
-                            new() { FieldName = "ximilar_match", Value = "true", Confidence = VerificationConfidence.High, Reason = $"Ximilar match score: {ximilarResult.Confidence:P0}" }
-                        }
-                    };
+                    _logger.LogInformation("Attempting CardSight recognition...");
+                    var cardsightResult = await _cardsightService.ScanCardAsync(imagePath, backImagePath, ct);
+                    _logger.LogInformation("CardSight identified card: {Player} ({Year} {Set})",
+                        cardsightResult.Card.PlayerName, cardsightResult.Card.Year, cardsightResult.Card.SetName);
+                    return cardsightResult;
                 }
-
-                if (ximilarResult?.Success == true && ximilarResult.Card != null)
+                catch (CardsightException ex)
                 {
-                    // Medium confidence - still fall back to LLM but log the Ximilar result
-                    _logger.LogInformation("Ximilar found match but confidence too low ({Confidence:P0}), falling back to LLM",
-                        ximilarResult.Confidence);
-                }
-                else
-                {
-                    _logger.LogInformation("Ximilar did not find match, falling back to LLM");
+                    _logger.LogInformation("CardSight fallback to OpenRouter ({Reason}): {Message}", ex.Reason, ex.Message);
+                    // fall through
                 }
             }
             else
             {
-                if (ximilarMode == XimilarScanMode.Disabled)
-                    _logger.LogInformation("Ximilar disabled by user, using OpenRouter directly");
-                else
-                    _logger.LogDebug("Ximilar not configured, using OpenRouter directly");
+                _logger.LogDebug("CardSight not configured, using OpenRouter directly");
             }
 
-            // Fall back to OpenRouter LLM
-            _logger.LogInformation("Using OpenRouter LLM for card recognition...");
             return await _openRouterService.ScanCardAsync(imagePath, backImagePath, model, scanDepth: scanDepth, ocrHint: ocrHint, ct: ct);
         }
 
         public async Task<string> SendCustomPromptAsync(string imagePath, string prompt, string? backImagePath = null, string model = OpenRouterModelDefaults.DefaultFreeModelId)
         {
-            // Custom prompts always go to OpenRouter (Ximilar doesn't support arbitrary prompts)
+            // Custom prompts always go to OpenRouter (CardSight only does card identification).
             return await _openRouterService.SendCustomPromptAsync(imagePath, prompt, backImagePath, model);
         }
     }

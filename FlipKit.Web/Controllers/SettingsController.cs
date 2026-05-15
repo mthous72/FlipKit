@@ -53,11 +53,13 @@ namespace FlipKit.Web.Controllers
                 OpenRouterApiKey = string.IsNullOrEmpty(settings.OpenRouterApiKey) ? "" : "••••••••" + settings.OpenRouterApiKey[^4..],
                 ImgBBApiKey = string.IsNullOrEmpty(settings.ImgBBApiKey) ? "" : "••••••••" + settings.ImgBBApiKey[^4..],
                 XimilarApiKey = string.IsNullOrEmpty(settings.XimilarApiKey) ? "" : "••••••••" + settings.XimilarApiKey[^4..],
+                CardsightApiKey = string.IsNullOrEmpty(settings.CardsightApiKey) ? "" : "••••••••" + settings.CardsightApiKey[^4..],
                 EbayClientId = string.IsNullOrEmpty(settings.EbayClientId) ? "" : "••••••••" + settings.EbayClientId[^4..],
                 EbayClientSecret = string.IsNullOrEmpty(settings.EbayClientSecret) ? "" : "••••••••" + settings.EbayClientSecret[^4..],
                 HasOpenRouterKey = !string.IsNullOrEmpty(settings.OpenRouterApiKey),
                 HasImgBBKey = !string.IsNullOrEmpty(settings.ImgBBApiKey),
                 HasXimilarKey = !string.IsNullOrEmpty(settings.XimilarApiKey),
+                HasCardsightKey = !string.IsNullOrEmpty(settings.CardsightApiKey),
                 HasEbayCredentials = !string.IsNullOrEmpty(settings.EbayClientId) && !string.IsNullOrEmpty(settings.EbayClientSecret),
                 WhatnotFeePercent = settings.WhatnotFeePercent,
                 EbayFeePercent = settings.EbayFeePercent,
@@ -171,6 +173,11 @@ namespace FlipKit.Web.Controllers
                     settings.XimilarApiKey = model.XimilarApiKey.Trim();
                 }
 
+                if (!string.IsNullOrEmpty(model.CardsightApiKey) && !model.CardsightApiKey.StartsWith("••••"))
+                {
+                    settings.CardsightApiKey = model.CardsightApiKey.Trim();
+                }
+
                 if (!string.IsNullOrEmpty(model.EbayClientId) && !model.EbayClientId.StartsWith("••••"))
                 {
                     settings.EbayClientId = model.EbayClientId.Trim();
@@ -253,6 +260,16 @@ namespace FlipKit.Web.Controllers
                 }
 
                 var isValid = await _settingsService.TestXimilarConnectionAsync(settings.XimilarApiKey);
+                return Json(new { success = isValid, message = isValid ? "Connection successful!" : "Connection failed" });
+            }
+            else if (service == "cardsight")
+            {
+                if (string.IsNullOrEmpty(settings.CardsightApiKey))
+                {
+                    return Json(new { success = false, message = "No API key configured" });
+                }
+
+                var isValid = await _settingsService.TestCardsightConnectionAsync(settings.CardsightApiKey);
                 return Json(new { success = isValid, message = isValid ? "Connection successful!" : "Connection failed" });
             }
 
