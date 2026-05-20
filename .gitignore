@@ -401,3 +401,4 @@ FlipKit.Core.Tests/Fixtures/Checklists/*.xlsx
 # Local build/run scratch — developer convenience, not part of the shipped build
 build-hub-win-local.ps1
 .run-logs/
+AGENTS.md
