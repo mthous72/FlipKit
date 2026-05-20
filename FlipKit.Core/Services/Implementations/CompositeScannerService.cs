@@ -10,7 +10,6 @@ namespace FlipKit.Core.Services
     /// <summary>
     /// Tries CardSight first (free 750/mo quota, purpose-built sports-card recognition),
     /// then falls back to OpenRouter LLM on miss / low confidence / error.
-    /// Ximilar is no longer in the active chain (code retained in repo).
     /// </summary>
     public class CompositeScannerService : IScannerService
     {
@@ -32,7 +31,6 @@ namespace FlipKit.Core.Services
             string imagePath,
             string? backImagePath = null,
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
-            XimilarScanMode ximilarMode = XimilarScanMode.Standard,
             ScanDepth scanDepth = ScanDepth.Standard,
             OcrHint? ocrHint = null,
             CancellationToken ct = default)

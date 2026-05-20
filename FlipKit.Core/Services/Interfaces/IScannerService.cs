@@ -11,7 +11,6 @@ namespace FlipKit.Core.Services
             string imagePath,
             string? backImagePath = null,
             string model = OpenRouterModelDefaults.DefaultFreeModelId,
-            XimilarScanMode ximilarMode = XimilarScanMode.Standard,
             ScanDepth scanDepth = ScanDepth.Standard,
             OcrHint? ocrHint = null,
             CancellationToken ct = default);
