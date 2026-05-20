@@ -53,7 +53,7 @@ namespace FlipKit.Desktop.Services
                 _logger.LogInformation("Starting Web server on port {Port}", port);
 
                 // Check if already running
-                if (_webProcess != null && !_webProcess.HasExited)
+                if (IsProcessAlive(_webProcess))
                 {
                     _logger.LogWarning("Web server is already running");
                     return new ServerStartResult
@@ -147,6 +147,10 @@ namespace FlipKit.Desktop.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to start Web server");
+                // Discard the half-initialized Process so the status poll doesn't later
+                // call HasExited on a process that never started.
+                try { _webProcess?.Dispose(); } catch { /* ignore */ }
+                _webProcess = null;
                 return new ServerStartResult
                 {
                     Success = false,
@@ -163,7 +167,7 @@ namespace FlipKit.Desktop.Services
                 _logger.LogInformation("Starting API server on port {Port}", port);
 
                 // Check if already running
-                if (_apiProcess != null && !_apiProcess.HasExited)
+                if (IsProcessAlive(_apiProcess))
                 {
                     _logger.LogWarning("API server is already running");
                     return new ServerStartResult
@@ -257,6 +261,10 @@ namespace FlipKit.Desktop.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to start API server");
+                // Discard the half-initialized Process so the status poll doesn't later
+                // call HasExited on a process that never started.
+                try { _apiProcess?.Dispose(); } catch { /* ignore */ }
+                _apiProcess = null;
                 return new ServerStartResult
                 {
                     Success = false,
@@ -270,9 +278,10 @@ namespace FlipKit.Desktop.Services
         {
             try
             {
-                if (_webProcess == null || _webProcess.HasExited)
+                if (!IsProcessAlive(_webProcess))
                 {
                     _logger.LogInformation("Web server is not running");
+                    _webProcess = null;
                     return;
                 }
 
@@ -304,9 +313,10 @@ namespace FlipKit.Desktop.Services
         {
             try
             {
-                if (_apiProcess == null || _apiProcess.HasExited)
+                if (!IsProcessAlive(_apiProcess))
                 {
                     _logger.LogInformation("API server is not running");
+                    _apiProcess = null;
                     return;
                 }
 
@@ -340,13 +350,33 @@ namespace FlipKit.Desktop.Services
             {
                 return new ServerStatus
                 {
-                    IsWebRunning = _webProcess != null && !_webProcess.HasExited,
-                    IsApiRunning = _apiProcess != null && !_apiProcess.HasExited,
+                    IsWebRunning = IsProcessAlive(_webProcess),
+                    IsApiRunning = IsProcessAlive(_apiProcess),
                     WebPort = _webPort,
                     ApiPort = _apiPort,
                     WebStartTime = _webStartTime,
                     ApiStartTime = _apiStartTime
                 };
+            }
+        }
+
+        /// <summary>
+        /// Returns whether the process exists and is still running. A <see cref="Process"/>
+        /// whose <c>Start()</c> failed (e.g. the server exe couldn't launch) is non-null but
+        /// has no associated OS process, so <see cref="Process.HasExited"/> throws
+        /// <see cref="InvalidOperationException"/>. Treat that as "not running" rather than
+        /// letting it propagate — this runs from a 2s status poll and must never crash the app.
+        /// </summary>
+        private static bool IsProcessAlive(Process? process)
+        {
+            if (process is null) return false;
+            try
+            {
+                return !process.HasExited;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
             }
         }
 

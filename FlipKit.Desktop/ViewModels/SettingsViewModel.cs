@@ -230,10 +230,18 @@ namespace FlipKit.Desktop.ViewModels
             _ = RefreshKeyInfoAsync();
             _ = LoadLeaderboardAsync();
 
-            // Refresh server status every 2 seconds
+            // Refresh server status every 2 seconds. This fires on a thread-pool thread,
+            // so any exception here would be unhandled and crash the app — guard it.
             _statusRefreshTimer = new Timer(_ =>
             {
-                UpdateServerStatus();
+                try
+                {
+                    UpdateServerStatus();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Server status refresh failed: {ex}");
+                }
             }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
         }
 
