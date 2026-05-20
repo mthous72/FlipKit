@@ -9,25 +9,24 @@ Download from [Releases](https://github.com/mthous72/FlipKit/releases) - include
 
 | Platform | Download |
 |----------|----------|
-| Windows (Installer) | `FlipKit-Setup-v3.6.0.exe` |
-| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.6.0.zip` |
-| macOS Apple Silicon (M1+) | `FlipKit-macOS-Apple-Silicon-v3.6.0.dmg` |
-| macOS Intel | `FlipKit-macOS-Intel-v3.6.0.dmg` |
-| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.6.0.zip` |
+| Windows (Installer) | `FlipKit-Setup-v3.7.0.exe` |
+| Windows (Portable) | `FlipKit-Hub-Windows-x64-v3.7.0.zip` |
+| macOS (Apple Silicon / Intel) | Build on a Mac from source — `.dmg` not built for v3.7.0 (see [Docs/guides/install-mac.md](Docs/guides/install-mac.md)) |
+| Linux (Portable) | `FlipKit-Hub-Linux-x64-v3.7.0.zip` |
 
 ## Features
 
 - **AI Card Scanning** - Upload photos, AI extracts player, year, set, parallel, serial numbers via the live OpenRouter model catalog (free + paid models, with consent prompt before paid use)
 - **CardSight First-Pass Recognition (optional)** - If a CardSight API key is configured, FlipKit hits CardSight first (purpose-built sports-card recognition, 750 free identifications/month) and falls back to OpenRouter on miss / low confidence — preserving OpenRouter quota for cards CardSight can't identify
 - **Bulk Scanning** - Multi-card front/back batch workflow with progress tracking and rate-limit handling
-- **Variation Verification** - Cross-references scans against bundled checklists; user-driven Excel import for additional sets is on the roadmap
+- **Variation Verification** - Cross-references scans against imported set checklists (Verified / best-guess / pick-from-checklist tiers); user-driven Excel checklist import
 - **Pricing Research** - Smart Terapeak/eBay search URLs with customizable templates
 - **CSV Export** - Spec-compliant Whatnot and eBay Bulk Upload exports with template-based validation, ImgBB image hosting, and re-export support
 - **eBay Listings Import** - Import an eBay Seller Hub "All active listings" CSV export into the inventory; deterministic regex pass + LLM second pass enrich each title, eBay item number is the upsert key so re-imports stay clean
 - **Sales Tracking** - Record sales, calculate profit, generate reports
 - **Mobile Scanning** - Camera integration for phone browsers via the Web app
-- **Webcam Capture** - Capture card images directly from a laptop webcam in both the Desktop app (OpenCvSharp4) and Web browser (`getUserMedia`); see [Docs/27-WEBCAM-CAPTURE-PLAN.md](Docs/27-WEBCAM-CAPTURE-PLAN.md). Browser capture requires HTTPS or `localhost` — Tailscale-over-HTTP falls back to file picker / phone upload.
-- **Tailscale Support** - Access your inventory from anywhere on your private network (see [Docs/Tailscale-Sync-Architecture.md](Docs/Tailscale-Sync-Architecture.md))
+- **Webcam Capture** - Capture card images directly from a laptop webcam in both the Desktop app (OpenCvSharp4) and Web browser (`getUserMedia`). Browser capture requires HTTPS or `localhost` — Tailscale-over-HTTP falls back to file picker / phone upload.
+- **Tailscale Support** - Access your inventory from anywhere on your private network (see [Docs/architecture/data-access.md](Docs/architecture/data-access.md))
 
 ## Tech Stack
 
@@ -53,11 +52,8 @@ dotnet run --project FlipKit.Desktop
 # Run web app standalone
 dotnet run --project FlipKit.Web
 
-# Build Docker image
-docker build -t flipkit:latest .
-
 # Build release packages (Hub zips for Windows + Linux)
-.\build-release.ps1 -Version 3.3.6
+.\build-release.ps1 -Version 3.7.0
 
 # Build the Windows Inno Setup installer
 .\build-hub-for-installer.ps1
@@ -107,7 +103,7 @@ ImgBB is only needed if you want card image URLs embedded in your Whatnot or eBa
 | **eBay Client ID + Secret** | [developer.ebay.com/my/keys](https://developer.ebay.com/my/keys) | Direct eBay listing creation (optional) |
 
 **Desktop:** Configure via the Settings page (gear icon in the sidebar)
-**Web:** Configure at `http://[server-ip]:5000/Settings` (Docker/remote mode only)
+**Web:** Configure at `http://[server-ip]:5000/Settings` (remote/embedded-server mode)
 
 ## Disclaimer
 

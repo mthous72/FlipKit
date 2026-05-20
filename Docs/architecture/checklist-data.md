@@ -119,7 +119,7 @@ These are the most commonly traded products on Whatnot. Full checklists + all kn
 > **Update 2026-05-01:** TCDB scraping is no longer the planned path. TCDB's Terms of Use explicitly prohibit both data mining/screen scraping AND commercial reproduction of their compiled checklist data, which conflicts with FlipKit's commercial distribution. Beckett has the same posture. The new strategy has two prongs:
 >
 > 1. **Bundled seed DB** — small, manually-curated set of Tier 1 checklists shipped with FlipKit (this document's original scope, still valid for Tier 1).
-> 2. **User-driven Excel import** — users download per-set .xlsx files from [checklistinsider.com](https://www.checklistinsider.com/) under their own personal-use license and import them into FlipKit via a file picker. FlipKit never touches the site. See **[28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)** for the full plan.
+> 2. **User-driven Excel import** — users download per-set .xlsx files from [checklistinsider.com](https://www.checklistinsider.com/) under their own personal-use license and import them into FlipKit via a file picker. FlipKit never touches the site. See **[28-CHECKLIST-INSIDER-IMPORT-PLAN.md](../planning/checklist-insider-import-plan.md)** for the full plan.
 >
 > The TCDB-scraping `ChecklistBuilder` console tool described below is **deprecated as a planned implementation** — keep this section for historical context only.
 
@@ -186,7 +186,7 @@ dotnet run -- export --output checklists.db
 dotnet run -- export --output checklist_seed.json --format json
 ```
 
-**Important:** This tool is NOT part of the main Card Lister app. It's a developer tool run before each release. The main app only reads the bundled `checklists.db`.
+**Important:** This tool is NOT part of the main FlipKit app. It's a developer tool run before each release. The main app only reads the bundled `checklists.db`.
 
 ---
 

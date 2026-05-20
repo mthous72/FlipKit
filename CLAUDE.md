@@ -15,7 +15,7 @@ Desktop and Web share a single SQLite database with WAL mode for concurrent acce
 
 **Core Features:** AI vision scanning (OpenRouter API), inventory management, pricing research (eBay/Terapeak), Whatnot CSV export, sales tracking, financial reports.
 
-**Current State:** v3.3.6 FlipKit Hub released. Unified package with Desktop app + embedded Web and API servers. Desktop and Web both feature-complete. Servers managed from Desktop Settings UI.
+**Current State:** v3.7.0 FlipKit Hub released. Unified package with Desktop app + embedded Web and API servers. Desktop and Web both feature-complete. Servers managed from Desktop Settings UI. Scan pipeline is CardSight (first pass) → OpenRouter (fallback); Ximilar was removed in v3.7.0.
 
 ## Build & Run Commands
 
@@ -33,9 +33,9 @@ dotnet run --project FlipKit.Web --urls "http://0.0.0.0:5000"
 dotnet run --project FlipKit.Api
 
 # Build release packages (Windows and Linux)
-.\build-release.ps1 -Version 3.2.0
-# Output: releases/FlipKit-Hub-Windows-x64-v3.2.0.zip
-#         releases/FlipKit-Hub-Linux-x64-v3.2.0.zip
+.\build-release.ps1 -Version 3.7.0
+# Output: releases/FlipKit-Hub-Windows-x64-v3.7.0.zip
+#         releases/FlipKit-Hub-Linux-x64-v3.7.0.zip
 
 # Run tests (when test projects exist)
 dotnet test
@@ -92,41 +92,25 @@ FlipKit.Api ─────┘
 
 Desktop, Web, and Api all reference Core, but **never reference each other**.
 
-### Data Access Modes
+For the full architecture — Hub embedded-server lifecycle, Desktop MVVM /
+ViewLocator / navigation, Web MVC, the API endpoint surface, DI lifetimes, and
+the Local-vs-Remote data-access modes — see
+**[Docs/architecture/overview.md](Docs/architecture/overview.md)** and
+**[Docs/architecture/data-access.md](Docs/architecture/data-access.md)**. Brief
+reminders:
 
-Both Desktop and Web support two data access modes, detected automatically by `DataAccessModeDetector`:
-
-- **Local Mode** (default) - Direct SQLite access via `FlipKitDbContext`
-- **Remote Mode** (via Tailscale) - HTTP calls to the Api server using `ApiCardRepository`
-
-### Desktop MVVM Pattern
-
-```
-View (XAML) → data binding → ViewModel (C#) → DI-injected services → Data/APIs
-```
-
-- **Views** are pure XAML with declarative bindings. No business logic in code-behind.
-- **ViewModels** use CommunityToolkit.Mvvm source generators: `[ObservableProperty]` for reactive properties, `[RelayCommand]` for async commands.
-- **Navigation** is ViewModel-first: `MainWindowViewModel.CurrentPage` holds the active ViewModel; `ViewLocator` resolves the matching View by replacing `"ViewModel"` with `"View"` in the type name.
-
-### Web MVC Pattern
-
-```
-Browser → HTTP Request → Controller → Core Services → Database/APIs → View (Razor) → HTTP Response
-```
-
-- **Controllers** handle HTTP requests, call Core services, return views
-- **ViewModels (DTOs)** are simple data transfer objects for Razor views (no ObservableObject)
-- **DI Lifetimes:** Singleton for stateless services, Scoped for DbContext-dependent services
-
-### API Server Endpoints
-
-Minimal API design (no controllers, endpoint mapping in Program.cs):
-- CRUD: `/api/cards`, `/api/cards/{id}`
-- Queries: `/api/cards/unpriced`, `/api/cards/stale`, `/api/cards/stats`
-- Price history: `/api/cards/{id}/price-history`
-- Reports: `/api/reports/sold`
-- Health: `/`, `/health`
+- **Desktop (MVVM):** Views are pure XAML; ViewModels use CommunityToolkit.Mvvm
+  source generators (`[ObservableProperty]`, `[RelayCommand]` — the `Async`
+  suffix is dropped). Navigation is ViewModel-first via
+  `MainWindowViewModel.CurrentPage` + `ViewLocator`.
+- **Web (MVC):** Controllers → Core services → DbContext → Razor views. Singleton
+  for stateless services, Scoped for anything taking `FlipKitDbContext`.
+- **Api:** Minimal API, no controllers — endpoints mapped in `Program.cs`
+  (`/api/cards`, `/api/cards/unpriced|stale|stats`, `/api/cards/{id}/price-history`,
+  `/api/reports/sold`, `/health`).
+- **Data access:** `DataAccessModeDetector` auto-selects Local (direct SQLite via
+  `FlipKitDbContext`) or Remote (HTTP to the Api via `ApiCardRepository`, over
+  Tailscale).
 
 ## Important Conventions
 
@@ -158,16 +142,16 @@ Minimal API design (no controllers, endpoint mapping in Program.cs):
 
 ## Planning Documents
 
-Comprehensive specs are in `Docs/`. Key references:
+Comprehensive specs are in `Docs/` — start at the [Docs index](Docs/README.md).
+Key references:
 
 | Doc | Content |
 |-----|---------|
-| `02-DATABASE-SCHEMA.md` | EF Core entities (Card, PriceHistory, SetChecklist), enums |
-| `03-OPENROUTER-INTEGRATION.md` | AI vision API setup and prompts |
-| `08-CARD-TERMINOLOGY.md` | Sports card domain reference |
-| `10-GUI-ARCHITECTURE.md` | Avalonia MVVM patterns, DI setup |
-| `14-VARIATION-VERIFICATION.md` | Checklist-based verification system |
-| `17-FUTURE-ROADMAP.md` | Future feature planning |
-| `HUB-ARCHITECTURE.md` | FlipKit Hub server management |
+| `Docs/architecture/overview.md` | Hub server management + Avalonia MVVM patterns, DI setup |
+| `Docs/architecture/database-schema.md` | EF Core entities (Card, PriceHistory, SurpriseSet, SetChecklist), enums |
+| `Docs/features/ai-scanning.md` | Scan pipeline: CardSight → OpenRouter, prompts, quota panel |
+| `Docs/features/verification.md` | Checklist-based verification + verified-fields LLM hint mode |
+| `Docs/features/card-terminology.md` | Sports card domain reference |
+| `Docs/planning/roadmap.md` | Future feature planning |
 
 See README.md for full feature list, known limitations, and roadmap.

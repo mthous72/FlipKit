@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-05-04
-**Related:** [17-FUTURE-ROADMAP.md #1](../17-FUTURE-ROADMAP.md), [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](../28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
+**Related:** [17-FUTURE-ROADMAP.md #1](../../planning/roadmap.md), [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](../../planning/checklist-insider-import-plan.md)
 
 ## Context
 

@@ -1,7 +1,11 @@
 # FlipKit Web - Deployment Guide
 
-**Version:** 1.0
-**Last Updated:** February 7, 2026
+**Applies to:** FlipKit v3.7.0
+
+> Most users do **not** need this guide. FlipKit Hub runs the Web server as a
+> managed child process of the Desktop app (Settings → Servers) — see
+> [../architecture/overview.md](../architecture/overview.md). This guide covers
+> running `FlipKit.Web` standalone as an always-on server on a dedicated machine.
 
 ---
 
@@ -366,41 +370,10 @@ sudo systemctl start flipkitweb
 sudo systemctl status flipkitweb
 ```
 
-### Option 4: Docker (Advanced)
-
-For containerized deployment.
-
-**Dockerfile:**
-```dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 5000
-
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
-COPY ["FlipKit.Web/FlipKit.Web.csproj", "FlipKit.Web/"]
-COPY ["FlipKit.Core/FlipKit.Core.csproj", "FlipKit.Core/"]
-RUN dotnet restore "FlipKit.Web/FlipKit.Web.csproj"
-COPY . .
-WORKDIR "/src/FlipKit.Web"
-RUN dotnet build "FlipKit.Web.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "FlipKit.Web.csproj" -c Release -o /app/publish
-
-FROM base AS final
-WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "FlipKit.Web.dll"]
-```
-
-**Build and Run:**
-```bash
-docker build -t flipkit-web .
-docker run -d -p 5000:5000 --name flipkit-web \
-  -v /path/to/flipkit-data:/app/data \
-  flipkit-web
-```
+> **Note:** Docker is not a supported deployment target. The Docker files
+> (`Dockerfile`, `docker-compose.yml`) predated the Hub unification and were
+> removed (see [../planning/audit-2026-05.md](../planning/audit-2026-05.md)).
+> Use the Windows service, IIS, or Linux systemd options above.
 
 ---
 
@@ -730,4 +703,4 @@ For deployment issues:
 
 **End of Deployment Guide**
 
-*This guide covers FlipKit Web v1.0 (February 2026). Deployment procedures may change in future versions.*
+*This guide covers standalone FlipKit Web deployment for v3.7.0. Deployment procedures may change in future versions.*

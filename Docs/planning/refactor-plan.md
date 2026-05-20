@@ -3,9 +3,9 @@
 **Target codebase:** FlipKit Hub v3.3.6 (`c:\Users\Matthew Houston\source\repos\FlipKit`)
 **Goal:** Heavy cleanup with zero behavioral regressions, preserving roadmap-aligned code, ending in a roadmap revisit.
 **Created:** 2026-05-04
-**Status:** ✓ Complete — All 6 phases executed and merged to master. See [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for the final snapshot. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md). This plan is now historical.
+**Status:** ✓ Complete — All 6 phases executed and merged to master. See [refactor-status.md](refactor-status.md) for the final snapshot. Future work tracked in [roadmap.md](roadmap.md). This plan is now historical. (Test count at refactor close-out was 490; the live suite has since grown to 919 as later features landed — see [roadmap.md](roadmap.md).)
 
-> **Resume here?** Skip to [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
+> **Resume here?** Skip to [refactor-status.md](refactor-status.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
 
 ---
 
@@ -91,8 +91,8 @@ Earlier phases are intentionally lowest-risk and produce permanent artifacts (ma
 | Item | Path | Why |
 |---|---|---|
 | ScreenshotTool subproject | `ScreenshotTool/` | csproj references `..\FlipKit\FlipKit.csproj` (pre-rebrand path that no longer exists) and uses old `FlipKit.Services.*` namespaces. Not in `FlipKit.sln`. Cannot build. Confirmed kill (§10 Q2). |
-| `LegacyMigrator` | `FlipKit.Core/Helpers/LegacyMigrator.cs` | One-shot CardLister→FlipKit folder migration. Confirmed kill (§10 Q1). |
-| Rebrand rename scripts | `rename-folders.ps1`, `rename-flipkit-content.ps1`, `rename-to-flipkit.ps1` | One-shot CardLister→FlipKit rebrand done Feb 2026. All target paths no longer exist. |
+| `LegacyMigrator` | `FlipKit.Core/Helpers/LegacyMigrator.cs` | One-shot legacy→FlipKit folder migration (old product name → FlipKit). Confirmed kill (§10 Q1). |
+| Rebrand rename scripts | `rename-folders.ps1`, `rename-flipkit-content.ps1`, `rename-to-flipkit.ps1` | One-shot rebrand to FlipKit done Feb 2026. All target paths no longer exist. |
 | GitHub rename instructions | `GITHUB-RENAME-INSTRUCTIONS.md` | Manual steps for the rebrand. Already executed. |
 | Rebrand completion summary | `REBRAND-COMPLETION-SUMMARY.md` | Historical artifact. Delete fully (consistent with §10 Q6). |
 | Stale Inno Setup script | `installer/flipkit-setup.iss` | v3.0.0, hardcoded version. Real installer is `installer/Windows/FlipKit.iss` (v3.3.6) per `build-installers.ps1` and `build-hub-for-installer.ps1`. |
@@ -114,7 +114,7 @@ Earlier phases are intentionally lowest-risk and produce permanent artifacts (ma
 | ~~Shelved sold-price service + `ISoldPriceService`~~ | ~~(removed 2026-05-05; see Roadmap §3)~~ | ~~Comment in `PricingViewModel.cs:19` flagged it as "SHELVED ... kept for potential future use" — mapped to roadmap #3 Automated Price Scraping.~~ Service and interface deleted; row retained for historical context. |
 | ~~`HtmlAgilityPack` package ref~~ | ~~`FlipKit.Core.csproj`, `FlipKit.Desktop.csproj`~~ | ~~Only consumer was the shelved sold-price service (above).~~ Package removed alongside the service. |
 | `ChecklistLearningService`, `MissingChecklist`, `IChecklistLearningService` | `FlipKit.Core/...` | Roadmap #1 Checklist Insider import — these are the learning-from-scans surface. |
-| `XimilarService` + all `XimilarScanMode` plumbing | Core + Web + Desktop | Active in `CompositeScannerService` — used in production scan path with the `XimilarScanMode.Standard/Magic/Disabled` switch in the UI. NOT roadmap-only, currently shipping. |
+| ~~`XimilarService` + all `XimilarScanMode` plumbing~~ | ~~Core + Web + Desktop~~ | **Ximilar removed in v3.7.0** — the provider was deleted and replaced by CardSight (first-pass) → OpenRouter (fallback) in `CompositeScannerService`. Row retained for historical context. |
 | COMC enum value | `ExportPlatform.cs` | Roadmap #5 Finish COMC Exporter. |
 | Dark theme groundwork (`App.axaml` `RequestedThemeVariant="Default"`, `Styles/AppStyles.axaml`) | Desktop | Roadmap #7. |
 
@@ -229,7 +229,7 @@ Update `CHANGELOG.md`:
 
 Update `CLAUDE.md`:
 - Bump version line from "v3.2.0" to "v3.3.6" (drift the user explicitly flagged).
-- Update the troubleshooting note about `CardListerDbContext.cs` once Phase 3 renames the file.
+- Update the troubleshooting note about the legacy pre-rebrand DbContext filename once Phase 3 renames it to `FlipKitDbContext.cs`.
 - Remove the `LegacyMigrator` line at `CLAUDE.md:140` (per AUDIT-2026-05 §5.1) — the helper is being deleted in Phase 3.
 
 Update `README.md` (per AUDIT-2026-05 §5.3):
@@ -246,7 +246,7 @@ Update `README.md` (per AUDIT-2026-05 §5.3):
 
 ### 5.1 File rename
 
-- Rename `FlipKit.Core/Data/CardListerDbContext.cs` → `FlipKit.Core/Data/FlipKitDbContext.cs`. Class name (`FlipKitDbContext`) does not change. Update the `CLAUDE.md` troubleshooting note. **Sequencing constraint:** must happen *before* anyone adds a new EF migration or new schema-update method, so a future contributor doesn't grep for the old name and find nothing.
+- Rename the legacy pre-rebrand DbContext file `FlipKit.Core/Data/<old-name>DbContext.cs` → `FlipKit.Core/Data/FlipKitDbContext.cs`. Class name (`FlipKitDbContext`) does not change. Update the `CLAUDE.md` troubleshooting note. **Sequencing constraint:** must happen *before* anyone adds a new EF migration or new schema-update method, so a future contributor doesn't grep for the old name and find nothing.
 
 ### 5.2 Delete confirmed-dead code
 
@@ -292,7 +292,7 @@ Effort: 3-4 weeks. Phase 5 does not start until coverage targets are green.
 Common scaffolding (set up in 4a, reused by 4b–4d):
 - Test infrastructure folder: `tests/Fixtures/{Cards,Http}/`
   - `Cards/*.json` — embedded sample card records, deserialized in tests via `System.Text.Json`
-  - `Http/{openrouter,ximilar,imgbb,ebay}/*.json` — recorded HTTP responses (VCR pattern)
+  - `Http/{openrouter,ximilar,imgbb,ebay}/*.json` — recorded HTTP responses (VCR pattern). (Note: the `ximilar` fixtures went away when Ximilar was removed in v3.7.0; CardSight replaced it.)
 - `Microsoft.NET.Test.Sdk` + `xunit` + `xunit.runner.visualstudio` + `NSubstitute` + `coverlet.collector` package refs
 - Per-test SQLite helper: `using var conn = new SqliteConnection("Data Source=:memory:"); conn.Open(); var ctx = new FlipKitDbContext(opts.UseSqlite(conn).Options); ctx.Database.EnsureCreated();`
 
@@ -333,7 +333,7 @@ Branch: `refactor/phase-4b-core-data-tests`. First use of real-SQLite-in-memory 
 
 **Scanner services** (target 70%+) — recorded HTTP responses:
 - `OpenRouterScannerService` — JSON parse, markdown stripping, error handling
-- `XimilarService` — mode switching (Standard/Magic/Disabled)
+- `XimilarService` — mode switching (Standard/Magic/Disabled). *(Historical: Ximilar was removed in v3.7.0; these tests went with it. CompositeScannerService now composes CardSight + OpenRouter.)*
 - `CompositeScannerService` — composition logic with NSubstitute-mocked scanners
 - `OpenRouterModelCatalog` — live fetch + fallback path (note: Phase 5.2 will add the fallback; tests added here will already exercise it once 5.2 lands)
 
@@ -470,7 +470,7 @@ Note: `SettingsViewModel` was *not* on the user's flagged list but is the worst 
 - `BulkScanViewModel` → extract `BulkScanQueueService` (queue management + cancellation) and `RateLimitTracker`. **Skipped at Phase 5 close-out** — see §7.4b log below.
 - `InventoryViewModel` → extract `InventoryFilterService` (filter/sort logic) and `InventoryColumnConfig`.
 - `ExportViewModel` → extract `ExportPreviewBuilder` (already partially in `ExportableCard`).
-- `SettingsViewModel` → extract `SettingsValidationService`, `XimilarConnectionTester`, `OpenRouterConnectionTester`, `ImgBBConnectionTester` — most of the bulk is connection-test helpers that don't belong in a ViewModel.
+- `SettingsViewModel` → extract `SettingsValidationService`, `OpenRouterConnectionTester`, `ImgBBConnectionTester` (and originally a Ximilar tester — Ximilar removed in v3.7.0, now a CardSight tester instead) — most of the bulk is connection-test helpers that don't belong in a ViewModel.
 
 Do these one at a time, on separate branches, each followed by the full manual regression checklist + the new helper unit tests.
 
@@ -493,7 +493,7 @@ Do these one at a time, on separate branches, each followed by the full manual r
 
 **What was deliberately not done:**
 - Server-management coordinator extraction (would have required reworking the start/stop commands + the §7.10 race-fix code that already lives in the VM).
-- Connection tester extractions (Ximilar/OpenRouter/ImgBB).
+- Connection tester extractions (OpenRouter/ImgBB, and the then-present Ximilar tester — Ximilar removed in v3.7.0).
 - Settings validation service.
 
 These are still valid work items but are deferred to Phase 6 re-cost.
@@ -519,13 +519,13 @@ These are still valid work items but are deferred to Phase 6 re-cost.
 
 ### 7.5 Stale `Docs/07-CLAUDE-CODE-GUIDE.md` — **DEFERRED to Phase 6**
 
-This doc still references `MockScannerService` and `BoolToVisibilityConverter` as live files, and uses the old folder layout. Refresh it to match the cleaned tree.
+This doc referenced `MockScannerService` and `BoolToVisibilityConverter` as live files and used the old folder layout. **Resolved:** the guide was rewritten in Phase 6 (now `Docs/development/claude-code-guide.md`) and those dead references are gone.
 
 **Status:** Deferred from Phase 5 to Phase 6 in the post-Phase 4 regroup. Phase 6 is already doc-heavy (roadmap revamp, ADRs); folding this in keeps Phase 5 focused on code work.
 
 ### 7.8 OpenRouterScannerService retry filter fix (BUG, discovered in Phase 4b — **DONE in Phase 5a**)
 
-While writing scanner tests, the fallback chain logic was found broken for everything except 404 errors. See [AUDIT-2026-05.md §5.9](AUDIT-2026-05.md) for the full diagnosis.
+While writing scanner tests, the fallback chain logic was found broken for everything except 404 errors. See [AUDIT-2026-05.md §5.9](audit-2026-05.md) for the full diagnosis.
 
 **Summary:** `IsRetryableHttpError` checks `msg.Contains("500")` etc., but the exception message contains the enum name (`"InternalServerError"`) rather than the digit. So 5xx and 429 errors propagate immediately without triggering the fallback chain, defeating the whole retry design for those status codes.
 
@@ -551,7 +551,7 @@ Two production races surfaced while writing SettingsViewModel tests in Phase 4c.
 
 ### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b — **DONE in Phase 4.5**)
 
-While writing ChecklistLearningService tests, the "enrich existing checklist" code path was found to silently lose every mutation. See [AUDIT-2026-05.md §5.10](AUDIT-2026-05.md) for the full diagnosis.
+While writing ChecklistLearningService tests, the "enrich existing checklist" code path was found to silently lose every mutation. See [AUDIT-2026-05.md §5.10](audit-2026-05.md) for the full diagnosis.
 
 **Summary:** `SetChecklist.Cards` and `SetChecklist.KnownVariations` are JSON-converted via `HasConversion(serialize, deserialize)` at `FlipKitDbContext.cs:105-113` without a `ValueComparer`. EF Core's change tracker can't detect collection mutations on JSON-converted properties, so `checklist.Cards.Add(...)` followed by `SaveChangesAsync()` is a no-op.
 
@@ -658,4 +658,4 @@ The Phase 1 audit raised five additional questions. Decisions:
 | A5 | OpenRouter catalog — `OpenRouterModelCatalog` or new `ScannerDefaults`? | `OpenRouterModelCatalog` owns live + fallback + default. Closes empty-catalog-on-fetch-failure bug as side effect. See Phase 5.2 §7.2. |
 | — | `installers/FlipKit-Windows-x64-v3.3.0.zip` | Delete + add `installers/*.zip` to `.gitignore` (Phase 2 §4.2). |
 
-Full audit at [AUDIT-2026-05.md](AUDIT-2026-05.md).
+Full audit at [AUDIT-2026-05.md](audit-2026-05.md).

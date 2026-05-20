@@ -2,7 +2,7 @@
 
 **Status:** Accepted (with planned migration path)
 **Date:** 2026-05-04
-**Related:** [`FlipKit.Core/Data/SchemaUpdater.cs`](../../FlipKit.Core/Data/SchemaUpdater.cs), [`FlipKit.Desktop/App.axaml.cs:171`](../../FlipKit.Desktop/App.axaml.cs), [`FlipKit.Web/Program.cs:110`](../../FlipKit.Web/Program.cs), refactor plan §7.6
+**Related:** [`FlipKit.Core/Data/SchemaUpdater.cs`](../../../FlipKit.Core/Data/SchemaUpdater.cs), [`FlipKit.Desktop/App.axaml.cs:171`](../../../FlipKit.Desktop/App.axaml.cs), [`FlipKit.Web/Program.cs:110`](../../../FlipKit.Web/Program.cs), refactor plan §7.6
 
 ## Context
 
@@ -19,8 +19,8 @@ We took path 2.
 ## Decision
 
 Both surfaces stand:
-- **`Database.EnsureCreated()`** is called at startup in Desktop ([`App.axaml.cs:171`](../../FlipKit.Desktop/App.axaml.cs)) and Web ([`Program.cs:110`](../../FlipKit.Web/Program.cs)). Creates the database fresh on first install with the current model.
-- **`SchemaUpdater`** ([`FlipKit.Core/Data/SchemaUpdater.cs`](../../FlipKit.Core/Data/SchemaUpdater.cs)) runs after `EnsureCreated` and applies additive `ALTER TABLE IF NOT EXISTS` style fixups for columns added since prior versions. It's an accreting list of columns — every new optional column gets an entry here so that upgrading users get the column without losing data.
+- **`Database.EnsureCreated()`** is called at startup in Desktop ([`App.axaml.cs:171`](../../../FlipKit.Desktop/App.axaml.cs)) and Web ([`Program.cs:110`](../../../FlipKit.Web/Program.cs)). Creates the database fresh on first install with the current model.
+- **`SchemaUpdater`** ([`FlipKit.Core/Data/SchemaUpdater.cs`](../../../FlipKit.Core/Data/SchemaUpdater.cs)) runs after `EnsureCreated` and applies additive `ALTER TABLE IF NOT EXISTS` style fixups for columns added since prior versions. It's an accreting list of columns — every new optional column gets an entry here so that upgrading users get the column without losing data.
 
 New columns get added in two places: as a property on the model (so EF knows about it for queries) and as a row in `SchemaUpdater` (so existing user databases pick it up). Both are required.
 

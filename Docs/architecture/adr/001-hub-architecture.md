@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-05-04 (decision made earlier; codified during refactor Phase 6)
-**Related:** [HUB-ARCHITECTURE.md](../HUB-ARCHITECTURE.md), refactor Phase 6 (re-baseline)
+**Related:** [HUB-ARCHITECTURE.md](../overview.md), refactor Phase 6 (re-baseline)
 
 ## Context
 

@@ -309,7 +309,7 @@ CSV export only. `WhatnotExporter` maps `Card` → 21-column CSV (Category, Sub 
 
 **Summary:** Search active eBay listings from within FlipKit for competitive price reference.
 
-**Note:** This branch (`feature/ebay-browse-api`) was previously built and **deliberately removed** (see `Docs/17-FUTURE-ROADMAP.md` item 3, decision date 2026-05-05). The core objection was that active asking prices add noise, not signal — users set prices based on sold comps (Terapeak), not what competitors are asking.
+**Note:** This branch (`feature/ebay-browse-api`) was previously built and **deliberately removed** (see `Docs/planning/roadmap.md` item 3, decision date 2026-05-05). The core objection was that active asking prices add noise, not signal — users set prices based on sold comps (Terapeak), not what competitors are asking.
 
 **This item is explicitly deferred.** See Phase 4 decision log. Re-evaluate only if there's user demand for "how many of this card are listed and at what asking price" as a market-depth signal (distinct from pricing).
 
@@ -648,7 +648,7 @@ SaleRecord:
 
 **Summary:** Audit current DPAPI approach and address cross-platform gaps before adding Whatnot + additional eBay scopes.
 
-**Problem:** Current approach works well on Windows. On Linux (Web server on a headless box), key storage relies on file permissions only. With more platforms and more tokens (eBay refresh token, Whatnot API token, OpenRouter key, ImgBB key, Ximilar key), the config.json grows and any plaintext leak of the file is serious.
+**Problem:** Current approach works well on Windows. On Linux (Web server on a headless box), key storage relies on file permissions only. With more platforms and more tokens (eBay refresh token, Whatnot API token, OpenRouter key, ImgBB key, CardSight key), the config.json grows and any plaintext leak of the file is serious.
 
 **Current state:** `DataProtectionSecretEncryption` with ASP.NET Core Data Protection — good on Windows (DPAPI), acceptable on Linux with file permissions, no cross-machine portability.
 
@@ -875,7 +875,7 @@ M6 (Whatnot Native) ── parallel track, activates on Developer Preview access
 
 5. **SQLite concurrent write contention** — WAL mode handles concurrent reads well, but multiple background jobs from Desktop + Web writing simultaneously could cause lock contention. Profile under concurrent load before deploying M1.
 
-6. **Marketplace Insights API** — Item EB-10 noted that sold-price comps via eBay API require Marketplace Insights, which is restricted to Terapeak-tier partners ("high-end developers"). This is confirmed unavailable via standard developer registration. The `Docs/09-EBAY-API.md` and the v3.3.6 roadmap both document this. Do not apply speculatively.
+6. **Marketplace Insights API** — Item EB-10 noted that sold-price comps via eBay API require Marketplace Insights, which is restricted to Terapeak-tier partners ("high-end developers"). This is confirmed unavailable via standard developer registration. The `Docs/features/ebay-integration.md` and the roadmap both document this. Do not apply speculatively.
 
 ---
 
@@ -886,9 +886,9 @@ M6 (Whatnot Native) ── parallel track, activates on Developer Preview access
 | **EB-10 Browse API comps** | ❌ Do not build | Already built and deliberately removed (2026-05-05). Active asking prices add noise, not signal — users price from sold comps (Terapeak/deeplinks). Revisit only if demand for market-depth data (listing volume, asking range) is distinct from pricing. |
 | **WN-16 Whatnot scraping** | ❌ Do not build | ToS risk, fragility, unbounded maintenance cost. Wait for Whatnot Seller API to expose sold data officially. |
 | **WN-13 Surprise Set** | 🟡 Needs spec | No design doc or branch found. Cannot plan without a spec. Define it first, then it slots into M2–M3 based on complexity. |
-| **EB-10 Marketplace Insights** | ❌ Not accessible | Requires eBay partner-tier approval not available to standard developers. Confirmed in `Docs/09-EBAY-API.md`. |
+| **EB-10 Marketplace Insights** | ❌ Not accessible | Requires eBay partner-tier approval not available to standard developers. Confirmed in `Docs/features/ebay-integration.md`. |
 | **Price alerts / notifications** | ❌ Deferred | Depends on automated pricing data, which is deferred (Browse API decision above). No foundation to build on. |
-| **COMC exporter** | ⬇️ Downgrade or drop | `Docs/17-FUTURE-ROADMAP.md` item 5 flags this as "consider downgrading or dropping" — no demand signal, wiring is half-present and misleading. Not included in this roadmap. |
+| **COMC exporter** | ⬇️ Downgrade or drop | `Docs/planning/roadmap.md` item 5 flags this as "consider downgrading or dropping" — no demand signal, wiring is half-present and misleading. Not included in this roadmap. |
 
 ---
 

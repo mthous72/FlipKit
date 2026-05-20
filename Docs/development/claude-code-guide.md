@@ -2,11 +2,11 @@
 
 ## Overview
 
-This guide helps you work with the **current FlipKit Hub v3.3.6 codebase** using Claude Code or any LLM agent. It assumes you're modifying or extending an existing, working app — not building from scratch. For the from-scratch story, read `Docs/01-PROJECT-PLAN.md` (historical) and the architecture doc [10-GUI-ARCHITECTURE.md](10-GUI-ARCHITECTURE.md).
+This guide helps you work with the **current FlipKit Hub v3.7.0 codebase** using Claude Code or any LLM agent. It assumes you're modifying or extending an existing, working app — not building from scratch. For the from-scratch story, read `Docs/archive/01-PROJECT-PLAN.md` (historical) and the architecture doc [../architecture/overview.md](../architecture/overview.md).
 
-**Current State:** Production. 4-project solution (Core / Desktop / Web / Api), shared SQLite via WAL mode, embedded Web + API servers managed from Desktop. 490 unit/integration tests with a CI gate. Refactor Phases 1–6 complete (see [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md) and [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md)).
+**Current State:** Production. 4-project solution (Core / Desktop / Web / Api), shared SQLite via WAL mode, embedded Web + API servers managed from Desktop. The scan pipeline is CardSight (first pass) → OpenRouter (fallback); Ximilar was removed in v3.7.0. Comprehensive unit/integration test suite with a CI gate. Refactor Phases 1–6 complete (see [../planning/refactor-plan.md](../planning/refactor-plan.md) and [../planning/refactor-status.md](../planning/refactor-status.md)).
 
-The repo's [CLAUDE.md](../CLAUDE.md) at the project root is the authoritative quickstart for an agent — this doc is the longer-form companion: when to touch which project, how to add features in each layer, common pitfalls.
+The repo's [CLAUDE.md](../../CLAUDE.md) at the project root is the authoritative quickstart for an agent and covers the canonical project layout, conventions, and troubleshooting — this doc is the longer-form companion: when to touch which project, how to add features in each layer, common pitfalls. For the architecture itself see [../architecture/overview.md](../architecture/overview.md).
 
 ---
 
@@ -22,7 +22,7 @@ The repo's [CLAUDE.md](../CLAUDE.md) at the project root is the authoritative qu
 
 ## Solution Structure (4 projects)
 
-See [CLAUDE.md](../CLAUDE.md) for the canonical layout. Quick reminder of where to put things:
+See [CLAUDE.md](../../CLAUDE.md) for the canonical layout. Quick reminder of where to put things:
 
 | You're adding... | Goes in... |
 |---|---|
@@ -120,7 +120,7 @@ The CI gate (in `build-installers.ps1` and `build-release.ps1`) aborts the build
 
 ## DI lifetime gotcha (read this once)
 
-`FlipKitDbContext` is **Scoped**. If a Singleton service captures a Scoped dep, EF Core will throw at startup or — worse — silently reuse a stale context. The audit caught this with `ISoldPriceService` registered as Singleton with a Scoped DbContext (D1 in [AUDIT-2026-05.md](AUDIT-2026-05.md)) and again with `IVariationVerifier`. Both fixed in Phase 5a.
+`FlipKitDbContext` is **Scoped**. If a Singleton service captures a Scoped dep, EF Core will throw at startup or — worse — silently reuse a stale context. The audit caught this with `ISoldPriceService` registered as Singleton with a Scoped DbContext (D1 in [../planning/audit-2026-05.md](../planning/audit-2026-05.md)) and again with `IVariationVerifier`. Both fixed in Phase 5a.
 
 **Rule:** any service that takes `FlipKitDbContext` (directly or transitively) must be **Scoped**. ViewModels are Transient (Avalonia spins them up per-navigation). Pure helpers that don't touch the DB can be Singleton.
 
@@ -143,10 +143,10 @@ If you're adding a repository operation, **add it to both `CardRepository` (DB) 
 
 For most tasks the agent will read the relevant files itself. For the rare cases when you want to seed it:
 
-- The repo root [CLAUDE.md](../CLAUDE.md) (auto-loaded by Claude Code; included in agent context).
-- The relevant subsection of [10-GUI-ARCHITECTURE.md](10-GUI-ARCHITECTURE.md) for new VM/View work.
+- The repo root [CLAUDE.md](../../CLAUDE.md) (auto-loaded by Claude Code; included in agent context).
+- The relevant subsection of [../architecture/overview.md](../architecture/overview.md) for new VM/View work.
 - This doc's "Critical patterns" section for new contributors.
-- For checklist or learning work: [16-CHECKLIST-DATA-SPEC.md](16-CHECKLIST-DATA-SPEC.md) and (when implemented) [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md).
+- For checklist or learning work: [../architecture/checklist-data.md](../architecture/checklist-data.md) and [../planning/checklist-insider-import-plan.md](../planning/checklist-insider-import-plan.md).
 
 ### Common pitfalls the agent may hit
 
@@ -169,7 +169,7 @@ For most tasks the agent will read the relevant files itself. For the rare cases
 | Run one test project | `dotnet test FlipKit.Core.Tests` |
 | Add EF migration | `dotnet ef migrations add <Name> --project FlipKit.Core --startup-project FlipKit.Desktop` |
 | Apply migrations | `dotnet ef database update --project FlipKit.Core --startup-project FlipKit.Desktop` |
-| Build release Hub bundles | `.\build-release.ps1 -Version 3.3.6` |
+| Build release Hub bundles | `.\build-release.ps1 -Version 3.7.0` |
 
 Database location: `%LOCALAPPDATA%\FlipKit\cards.db`
 Logs: `%LOCALAPPDATA%\FlipKit\logs\log-YYYYMMDD.txt`
@@ -205,13 +205,12 @@ This was the §7.10 race in `SettingsViewModel`: the 2-second status-poll Timer 
 
 ## See also
 
-- [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md) — full refactor plan (history + future)
-- [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) — live snapshot of where the refactor is
-- [AUDIT-2026-05.md](AUDIT-2026-05.md) — original audit + ongoing discovery log
-- [REGRESSION-CHECKLIST.md](REGRESSION-CHECKLIST.md) — manual smoke flows to run before merging
-- [HUB-ARCHITECTURE.md](HUB-ARCHITECTURE.md) — embedded server model
-- [10-GUI-ARCHITECTURE.md](10-GUI-ARCHITECTURE.md) — MVVM details, DI setup
-- `Docs/ADR/` — architecture decision records (added in Phase 6)
+- [../planning/refactor-plan.md](../planning/refactor-plan.md) — full refactor plan (history + future)
+- [../planning/refactor-status.md](../planning/refactor-status.md) — live snapshot of where the refactor is
+- [../planning/audit-2026-05.md](../planning/audit-2026-05.md) — original audit + ongoing discovery log
+- [regression-checklist.md](regression-checklist.md) — manual smoke flows to run before merging
+- [../architecture/overview.md](../architecture/overview.md) — Hub embedded-server model + MVVM details, DI setup
+- `Docs/architecture/adr/` — architecture decision records (added in Phase 6)
 
 ---
 

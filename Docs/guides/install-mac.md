@@ -95,7 +95,7 @@ To remove FlipKit:
 
 If you encounter issues:
 
-1. Check the [GitHub Issues](https://github.com/your-repo/flipkit/issues) page
+1. Check the [GitHub Issues](https://github.com/mthous72/FlipKit/issues) page
 2. See other guides in the Docs folder for:
    - Setting up Tailscale for remote access
    - Using FlipKit from your phone

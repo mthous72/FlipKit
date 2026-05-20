@@ -2,14 +2,15 @@
 
 ## Document Purpose
 
-This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.3.6 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. The Phase 1–6 refactor (see [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md) and [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md)) is complete: codebase is cleaned, 490 tests in place, several latent production bugs fixed. This roadmap re-baselines what comes next against that cleaned reality.
+This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.7.0 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. The Phase 1–6 refactor (see [refactor-plan.md](refactor-plan.md) and [refactor-status.md](refactor-status.md)) is complete: codebase is cleaned, 919 tests in place, several latent production bugs fixed. This roadmap re-baselines what comes next against that cleaned reality.
 
 ---
 
 ## Current Status Summary
 
-**✅ Shipped (as of v3.3.6):**
+**✅ Shipped (as of v3.7.0):**
 - AI-powered card scanning with live OpenRouter model catalog (now with `IsFallback`-flagged static fallback when the live fetch fails) and paid-model consent
+- **CardSight first-pass recognition** — optional purpose-built sports-card recognition tried before OpenRouter (750 free identifications/month), with a CardSight subscription/quota panel in Desktop + Web Settings; falls through to OpenRouter on miss / low confidence / quota exhaustion. **Ximilar was fully removed in v3.7.0** — the scan pipeline is now CardSight → OpenRouter
 - Bulk scanning workflow with front/back pairing, semaphore-throttled concurrent scans, free-tier rate-limit handling, and per-session error logs
 - Variation verification with bundled checklists + confirmation pass
 - Inventory management with filtering, search, and editing
@@ -21,18 +22,40 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 - 4-project architecture (Core / Desktop / Web / Api) with shared SQLite + WAL
 - Tailscale-friendly remote access via Api server
 - Inno Setup Windows installer + Hub zip portables
-- **490 unit + integration tests** (267 Core, 175 Desktop, 48 Web) wired into the build pipeline as a CI gate
+- **919 unit + integration tests** (634 Core, 224 Desktop, 61 Web) wired into the build pipeline as a CI gate
 - `NetworkAddressProvider` (Phase 5c.1) — IP/QR/URL logic split out of `SettingsViewModel` so it's testable without real adapters
+- **Documentation restructure** — `Docs/` reorganized into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), all active docs refreshed to v3.7.0, CardSight documented, Ximilar scrubbed from active docs (see Roadmap #0 below)
 
 ---
 
 ## High Priority (Next 3-6 Months)
 
+### 0. Documentation Cleanup — Full Restructure
+
+**Status:** ✅ Shipped 2026-05-20 (`fix/docs-cleanup`, PR #30 — 4 content commits on top of the re-baselined plan)
+**Effort:** Medium (delivered across 4 commits)
+**Plan Doc:** [documentation-cleanup-plan.md](../archive/documentation-cleanup-plan.md) (now archived — completed plan, kept as a historical record with its rescan/delta)
+
+Restructured `Docs/` into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), refreshed stale content, added missing documentation, and consolidated overlap.
+
+**What shipped:** topic-folder restructure (move-only commit 1), stale-content refresh to v3.7.0 (commit 2), new content — CardSight feature docs + `AiModelUsed` schema, Linux install guide, top-level `Docs/README.md` index (commit 3), and cross-cutting updates to root `README.md` / `CLAUDE.md` / `.github/copilot-instructions.md` + link integrity (commit 4). Ximilar references scrubbed from active docs (annotated as "removed in v3.7.0" in living planning docs). Original scope below for reference.
+
+**Scope:**
+- **Move/restructure** ~30 files from flat `Docs/00-…/31-…` numbering into topic folders.
+- **Heavy rewrite:** `HUB-ARCHITECTURE.md` + `10-GUI-ARCHITECTURE.md` merged into `architecture/overview.md`; `USER-GUIDE.md` (1250 lines) refreshed to v3.7.0 with screenshot placeholders resolved; `02-DATABASE-SCHEMA.md` extended with SurpriseSet/RevenueAllocationMethod/CardStatus/VerificationStatus/AiModelUsed; `14-VARIATION-VERIFICATION.md` extended with verified-fields LLM hint mode (commit `223cf95`); `03-OPENROUTER-INTEGRATION.md` extended with CardSight; `07-CLAUDE-CODE-GUIDE.md` rewritten to drop the `MockScannerService` dead reference and dedupe overlap with root `CLAUDE.md`.
+- **Archive:** `01-PROJECT-PLAN.md`, `11-UX-DESIGN.md`, `26-CSV-EXPORT-IMPLEMENTATION-PLAN.md`, `References/card_listings_export_spec.md`.
+- **Delete:** `00-PROGRAM-OVERVIEW.md` (658 lines of pre-rebrand content under the old product name; current state covered by `README.md` + `guides/user-guide.md`).
+- **Cross-cutting:** root `README.md` (v3.6.0 → v3.7.0 download bump, drop dead Docker mention), root `CLAUDE.md` (fix build example + v3.3.6 current-state, trim § Architecture overlap), `.github/copilot-instructions.md` (replace Azure boilerplate or delete), and a new `Docs/README.md` topic index.
+
+**Why now:** Brand drift (the Feb 2026 rebrand to FlipKit), version drift (older `v3.x` strings scattered across active docs vs current v3.7.0), missing schema docs, and dead references have accumulated to the point where new contributors and Claude Code in future sessions waste time figuring out which docs are current. Cleanup is cheaper now than after another round of feature work compounds the drift.
+
+**Pre-execution gate:** plan starts with a mandatory rescan (refresh git state, diff each in-flight branch against the cleanup branch, re-run inventory, produce a delta) so the file-by-file action list is reconfirmed against current `master` before commit 1. Move-commit timing must be coordinated with any open doc-touching branches to avoid massive rename diffs across merges.
+
 ### 1. User-Driven Checklist Excel Import (Checklist Insider)
 
 **Status:** 🟡 Partially shipped — Phase 1 + Phase 2 vertical slice done. Remaining Phase 2 items + Phases 3-4 indefinitely deferred (2026-05-04). Re-evaluate on real user friction.
 **Effort:** Shipped portion ≈ 1.5 weeks of work. Deferred remainder estimated at 2-3 weeks if revived.
-**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md) (decision log entry 2026-05-04)
+**Plan Doc:** [checklist-insider-import-plan.md](checklist-insider-import-plan.md) (decision log entry 2026-05-04)
 
 **What's live (master):**
 - Surface A — Settings → Checklists → Import from Excel on both Desktop and Web; ClosedXML parser handles both Mosaic-style (column-A-subset) and Bowman-style (inline-header) layouts.
@@ -66,7 +89,7 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 ### 2. Webcam Capture for Scanning
 
 **Status:** ✅ Shipped 2026-05-04 (`feature/webcam-capture`, 5 commits)
-**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md) — see §12 "Outcome" for what landed, smoke-test findings, and follow-ups.
+**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](../archive/27-WEBCAM-CAPTURE-PLAN.md) — see §12 "Outcome" for what landed, smoke-test findings, and follow-ups.
 
 📷 Webcam buttons on Scan + Edit (Desktop, OpenCvSharp4) and Scan (Web, `getUserMedia`+canvas). Settings → Webcam Capture exposes a master toggle, device picker with max-resolution labels, and a Test capture button. Browser capture requires HTTPS or `localhost`; on HTTP-via-Tailscale the trigger buttons hide and a banner explains why.
 
@@ -108,7 +131,7 @@ Import an eBay Seller Hub "All active listings" CSV export into the inventory. E
 
 **Status:** ✅ Done (Phase 4a–4e of the refactor)
 
-Originally a roadmap item assuming zero tests. Delivered as Phase 4 of the refactor: **490 tests** (267 Core, 175 Desktop, 48 Web), real-SQLite-in-memory + NSubstitute HTTP-mock patterns, CI gate wired into `build-installers.ps1` and `build-release.ps1`. Coverage targets met: helpers ≥95%, stateless services ≥84%, ViewModels ≥80% (with documented carryovers in [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md)).
+Originally a roadmap item assuming zero tests. Delivered as Phase 4 of the refactor: the suite started at **490 tests** (267 Core, 175 Desktop, 48 Web) at refactor close-out and has since grown to **919 tests** (634 Core, 224 Desktop, 61 Web) as later features landed. Real-SQLite-in-memory + NSubstitute HTTP-mock patterns, CI gate wired into `build-installers.ps1` and `build-release.ps1`. Coverage targets met: helpers ≥95%, stateless services ≥84%, ViewModels ≥80% (with documented carryovers in [refactor-status.md](refactor-status.md)).
 
 Two latent production bugs surfaced and fixed during test writing — see audit D2 (OpenRouter retry filter) and D3 (SetChecklist ValueComparer).
 
@@ -184,7 +207,7 @@ Standing cleanup items:
 
 ### Documentation
 
-- ADRs for non-obvious choices live in [ADR/](ADR/). Five of them landed in Phase 6: Hub-vs-separate-apps, net8/net9 mix, EnsureCreated+SchemaUpdater vs migrations, user-driven Checklist Insider, Avalonia choice.
+- ADRs for non-obvious choices live in [ADR/](../architecture/adr/). Five of them landed in Phase 6: Hub-vs-separate-apps, net8/net9 mix, EnsureCreated+SchemaUpdater vs migrations, user-driven Checklist Insider, Avalonia choice.
 - `Docs/07-CLAUDE-CODE-GUIDE.md` was rewritten in Phase 6 to reflect the 4-project architecture (was a single-project guide).
 - Inline XML comments on public Core APIs — still pending, low priority.
 - End-user help (Desktop F1, screenshots) — `M:\Software Development\Releases\Help\` per Motz SOP.
@@ -203,18 +226,20 @@ When deciding what to build next:
 
 1. **User Impact:** Does it solve a real pain point in the daily reseller workflow?
 2. **Effort vs ROI:** How long, and what does it unlock?
-3. **Risk:** Could it break existing flows? Use the [REGRESSION-CHECKLIST.md](REGRESSION-CHECKLIST.md) gate before merge.
+3. **Risk:** Could it break existing flows? Use the [REGRESSION-CHECKLIST.md](../development/regression-checklist.md) gate before merge.
 4. **Dependencies:** Does it block higher-priority work?
 5. **Maintenance:** Ongoing support burden?
 
 ---
 
-**Last Updated:** 2026-05-04 (Roadmap 1 partial-ship + deferral)
+**Last Updated:** 2026-05-20 (v3.7.0 + documentation cleanup shipped)
 **Next Review:** August 2026
 
 **Recent changes:**
+- 2026-05-20 — **v3.7.0 + documentation cleanup shipped.** Roadmap #0 (Documentation Cleanup — Full Restructure) marked ✅ Shipped (`fix/docs-cleanup`, PR #30). v3.7.0 also shipped **CardSight first-pass recognition + subscription/quota panel** and the **full removal of Ximilar** (scan pipeline is now CardSight → OpenRouter); both folded into the Shipped summary above. Test count updated 490 → 919; framing version v3.3.6 → v3.7.0. The completed cleanup plan was archived to [archive/documentation-cleanup-plan.md](../archive/documentation-cleanup-plan.md).
+- 2026-05-08 — **Roadmap #0 added: Documentation Cleanup — Full Restructure** queued as next up. Plan checked in as `32-DOCUMENTATION-CLEANUP-PLAN.md` on `fix/docs-cleanup`. Mandatory pre-execution rescan must run before any restructure commits to re-baseline the file-by-file action list against current `master` and any in-flight branches.
 - 2026-05-04 — **Roadmap 1 partial ship.** Phase 1 (Surface A) + Phase 2 foundation + first Phase 2 UI slice landed (commits `1053f11`, `4b9009f`, `d036bfd`). Remaining Phase 2 polish items (typeahead, parallel dropdown, picker, BulkScan tier collapsing, Web parity, round-trip JS) and Phases 3-4 deferred indefinitely; re-evaluate on real friction or when an adjacent feature needs them. Schema fields kept regardless of UI state.
 - 2026-05-04 — **Phase 6 re-baseline.** Roadmap #4 (Tests) marked Done, delivered by refactor Phase 4. Roadmap #1 effort cut from 4-5 wk → 3-4 wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering a shelved sold-price service (since removed in 2026-05-05). Roadmap #5 (COMC) re-read found more wiring than previously implied — flagged for downgrade or drop pending demand signal. Tech-debt section rewritten against actual post-Phase-5 ViewModel sizes. Pointer added to new `Docs/ADR/` directory.
 - 2026-05-02 — Promoted Webcam Capture from Medium #4 to High #2; pushed Price Scraping → #3, Tests → #4.
 - 2026-05-02 — Audit pass: removed completed items (Bulk Scan, Architecture Refactor, eBay Bulk CSV) and dropped items no longer in scope (Cloud Sync/Backup, MySlabs, TCGPlayer, Barcode/QR Scanning, Multi-User/Team). Renumbered.
-- 2026-05-01 — Added "User-Driven Checklist Excel Import" — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
+- 2026-05-01 — Added "User-Driven Checklist Excel Import" — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](checklist-insider-import-plan.md)

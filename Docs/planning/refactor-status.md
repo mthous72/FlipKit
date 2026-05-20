@@ -4,9 +4,11 @@
 **Master HEAD:** `84666ab` (Phase 6 close-out); push pipeline linear (origin master rebased to drop merge commits per branch protection rule)
 **Phase 5:** Closed at 5c.1. **Phase 5d (BulkScanViewModel split) skipped** after re-read showed the plan's named extractions don't survive contact with the code — see plan §7.4b for the full reasoning.
 **Phase 6:** ✓ Done. Roadmap re-baselined, Doc 07 rewritten, stale doc references swept, 5 ADRs added under `Docs/ADR/`.
-**Refactor status:** complete. No further phases planned. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md).
-**Plan:** [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md)
-**Audit:** [AUDIT-2026-05.md](AUDIT-2026-05.md)
+**Refactor status:** complete. No further phases planned. Future work tracked in [roadmap.md](roadmap.md).
+**Plan:** [refactor-plan.md](refactor-plan.md)
+**Audit:** [audit-2026-05.md](audit-2026-05.md)
+
+> **Historical note (test counts):** The 490-test figures below are the refactor close-out snapshot (2026-05-04). The live suite has since grown to **919 tests** (634 Core / 224 Desktop / 61 Web) as later features (Surprise Sets, eBay import, CardSight, etc.) landed. This doc is frozen at refactor close-out and is not updated with later counts — see [roadmap.md](roadmap.md) for the current number.
 
 This is a **breakpoint snapshot** — a single doc to read when picking the work back up. Sources of truth are still the plan and audit; this just summarizes "where we are / where we're going" in one place.
 
@@ -26,7 +28,7 @@ This is a **breakpoint snapshot** — a single doc to read when picking the work
 | 4.5 | Bug-fix interlude (D3 ValueComparer) | `refactor/phase-4.5-checklist-bug-fix` | ✓ | 1 | Out-of-band fix for SetChecklist mutation bug; un-skipped the blocked test; suite now 246/246 |
 | 4c | Desktop Tests — 13 ViewModels | `refactor/phase-4c-desktop-tests` | ✓ | 1 | +162 tests (408 total); 11 of 13 VMs ≥80% coverage; 2 deferred to 4e gap-fill |
 | 4d | Web Tests — 7 controllers + ViewLocator smoke | `refactor/phase-4d-web-tests` | ✓ | 1 | +50 tests (458 total); 48 web controller tests + 2 ViewLocator contract tests; HttpContext.Session paths skipped |
-| 4e | Coverage gap-fill + CI gate + regression checklist | `refactor/phase-4e-coverage-gate` | ✓ | 1 | +23 fill-in tests (481 total); XimilarService 51%→79.5%; CI gate wired into build scripts; REGRESSION-CHECKLIST.md committed; **Phase 4 complete** |
+| 4e | Coverage gap-fill + CI gate + regression checklist | `refactor/phase-4e-coverage-gate` | ✓ | 1 | +23 fill-in tests (481 total); XimilarService 51%→79.5% *(Ximilar removed in v3.7.0)*; CI gate wired into build scripts; REGRESSION-CHECKLIST.md committed; **Phase 4 complete** |
 | 5a | Mechanical fixes bundle (DI lifetimes + HttpClient timeout + OpenRouter retry + Settings race) | `refactor/phase-5a-fixes-cleanup` | ✓ | 1 | Closes D1 + D2 + §7.10 Race 1 + §7.3 timeout config. +1 test (482 total). |
 | 5b | OpenRouter catalog consolidation | `refactor/phase-5b-openrouter-catalog` | ✓ | 1 | Closes D4. Static arrays moved to OpenRouterModelDefaults, fallback catalog returned (with IsFallback flag) on fetch failure. +2 tests (484 total). |
 | 5c.1 | NetworkAddressProvider extraction (SettingsViewModel slim-down, Option A) | `refactor/phase-5c-settings-vm-split` | ✓ | 2 | Extracts `INetworkInfoProvider` (Core) + `NetworkAddressProvider` (Desktop) from `SettingsViewModel.UpdateLocalIpAddresses` (~95 lines → ~17). +6 tests (490 total). XAML/existing 169 tests untouched. |
@@ -72,7 +74,7 @@ Below-target carryovers (deferred to Phase 5 work since the surfaces are explici
 
 Below-target services from Phase 4b (deferred to Phase 4e gap-fill):
 - `VariationVerifierService` — 43.55% (RunConfirmationPassAsync path untested)
-- `XimilarService` — 50.81% (MapTagsToCard fallback path untested)
+- `XimilarService` — 50.81% (MapTagsToCard fallback path untested) *(Ximilar removed in v3.7.0; replaced by CardSight)*
 - `ChecklistLearningService` — 29.62% (partly blocked by §5.10 bug; rest is embedded-resource path)
 
 ### Discoveries (production bugs found while writing tests)
@@ -110,7 +112,7 @@ The big test-coverage build-out is roughly half done. Three sub-phases remain.
 |---|---|---|---|
 | 4c | Desktop ViewModels | ~1 week | 12 ViewModels mocked through their service deps via NSubstitute. No DbContext touched. Hardest surfaces: `SettingsViewModel` (803 lines), `BulkScanViewModel` (585) — Phase 5.4 will *split* these later, so 4c effectively encodes current behavior to lock down before refactor. |
 | 4d | Web controllers + Avalonia.Headless smoke | ~3-4 days | 6 controllers via NSubstitute + `WebApplicationFactory` for integration tests. Plus 4 Avalonia.Headless smoke tests for App boot and navigation. |
-| 4e | Coverage gap-fill + CI gate | ~2-3 days | Bring the 3 below-target services from Phase 4b up to 70% (VariationVerifier, Ximilar, ChecklistLearning). Wire Coverlet into `build-installers.ps1`. Commit `Docs/REGRESSION-CHECKLIST.md`. Decide whether to retire `test-web-app.ps1` (per AUDIT Q3). |
+| 4e | Coverage gap-fill + CI gate | ~2-3 days | Bring the 3 below-target services from Phase 4b up to 70% (VariationVerifier, Ximilar *(removed in v3.7.0)*, ChecklistLearning). Wire Coverlet into `build-installers.ps1`. Commit `Docs/REGRESSION-CHECKLIST.md`. Decide whether to retire `test-web-app.ps1` (per AUDIT Q3). |
 
 ### Phase 5 — Targeted Code Refactors (4 sub-phases, post-regroup scope)
 
@@ -148,11 +150,11 @@ Branch: `refactor/phase-6-roadmap-revamp`.
 Delivered:
 - `Docs/17-FUTURE-ROADMAP.md` re-baselined against post-Phase-5 code. Roadmap #4 (Tests) marked DONE — delivered by Phase 4. Roadmap #1 (Checklist Insider) effort cut 4-5wk → 3-4wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering the shelved sold-price service (which was subsequently removed in 2026-05-05). Roadmap #5 (COMC) flagged for downgrade or drop pending demand signal.
 - `Docs/07-CLAUDE-CODE-GUIDE.md` rewritten from a single-project guide to a 4-project orientation + LLM-agent contributor guide. Closes plan §7.5.
-- Stale-reference sweep across `Docs/01-PROJECT-PLAN.md`, `Docs/10-GUI-ARCHITECTURE.md`, `Docs/26-CSV-EXPORT-IMPLEMENTATION-PLAN.md` — removed/annotated dead converter and `CardListerDbContext` references. Forward-looking plans (27/28) needed no edits.
+- Stale-reference sweep across `Docs/01-PROJECT-PLAN.md`, `Docs/10-GUI-ARCHITECTURE.md`, `Docs/26-CSV-EXPORT-IMPLEMENTATION-PLAN.md` — removed/annotated dead converter and legacy pre-rebrand DbContext (now `FlipKitDbContext`) references. Forward-looking plans (27/28) needed no edits.
 - VM split fate recorded in roadmap: `BulkScanViewModel` 5d skipped permanently; `Inventory/Scan/Export` deferred indefinitely (all ≥80% covered, no concrete decomposition opportunity).
 - 5 ADRs added under `Docs/ADR/`: Hub architecture, net8/net9 mix, EnsureCreated+SchemaUpdater, user-driven Checklist Insider, Avalonia choice.
 
-**Refactor wrap-up:** the original 6-phase plan is fully executed. The codebase is cleaner, has 490 tests with a CI gate, and every architectural decision worth capturing is now documented. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md); this status doc stops being a living doc once the Phase 6 merge lands.
+**Refactor wrap-up:** the original 6-phase plan is fully executed. The codebase is cleaner, has 490 tests with a CI gate, and every architectural decision worth capturing is now documented. Future work tracked in [17-FUTURE-ROADMAP.md](roadmap.md); this status doc stops being a living doc once the Phase 6 merge lands.
 
 ---
 

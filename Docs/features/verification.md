@@ -2,9 +2,107 @@
 
 ## Overview
 
-The current Card Lister workflow relies on a single vision model pass to identify card variations. This works for common parallels but misses obscure variations, hallucates parallel names, and can't confirm whether a variation actually exists in a given set's checklist.
+A single vision-model pass identifies most card variations, but it misses
+obscure parallels, can hallucinate parallel names, and can't confirm whether a
+variation actually exists in a given set's checklist.
 
-**This document adds a multi-step verification pipeline** that runs automatically after the initial AI scan, cross-referencing extracted data against known checklists and visual cues to dramatically improve accuracy.
+FlipKit addresses this with **two cooperating mechanisms**:
+
+1. **Checklist verification (shipped)** — after a scan, the
+   `ChecklistVerificationMatcher` cross-references the scanned card against an
+   imported `SetChecklist` and returns a tiered confidence outcome that drives
+   the editor UI. See *Shipped: checklist verification matcher* below.
+2. **Verified-fields LLM hint mode (shipped)** — when fields have already been
+   confirmed (via OCR + the checklist directory), the scan call locks those
+   fields so the LLM echoes them verbatim and spends its capacity on the visual
+   pattern fields it actually sees. See *Shipped: verified-fields LLM hint mode*
+   below.
+
+The remainder of this document (from *The Problem* onward) is the original
+multi-stage design spec. It predates the shipped implementation and is retained
+for background; where it conflicts with the two "Shipped" sections, the shipped
+sections are authoritative.
+
+---
+
+## Shipped: checklist verification matcher
+
+`FlipKit.Core/Services/Implementations/ChecklistVerificationMatcher.cs`
+(`IChecklistVerificationMatcher`) runs after the scan and produces a
+`ChecklistMatchResult` with one of these tier outcomes (mirrored by the
+`VerificationStatus` enum stored on `Card`):
+
+| Tier | When | Editor surface |
+|---|---|---|
+| **Verified** (Tier 1) | Card number normalizes to an exact checklist match, player name fuzzy-matches ≥ 0.85, and parallel resolves cleanly (all field confidences ≥ 0.85). | Green "Verified" badge. |
+| **BestGuess** (Tier 2) | Card # + player match, but at least one field (typically Parallel or Subset) is uncertain. | Amber "Best guess" badge. |
+| **NoMatch** (Tier 3) | Card # missing from the set, or present with a wildly mismatched player. Result carries the top fuzzy candidates. | "Pick from checklist" picker. |
+
+Key behaviors:
+
+- **Checklist lookup** is keyed on `(Manufacturer, Brand, Year, Sport)`. When no
+  `SetChecklist` exists for that tuple (or identity fields are missing), the
+  result sets `ChecklistMissing = true` and the UI surfaces the
+  "import this checklist" banner (Surface B).
+- **Card-number matching** normalizes via `FuzzyMatcher.NormalizeCardNumber`
+  before comparing.
+- **Player-name scoring** combines Levenshtein similarity with a token-overlap
+  bonus so reordered/multi-word names ("Roman Anthony" vs "Anthony, Roman")
+  still score well. Match threshold 0.85; candidate threshold 0.55; up to 10
+  candidates returned for the picker.
+- **Parallel scoring** is a soft heuristic: high (0.95) when the matched
+  ChecklistCard's subset contains the parallel name, otherwise mid (0.70) so the
+  user confirms via the dropdown.
+- **Re-find key** — `BuildMatchKey(setChecklistId, checklistCard)` produces the
+  `"{id}:{normalizedNumber}:{subsetLower}"` string stored on
+  `Card.MatchedChecklistKey`, so the matched row can be re-located later (e.g.
+  by the missing-checklists audit when a new checklist is imported).
+
+---
+
+## Shipped: verified-fields LLM hint mode
+
+When the caller has already validated identity fields (OCR extraction +
+checklist-directory match), it passes an `OcrHint` (`FlipKit.Core/Models/OcrHint.cs`)
+into the scan call. The hint has **two modes**, selected by whether
+`VerifiedFieldNames` is non-empty:
+
+- **Soft-hint mode (default)** — every supplied value is a suggestion. The LLM
+  is told to treat them as hints and verify with its own vision; it may override
+  anything. Built by `BuildSoftHintPreamble`.
+- **Verified-fields mode** — when `VerifiedFieldNames` is populated, those fields
+  are locked. The preamble (`BuildLockedHintPreamble`) lists each confirmed field
+  with its JSON key and value under a *"CONFIRMED FIELDS — echo these EXACT values
+  verbatim, do NOT re-derive"* header, lists any remaining unverified hints
+  separately, and appends the raw OCR text. This focuses the model's effort on
+  the visual-pattern fields (finish, border color, parallel) that OCR can't see.
+
+Field names match the scan JSON schema keys (`player_name`, `year`,
+`card_number`, `manufacturer`, `brand`, `set_name`, `team`, `sport`,
+`parallel_name`, `serial_numbered`, `is_rookie`, `is_auto`, `is_relic`,
+`is_graded`, `grade_company`, `grade_value`).
+
+**Drift guard:** after the response comes back,
+`OpenRouterScannerService.ApplyVerifiedFieldOverrides` re-stamps every verified
+field onto the resulting `Card` regardless of what the model returned, and counts
+how many it had to correct. If the model disobeyed the "echo verbatim"
+instruction, the confirmed values still win.
+
+This flow is wired into the Bulk Scan **"Enhance with AI"** path on OCR-scanned
+cards (commit `223cf95`). See [ai-scanning.md](ai-scanning.md) for the broader
+scan pipeline (CardSight → OpenRouter).
+
+---
+
+## The Problem (original design spec)
+
+> The sections below are the original pre-implementation design. They describe a
+> 3-stage pipeline (extract → verify → confirm) and a bundled-checklist data
+> strategy. The shipped system uses user-imported checklists (ADR-004) and the
+> matcher described above rather than a bundled `checklists.db`. Read for
+> background only.
+
+A single vision model call gets you ~70-80% accuracy on variation identification:
 
 ---
 
@@ -705,11 +803,11 @@ Create a standalone tool (not part of the main app) for building `checklists.db`
 3. Hit the set's variation page for known parallels
 4. Store in `checklists.db`
 
-**Important:** This tool runs offline during development. The main Card Lister app does NOT scrape TCDB at runtime. Users get pre-built data.
+**Important:** This tool runs offline during development. The main FlipKit app does NOT scrape TCDB at runtime. Users get pre-built data.
 
 ### Updating Checklists
 
-When a new Card Lister version is released:
+When a new FlipKit version is released:
 1. Developer runs ChecklistBuilder tool to scrape latest sets
 2. Updated `checklists.db` is bundled with the new release
 3. On update, the new `checklists.db` replaces the old one
