@@ -29,7 +29,8 @@ public class SettingsControllerTests : IDisposable
     private static SettingsController Create(
         ISettingsService? settings = null,
         IOpenRouterModelCatalog? catalog = null,
-        IOpenRouterKeyInfoService? keyInfoService = null)
+        IOpenRouterKeyInfoService? keyInfoService = null,
+        ICardsightSubscriptionService? cardsightSubscriptionService = null)
     {
         var defaultCatalog = catalog ?? Substitute.For<IOpenRouterModelCatalog>();
         defaultCatalog.GetAsync(default).ReturnsForAnyArgs(
@@ -38,6 +39,7 @@ public class SettingsControllerTests : IDisposable
             settings ?? Substitute.For<ISettingsService>(),
             defaultCatalog,
             keyInfoService ?? Substitute.For<IOpenRouterKeyInfoService>(),
+            cardsightSubscriptionService ?? Substitute.For<ICardsightSubscriptionService>(),
             NullLogger<SettingsController>.Instance);
         TempDataHelper.Attach(controller);
         return controller;

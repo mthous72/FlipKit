@@ -15,17 +15,20 @@ namespace FlipKit.Web.Controllers
         private readonly ISettingsService _settingsService;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IOpenRouterKeyInfoService _keyInfoService;
+        private readonly ICardsightSubscriptionService _cardsightSubscriptionService;
         private readonly ILogger<SettingsController> _logger;
 
         public SettingsController(
             ISettingsService settingsService,
             IOpenRouterModelCatalog modelCatalog,
             IOpenRouterKeyInfoService keyInfoService,
+            ICardsightSubscriptionService cardsightSubscriptionService,
             ILogger<SettingsController> logger)
         {
             _settingsService = settingsService;
             _modelCatalog = modelCatalog;
             _keyInfoService = keyInfoService;
+            _cardsightSubscriptionService = cardsightSubscriptionService;
             _logger = logger;
         }
 
@@ -112,6 +115,35 @@ namespace FlipKit.Web.Controllers
                 {
                     _logger.LogWarning(ex, "Key-info fetch failed on Settings/Index GET");
                     viewModel.OpenRouterUsageError = $"Couldn't load usage: {ex.Message}";
+                }
+            }
+
+            // CardSight Usage card — fetches calls-used this period so the
+            // Settings page surfaces how much of the free-tier allowance has
+            // been consumed. Best-effort: any failure populates
+            // CardsightUsageError so the Razor view renders a graceful inline
+            // message instead of crashing the page.
+            if (viewModel.HasCardsightKey)
+            {
+                try
+                {
+                    viewModel.CardsightUsage = await _cardsightSubscriptionService.GetAsync();
+                }
+                catch (CardsightException cex)
+                {
+                    viewModel.CardsightUsageError = cex.Reason switch
+                    {
+                        CardsightFailureReason.NotConfigured => "Enter your CardSight key to see usage.",
+                        CardsightFailureReason.InvalidKey => "CardSight rejected the key — double-check it.",
+                        CardsightFailureReason.QuotaExceeded => "CardSight quota exceeded for this billing period.",
+                        CardsightFailureReason.RateLimited => "CardSight is rate limiting requests. Try again in a minute.",
+                        _ => $"Couldn't load CardSight usage: {cex.Message}"
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "CardSight subscription fetch failed on Settings/Index GET");
+                    viewModel.CardsightUsageError = $"Couldn't load CardSight usage: {ex.Message}";
                 }
             }
 

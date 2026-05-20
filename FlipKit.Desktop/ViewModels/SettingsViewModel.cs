@@ -85,6 +85,15 @@ namespace FlipKit.Desktop.ViewModels
         [ObservableProperty] private bool _isLoadingKeyInfo;
         [ObservableProperty] private string? _keyInfoError;
 
+        // === CardSight Usage panel ===
+        // Snapshot fetched from GET /v1/subscription. Null until the first
+        // successful refresh. CardSight reports an aggregate call count but no
+        // limit/plan, so we frame usage against the documented free-tier quota
+        // of 750 identifications/month (clearly labelled as the free tier).
+        [ObservableProperty] private CardsightSubscriptionStatus? _cardsightSubscription;
+        [ObservableProperty] private bool _isLoadingCardsightSubscription;
+        [ObservableProperty] private string? _cardsightSubscriptionError;
+
         // Card Scanning
         [ObservableProperty] private bool _enableVariationVerification = true;
         [ObservableProperty] private bool _autoApplyHighConfidenceSuggestions = true;
@@ -183,6 +192,10 @@ namespace FlipKit.Desktop.ViewModels
         // monthly burn). Optional so Settings still loads if DI registration
         // ever changes — same pattern as _modelCatalog.
         private readonly IOpenRouterKeyInfoService? _keyInfoService;
+        // Drives the CardSight Usage panel (calls used vs the free-tier 750/mo
+        // quota). Optional so Settings still loads if DI registration changes —
+        // same pattern as _keyInfoService.
+        private readonly ICardsightSubscriptionService? _cardsightSubscriptionService;
         // Per-model accuracy scoreboard. Drives the leaderboard panel and the
         // sort-by-quality + score badge in the model dropdown. Optional so
         // Settings still loads even if DI ever changes.
@@ -208,6 +221,7 @@ namespace FlipKit.Desktop.ViewModels
             // Optional resolution — Settings page should still load even if catalog fails to register.
             _modelCatalog = services.GetService(typeof(IOpenRouterModelCatalog)) as IOpenRouterModelCatalog;
             _keyInfoService = services.GetService(typeof(IOpenRouterKeyInfoService)) as IOpenRouterKeyInfoService;
+            _cardsightSubscriptionService = services.GetService(typeof(ICardsightSubscriptionService)) as ICardsightSubscriptionService;
             _scoreboard = services.GetService(typeof(IModelScoreboard)) as IModelScoreboard;
             _appNotifications = services.GetService(typeof(Services.IAppNotificationService)) as Services.IAppNotificationService;
             if (_appNotifications != null)
@@ -225,6 +239,7 @@ namespace FlipKit.Desktop.ViewModels
             // Auto-fetch on Settings open per planning. Skipped silently when
             // no API key is configured — the panel renders the empty state.
             _ = RefreshKeyInfoAsync();
+            _ = RefreshCardsightSubscriptionAsync();
             _ = LoadLeaderboardAsync();
 
             // Refresh server status every 2 seconds. This fires on a thread-pool thread,
@@ -460,6 +475,105 @@ namespace FlipKit.Desktop.ViewModels
             finally
             {
                 IsLoadingKeyInfo = false;
+            }
+        }
+
+        // === CardSight Usage panel ===
+
+        public bool HasCardsightSubscription => CardsightSubscription != null;
+
+        /// <summary>
+        /// Calls used this billing period (aggregate across the user's keys, as
+        /// CardSight reports). "—" until the first refresh succeeds.
+        /// </summary>
+        public string CardsightCallsUsedDisplay =>
+            CardsightSubscription == null ? "—" : CardsightSubscription.CallsUsed.ToString();
+
+        /// <summary>
+        /// Free-tier framing. CardSight doesn't report the user's actual plan
+        /// limit, so we explicitly anchor this to the documented free-tier
+        /// allowance (750/mo) and label it as such — paid users see "Free tier:"
+        /// and understand it's the free allowance, not their own cap.
+        /// </summary>
+        public string CardsightFreeTierUsageDisplay
+        {
+            get
+            {
+                if (CardsightSubscription == null) return "—";
+                var s = CardsightSubscription;
+                return $"Free tier: {s.CallsUsed} / {s.FreeTierMonthlyQuota} used · {s.CallsRemaining} remaining";
+            }
+        }
+
+        public int CardsightCallsUsed => CardsightSubscription?.CallsUsed ?? 0;
+        public int CardsightFreeTierQuota =>
+            CardsightSubscription?.FreeTierMonthlyQuota ?? ICardsightSubscriptionService.DefaultFreeTierMonthlyQuota;
+
+        public string CardsightLastRefreshedDisplay
+        {
+            get
+            {
+                if (CardsightSubscription == null) return string.Empty;
+                var elapsed = DateTimeOffset.UtcNow - CardsightSubscription.FetchedAt;
+                if (elapsed.TotalSeconds < 5) return "just now";
+                if (elapsed.TotalMinutes < 1) return $"{(int)elapsed.TotalSeconds}s ago";
+                if (elapsed.TotalHours < 1)   return $"{(int)elapsed.TotalMinutes}m ago";
+                if (elapsed.TotalDays < 1)    return $"{(int)elapsed.TotalHours}h ago";
+                return CardsightSubscription.FetchedAt.LocalDateTime.ToString("g");
+            }
+        }
+
+        partial void OnCardsightSubscriptionChanged(CardsightSubscriptionStatus? value)
+        {
+            OnPropertyChanged(nameof(HasCardsightSubscription));
+            OnPropertyChanged(nameof(CardsightCallsUsedDisplay));
+            OnPropertyChanged(nameof(CardsightFreeTierUsageDisplay));
+            OnPropertyChanged(nameof(CardsightCallsUsed));
+            OnPropertyChanged(nameof(CardsightFreeTierQuota));
+            OnPropertyChanged(nameof(CardsightLastRefreshedDisplay));
+        }
+
+        /// <summary>
+        /// Pulls a fresh snapshot from <c>GET /v1/subscription</c>. Skips silently
+        /// when the CardSight key isn't set yet (the panel renders its empty
+        /// state). Typed <see cref="CardsightException"/> reasons are translated
+        /// into a friendly inline message in <see cref="CardsightSubscriptionError"/>.
+        /// </summary>
+        [RelayCommand]
+        public async Task RefreshCardsightSubscriptionAsync()
+        {
+            if (_cardsightSubscriptionService == null) return;
+            if (string.IsNullOrWhiteSpace(CardsightApiKey))
+            {
+                CardsightSubscription = null;
+                CardsightSubscriptionError = null;
+                return;
+            }
+
+            IsLoadingCardsightSubscription = true;
+            CardsightSubscriptionError = null;
+            try
+            {
+                CardsightSubscription = await _cardsightSubscriptionService.GetAsync();
+            }
+            catch (CardsightException cex)
+            {
+                CardsightSubscriptionError = cex.Reason switch
+                {
+                    CardsightFailureReason.NotConfigured => "Enter your CardSight key above and click Refresh.",
+                    CardsightFailureReason.InvalidKey => "CardSight rejected the key — double-check it in Settings.",
+                    CardsightFailureReason.QuotaExceeded => "CardSight quota exceeded for this billing period.",
+                    CardsightFailureReason.RateLimited => "CardSight is rate limiting requests — try again in a minute.",
+                    _ => $"Couldn't load CardSight usage: {cex.Message}"
+                };
+            }
+            catch (Exception ex)
+            {
+                CardsightSubscriptionError = $"Couldn't load CardSight usage: {ex.Message}";
+            }
+            finally
+            {
+                IsLoadingCardsightSubscription = false;
             }
         }
 
@@ -1259,6 +1373,7 @@ namespace FlipKit.Desktop.ViewModels
         private void OnScanBatchCompleted(object? sender, EventArgs e)
         {
             _ = RefreshKeyInfoAsync();
+            _ = RefreshCardsightSubscriptionAsync();
             _ = LoadLeaderboardAsync();
         }
 

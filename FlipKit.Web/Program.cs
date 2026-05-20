@@ -82,6 +82,8 @@ builder.Services.AddSingleton<IScannerService, CompositeScannerService>();
 builder.Services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
 // Wraps GET /api/v1/key for the Settings → Usage panel.
 builder.Services.AddSingleton<IOpenRouterKeyInfoService, FlipKit.Core.Services.Implementations.OpenRouterKeyInfoService>();
+// Wraps GET /v1/subscription for the Settings → CardSight Usage panel.
+builder.Services.AddSingleton<ICardsightSubscriptionService, FlipKit.Core.Services.Implementations.CardsightSubscriptionService>();
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
 // Export pipeline — registered unconditionally (no DbContext dependency).
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();
