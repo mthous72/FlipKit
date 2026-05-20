@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
 
 namespace FlipKit.Web.Models
@@ -30,11 +29,6 @@ namespace FlipKit.Web.Models
         public string ScanMode { get; set; } = "selling";
 
         /// <summary>
-        /// Controls how Ximilar recognition is used. Persisted in session.
-        /// </summary>
-        public XimilarScanMode XimilarMode { get; set; } = XimilarScanMode.Standard;
-
-        /// <summary>
         /// Server-side path of the front image from a just-saved draft. Non-null means
         /// the page should pre-populate the image preview so the user can re-scan without
         /// re-uploading.
@@ -58,7 +52,7 @@ namespace FlipKit.Web.Models
 
         /// <summary>
         /// When true the view shows a consent banner and disables the scan button
-        /// until the user acknowledges that images will be sent to OpenRouter/Ximilar.
+        /// until the user acknowledges that images will be sent to CardSight/OpenRouter.
         /// </summary>
         public bool ConsentRequired { get; set; }
     }

@@ -229,61 +229,6 @@
                             </div>
                         </div>
 
-                        <!-- Ximilar API Key -->
-                        <div class="row mb-3">
-                            <div class="col-md-8">
-                                <label asp-for="XimilarApiKey" class="form-label fw-bold"></label>
-                                @if (isEditable)
-                                {
-                                    <div class="input-group">
-                                        <input type="password" asp-for="XimilarApiKey" class="form-control"
-                                               placeholder="@(Model.HasXimilarKey ? "Enter new key to update" : "Optional")">
-                                        <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        <span class="input-group-text">
-                                            @if (Model.HasXimilarKey)
-                                            {
-                                                <i class="bi bi-check-circle-fill text-success"></i>
-                                            }
-                                            else
-                                            {
-                                                <i class="bi bi-x-circle-fill text-warning"></i>
-                                            }
-                                        </span>
-                                    </div>
-                                    <small class="text-muted">Not used in the active scan chain (CardSight replaced it). Key is retained for legacy/manual use. <a href="https://www.ximilar.com/" target="_blank">Get a key</a></small>
-                                }
-                                else
-                                {
-                                    <div class="input-group">
-                                        <input type="text" class="form-control"
-                                               value="@(Model.HasXimilarKey ? "••••••••••••••••••••" : "Not configured")"
-                                               readonly>
-                                        <span class="input-group-text">
-                                            @if (Model.HasXimilarKey)
-                                            {
-                                                <i class="bi bi-check-circle-fill text-success"></i>
-                                            }
-                                            else
-                                            {
-                                                <i class="bi bi-x-circle-fill text-warning"></i>
-                                            }
-                                        </span>
-                                    </div>
-                                    <small class="text-muted">Optional - card recognition via Ximilar database</small>
-                                }
-                            </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                                @if (Model.HasXimilarKey)
-                                {
-                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="ximilar">
-                                        <i class="bi bi-lightning"></i> Test Connection
-                                    </button>
-                                }
-                            </div>
-                        </div>
-
                         <!-- eBay API Credentials -->
                         <div class="row mb-3">
                             <div class="col-md-8">
@@ -711,14 +656,6 @@
                                     </td>
                                     <td>Card images only (multipart upload).</td>
                                     <td>First-pass sports-card scanner when a CardSight key is configured. 750 free identifications/month; on miss or low confidence FlipKit falls back to OpenRouter.</td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <strong>Ximilar</strong><br>
-                                        <span class="text-muted">api.ximilar.com</span>
-                                    </td>
-                                    <td>Card images only.</td>
-                                    <td>Not used in the active scan chain (CardSight replaced it). Key field retained for legacy/manual use.</td>
                                 </tr>
                                 <tr>
                                     <td>

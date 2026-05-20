@@ -14,9 +14,6 @@ namespace FlipKit.Web.Models
         [Display(Name = "ImgBB API Key")]
         public string? ImgBBApiKey { get; set; }
 
-        [Display(Name = "Ximilar API Key")]
-        public string? XimilarApiKey { get; set; }
-
         [Display(Name = "CardSight API Key")]
         public string? CardsightApiKey { get; set; }
 
@@ -82,7 +79,6 @@ namespace FlipKit.Web.Models
         // Status flags (read-only for display)
         public bool HasOpenRouterKey { get; set; }
         public bool HasImgBBKey { get; set; }
-        public bool HasXimilarKey { get; set; }
         public bool HasCardsightKey { get; set; }
         public bool HasEbayCredentials { get; set; }
         public bool IsDockerEnvironment { get; set; }
