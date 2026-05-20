@@ -53,7 +53,7 @@ public class ScanControllerTests
     {
         var controller = Create();
 
-        var result = await controller.Upload(frontImage: null, backImage: null, selectedModel: null, ximilarMode: null, frontImagePath: null, backImagePath: null);
+        var result = await controller.Upload(frontImage: null, backImage: null, selectedModel: null, frontImagePath: null, backImagePath: null);
 
         var redirect = Assert.IsType<RedirectToActionResult>(result);
         Assert.Equal("Index", redirect.ActionName);

@@ -4,9 +4,18 @@ All notable changes to FlipKit will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [3.7.0] - 2026-05
 
-_Nothing yet._
+### Added
+- **CardSight first-pass card recognition** — FlipKit now tries [CardSight](https://cardsight.ai/) (a purpose-built sports-card recognition API, 750 free identifications/month) before falling back to OpenRouter, preserving OpenRouter quota for cards CardSight can't identify. Add your CardSight API key in Settings; a "Test Connection" button validates it. Maps player, set, year, parallel, serial numbering, rookie/auto/relic/SP/SSP attributes, and slab grading onto the card. On a miss, low confidence, quota exhaustion, or error, the scan falls through to OpenRouter cleanly.
+- **CardSight usage panel in Settings** — Desktop and Web Settings show CardSight calls used this billing period against the free-tier allowance (750/month) with a progress bar, fetched from the subscription endpoint. Labeled as the free tier, with a note that paid plans have a higher cap.
+
+### Fixed
+- **Settings crash when a managed server failed to start** — opening Settings ran a 2-second status poll that called `Process.HasExited` on a server process that never started, throwing on a background thread and taking down the app. The status check is now crash-safe and a failed start no longer leaves a dangling process handle.
+- **"Failed to save card" on databases upgraded from older versions** — the model-accuracy feature added a `Card.AiModelUsed` column but never added the matching `SchemaUpdater` back-fill, so existing databases were missing the column and every scanned-card save failed. `SchemaUpdater` now adds it on startup.
+
+### Removed
+- **Ximilar card-recognition integration** — fully removed from the codebase, Settings UI, and scan flow. The active recognition chain is now CardSight (first pass) → OpenRouter (fallback), which `CompositeScannerService` already used; Ximilar was no longer invoked. Deleted the Ximilar service, models, and `XimilarScanMode` enum; dropped the Ximilar API-key field, scan-mode dropdown ("Magic AI"), and test-connection button from Desktop and Web Settings; and updated the AI-scan consent text to name CardSight and OpenRouter only. Old `config.json` files with a leftover `XimilarApiKey` are ignored on load.
 
 ## [3.6.1] - 2026-05
 

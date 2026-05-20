@@ -53,17 +53,10 @@ namespace FlipKit.Web.Controllers
 
             var scanMode = HttpContext.Session.GetString("ScanMode") ?? "selling";
 
-            // Get Ximilar mode from session (persists user's selection)
-            var ximilarModeStr = HttpContext.Session.GetString("XimilarScanMode") ?? "Standard";
-            var ximilarMode = Enum.TryParse<XimilarScanMode>(ximilarModeStr, out var parsedMode)
-                ? parsedMode
-                : XimilarScanMode.Standard;
-
             var settings = _settingsService.Load();
             var viewModel = new ScanUploadViewModel
             {
                 ScanMode = scanMode,
-                XimilarMode = ximilarMode,
                 SelectedModel = WebModelOption.AutoValue,
                 ConsentRequired = !settings.AiScanConsentGiven
             };
@@ -107,7 +100,6 @@ namespace FlipKit.Web.Controllers
             IFormFile? frontImage,
             IFormFile? backImage,
             string? selectedModel,
-            string? ximilarMode,
             string? frontImagePath,
             string? backImagePath)
         {
@@ -126,14 +118,6 @@ namespace FlipKit.Web.Controllers
 
             try
             {
-                // Parse and store Ximilar mode in session (persists for future scans)
-                var parsedXimilarMode = XimilarScanMode.Standard;
-                if (!string.IsNullOrEmpty(ximilarMode) && Enum.TryParse<XimilarScanMode>(ximilarMode, out var mode))
-                {
-                    parsedXimilarMode = mode;
-                    HttpContext.Session.SetString("XimilarScanMode", ximilarMode);
-                }
-
                 // Save uploaded images to temp directory (only when a fresh file
                 // arrived — webcam captures land in wwwroot/uploads via the
                 // ImageUploadController already and pass us a path).
@@ -187,10 +171,9 @@ namespace FlipKit.Web.Controllers
                     {
                         try
                         {
-                            _logger.LogInformation("Auto-rotation: trying free model {Model} (Ximilar: {XimilarMode})",
-                                freeModel.Id, parsedXimilarMode);
+                            _logger.LogInformation("Auto-rotation: trying free model {Model}", freeModel.Id);
                             scanResult = await _scannerService.ScanCardAsync(
-                                frontImagePath, backImagePath, freeModel.Id, parsedXimilarMode);
+                                frontImagePath, backImagePath, freeModel.Id);
                             if (scanResult != null) break;
                         }
                         catch (Exception ex)
@@ -213,10 +196,9 @@ namespace FlipKit.Web.Controllers
                 }
                 else
                 {
-                    _logger.LogInformation("Scanning with explicit model {Model}, Ximilar: {XimilarMode}",
-                        modelChoice, parsedXimilarMode);
+                    _logger.LogInformation("Scanning with explicit model {Model}", modelChoice);
                     scanResult = await _scannerService.ScanCardAsync(
-                        frontImagePath, backImagePath, modelChoice, parsedXimilarMode);
+                        frontImagePath, backImagePath, modelChoice);
                 }
 
                 if (scanResult == null)

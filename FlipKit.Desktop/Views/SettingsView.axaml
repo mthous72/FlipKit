@@ -102,18 +102,18 @@
                         Used for hosting card images in exports. Get your key at: https://api.imgbb.com/
                     </TextBlock>
 
-                    <!-- Ximilar (Optional) -->
-                    <TextBlock Text="Ximilar API Key (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
+                    <!-- CardSight (Optional, runs before OpenRouter when set) -->
+                    <TextBlock Text="CardSight API Key (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
-                                Command="{Binding TestXimilarCommand}"
-                                IsEnabled="{Binding !IsTestingXimilar}"/>
-                        <TextBox Text="{Binding XimilarApiKey}"
-                                 PasswordChar="*" Watermark="Your Ximilar API key"/>
+                                Command="{Binding TestCardsightCommand}"
+                                IsEnabled="{Binding !IsTestingCardsight}"/>
+                        <TextBox Text="{Binding CardsightApiKey}"
+                                 PasswordChar="*" Watermark="Your CardSight API key"/>
                     </DockPanel>
-                    <TextBlock Text="{Binding XimilarStatus}" FontSize="12" Opacity="0.7"/>
+                    <TextBlock Text="{Binding CardsightStatus}" FontSize="12" Opacity="0.7"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Optional: Card recognition via Ximilar database (checked before AI). Saves tokens when cards are in their database. Get key at: https://www.ximilar.com/
+                        Optional: sports-card recognition via CardSight (750 free identifications/month). When set, FlipKit tries CardSight first and falls back to OpenRouter on miss or low confidence — so OpenRouter quota is preserved for cards CardSight can't identify. Sign up at https://cardsight.ai/ and copy your API key from the dashboard. API reference: https://api.cardsight.ai/documentation
                     </TextBlock>
 
                     <!-- eBay API Credentials -->
@@ -313,6 +313,64 @@
                     <TextBlock Text="{Binding KeyInfoError}" FontSize="11" Foreground="#B71C1C"
                                TextWrapping="Wrap"
                                IsVisible="{Binding KeyInfoError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- CardSight Usage Panel -->
+            <Border BorderBrush="{DynamicResource SystemBaseLowColor}" BorderThickness="1"
+                    CornerRadius="8" Padding="20">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="🃏 CardSight Usage" FontSize="18" FontWeight="SemiBold"/>
+                            <TextBlock Text="Calls this billing period vs the free-tier allowance"
+                                       FontSize="11" Opacity="0.6"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Refresh"
+                                Command="{Binding RefreshCardsightSubscriptionCommand}"
+                                IsEnabled="{Binding !IsLoadingCardsightSubscription}"
+                                Padding="12,4" FontSize="11"/>
+                    </Grid>
+
+                    <!-- Last-refreshed timestamp -->
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding HasCardsightSubscription}">
+                        <TextBlock Text="{Binding CardsightLastRefreshedDisplay}"
+                                   FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Calls-used stat + free-tier usage bar -->
+                    <StackPanel Spacing="8" IsVisible="{Binding HasCardsightSubscription}">
+                        <Border BorderBrush="{DynamicResource SystemBaseLowColor}"
+                                BorderThickness="1" CornerRadius="6" Padding="10,8"
+                                HorizontalAlignment="Left">
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="Calls used this period" FontSize="10" Opacity="0.6"/>
+                                <TextBlock Text="{Binding CardsightCallsUsedDisplay}" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{Binding CardsightFreeTierUsageDisplay}"
+                                   FontSize="12" FontWeight="SemiBold"/>
+                        <ProgressBar Minimum="0"
+                                     Maximum="{Binding CardsightFreeTierQuota}"
+                                     Value="{Binding CardsightCallsUsed}"
+                                     Height="8"/>
+                        <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6">
+                            CardSight reports total calls but not your plan limit. The bar is scaled to the free tier of 750 identifications/month — if you're on a paid plan your actual cap is higher.
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Empty state when no key configured / not yet fetched -->
+                    <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.65"
+                               IsVisible="{Binding !HasCardsightSubscription}">
+                        Configure your CardSight API key above and click Refresh to see how many identifications you've used this period.
+                    </TextBlock>
+
+                    <!-- Inline error fallback (graceful — doesn't block the panel) -->
+                    <TextBlock Text="{Binding CardsightSubscriptionError}" FontSize="11" Foreground="#B71C1C"
+                               TextWrapping="Wrap"
+                               IsVisible="{Binding CardsightSubscriptionError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                 </StackPanel>
             </Border>
 
@@ -924,9 +982,9 @@
                             </StackPanel>
 
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Ximilar — api.ximilar.com" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock Text="CardSight — api.cardsight.ai" FontWeight="SemiBold" FontSize="13"/>
                                 <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
-                                    Alternate card identifier (sport / TCG / slab grading). Sends card images only. Used as the first-pass scanner when Ximilar mode is enabled in scan settings; disabled by default.
+                                    Purpose-built sports-card identifier used as the first-pass scanner. Sends card images only. Falls back to OpenRouter on a miss, low confidence, or error.
                                 </TextBlock>
                             </StackPanel>
 

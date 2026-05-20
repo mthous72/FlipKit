@@ -160,14 +160,17 @@ namespace FlipKit.Desktop
                         return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
                     });
                 }
-                // Scanner services - Ximilar checked first, then falls back to OpenRouter LLM
-                services.AddSingleton<IXimilarService, XimilarService>();
+                // Scanner services — CardSight checked first (free 750/mo quota, sports-card-tuned),
+                // then falls back to OpenRouter LLM on miss/low-confidence/error.
+                services.AddSingleton<FlipKit.Core.Services.Implementations.CardsightScannerService>();
                 services.AddSingleton<OpenRouterScannerService>();
                 services.AddSingleton<IScannerService, CompositeScannerService>();
                 // Live model catalog from OpenRouter — single instance, app-lifetime cache
                 services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
                 // Wraps GET /api/v1/key for the Settings → Usage panel + post-scan refresh.
                 services.AddSingleton<IOpenRouterKeyInfoService, FlipKit.Core.Services.Implementations.OpenRouterKeyInfoService>();
+                // Wraps GET /v1/subscription for the Settings → CardSight Usage panel.
+                services.AddSingleton<ICardsightSubscriptionService, FlipKit.Core.Services.Implementations.CardsightSubscriptionService>();
                 services.AddSingleton<IPaidModelConsentService, FlipKit.Desktop.Services.AvaloniaPaidModelConsentService>();
                 // Single chokepoint that gates any scan call about to use a paid
                 // model behind the consent picker. Free models pass through silently.

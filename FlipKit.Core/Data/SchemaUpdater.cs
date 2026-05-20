@@ -344,6 +344,14 @@ namespace FlipKit.Core.Data
                 if (!columns.Contains("DataSource"))
                     await db.Database.ExecuteSqlRawAsync(
                         "ALTER TABLE cards ADD COLUMN DataSource TEXT NOT NULL DEFAULT 'None'");
+
+                // AiModelUsed is the sibling AI-attribution column added with the model
+                // accuracy scoreboard. Fresh installs get it via EnsureCreated; databases
+                // created before that feature need it back-filled here, or every scanned-card
+                // insert fails with "table cards has no column named AiModelUsed".
+                if (!columns.Contains("AiModelUsed"))
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE cards ADD COLUMN AiModelUsed TEXT");
             }
             finally
             {

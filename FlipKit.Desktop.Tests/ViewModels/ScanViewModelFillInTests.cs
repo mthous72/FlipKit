@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -64,9 +65,9 @@ public class ScanViewModelFillInTests
     public async Task Should_TryEachFreeModelInOrder_When_AutoRotationFirstFails()
     {
         var scanner = Substitute.For<IScannerService>();
-        scanner.ScanCardAsync("/tmp/x.jpg", null, "free-1", Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync("/tmp/x.jpg", null, "free-1", Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns<ScanResult>(_ => throw new Exception("model 1 down"));
-        scanner.ScanCardAsync("/tmp/x.jpg", null, "free-2", Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync("/tmp/x.jpg", null, "free-2", Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns(ScanResultFor("Mike Trout"));
 
         var catalog = Substitute.For<IOpenRouterModelCatalog>();
@@ -84,17 +85,17 @@ public class ScanViewModelFillInTests
         Assert.NotNull(vm.ScannedCard);
         Assert.Equal("Mike Trout", vm.ScannedCard!.PlayerName);
         // Both free models attempted (first failed, second succeeded).
-        await scanner.Received(1).ScanCardAsync("/tmp/x.jpg", null, "free-1", Arg.Any<XimilarScanMode>());
-        await scanner.Received(1).ScanCardAsync("/tmp/x.jpg", null, "free-2", Arg.Any<XimilarScanMode>());
+        await scanner.Received(1).ScanCardAsync("/tmp/x.jpg", null, "free-1", Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>());
+        await scanner.Received(1).ScanCardAsync("/tmp/x.jpg", null, "free-2", Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Should_AskForPaidConsentAndUsePaidModel_When_AllFreeModelsFail()
     {
         var scanner = Substitute.For<IScannerService>();
-        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), "free-1", Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), "free-1", Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns<ScanResult>(_ => throw new Exception("free down"));
-        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), "paid-1", Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), "paid-1", Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns(ScanResultFor("Paid Result"));
 
         var catalog = Substitute.For<IOpenRouterModelCatalog>();
@@ -126,7 +127,7 @@ public class ScanViewModelFillInTests
     public async Task Should_SetCanceledMessage_When_UserDeclinesPaidConsent()
     {
         var scanner = Substitute.For<IScannerService>();
-        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns<ScanResult>(_ => throw new Exception("free down"));
 
         var catalog = Substitute.For<IOpenRouterModelCatalog>();
@@ -175,7 +176,7 @@ public class ScanViewModelFillInTests
     public async Task Should_SetErrorWithLastException_When_AllFreeFailedAndNoPaidAvailable()
     {
         var scanner = Substitute.For<IScannerService>();
-        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns<ScanResult>(_ => throw new Exception("upstream down"));
 
         var catalog = Substitute.For<IOpenRouterModelCatalog>();

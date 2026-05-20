@@ -169,20 +169,20 @@
                             </div>
                         </div>
 
-                        <!-- Ximilar API Key -->
+                        <!-- CardSight API Key -->
                         <div class="row mb-3">
                             <div class="col-md-8">
-                                <label asp-for="XimilarApiKey" class="form-label fw-bold"></label>
+                                <label asp-for="CardsightApiKey" class="form-label fw-bold"></label>
                                 @if (isEditable)
                                 {
                                     <div class="input-group">
-                                        <input type="password" asp-for="XimilarApiKey" class="form-control"
-                                               placeholder="@(Model.HasXimilarKey ? "Enter new key to update" : "Optional")">
+                                        <input type="password" asp-for="CardsightApiKey" class="form-control"
+                                               placeholder="@(Model.HasCardsightKey ? "Enter new key to update" : "Optional — runs before OpenRouter")">
                                         <button type="button" class="btn btn-outline-secondary toggle-password" title="Show/Hide">
                                             <i class="bi bi-eye"></i>
                                         </button>
                                         <span class="input-group-text">
-                                            @if (Model.HasXimilarKey)
+                                            @if (Model.HasCardsightKey)
                                             {
                                                 <i class="bi bi-check-circle-fill text-success"></i>
                                             }
@@ -192,16 +192,21 @@
                                             }
                                         </span>
                                     </div>
-                                    <small class="text-muted">Optional - card recognition via Ximilar database (saves AI tokens). <a href="https://www.ximilar.com/" target="_blank">Get a key</a></small>
+                                    <small class="text-muted">
+                                        Optional — sports-card recognition via CardSight (<strong>750 free identifications/month</strong>).
+                                        Tried <em>before</em> OpenRouter; on miss or low confidence, FlipKit falls back to OpenRouter automatically.
+                                        Sign up at <a href="https://cardsight.ai/" target="_blank">cardsight.ai</a>, then grab your key from the dashboard
+                                        (see the <a href="https://api.cardsight.ai/documentation" target="_blank">API docs</a> for reference).
+                                    </small>
                                 }
                                 else
                                 {
                                     <div class="input-group">
                                         <input type="text" class="form-control"
-                                               value="@(Model.HasXimilarKey ? "••••••••••••••••••••" : "Not configured")"
+                                               value="@(Model.HasCardsightKey ? "••••••••••••••••••••" : "Not configured")"
                                                readonly>
                                         <span class="input-group-text">
-                                            @if (Model.HasXimilarKey)
+                                            @if (Model.HasCardsightKey)
                                             {
                                                 <i class="bi bi-check-circle-fill text-success"></i>
                                             }
@@ -211,13 +216,13 @@
                                             }
                                         </span>
                                     </div>
-                                    <small class="text-muted">Optional - card recognition via Ximilar database</small>
+                                    <small class="text-muted">Optional — sports-card recognition via CardSight (750 free/month)</small>
                                 }
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
-                                @if (Model.HasXimilarKey)
+                                @if (Model.HasCardsightKey)
                                 {
-                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="ximilar">
+                                    <button type="button" class="btn btn-outline-primary w-100 test-connection-btn" data-service="cardsight">
                                         <i class="bi bi-lightning"></i> Test Connection
                                     </button>
                                 }
@@ -394,6 +399,73 @@
                             else if (!string.IsNullOrWhiteSpace(Model.OpenRouterUsageError))
                             {
                                 <div class="alert alert-danger small mb-0">@Model.OpenRouterUsageError</div>
+                            }
+
+                            <form asp-action="RefreshUsage" method="post" class="mt-3">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+
+                @* CardSight Usage — server-rendered card. Shown only when a
+                   CardSight key is configured; renders error state inline when
+                   the subscription fetch fails. CardSight reports an aggregate
+                   call count but no plan limit, so usage is framed against the
+                   documented free-tier allowance (750/mo), clearly labelled.
+                   Refresh button POSTs back to Index. *@
+                @if (Model.HasCardsightKey)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-card-image"></i> CardSight Usage
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (Model.CardsightUsage is { } cs)
+                            {
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <span class="badge bg-secondary">Free tier</span>
+                                    <small class="text-muted ms-auto">
+                                        Refreshed @cs.FetchedAt.LocalDateTime.ToString("g")
+                                    </small>
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2">
+                                            <div class="text-muted small">Calls used this period</div>
+                                            <div class="fw-semibold">@cs.CallsUsed</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="border rounded p-2">
+                                            <div class="text-muted small">Free tier remaining</div>
+                                            <div class="fw-semibold">@cs.CallsRemaining of @cs.FreeTierMonthlyQuota</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between small text-muted mb-1">
+                                        <span>Free tier: @cs.CallsUsed / @cs.FreeTierMonthlyQuota used · @cs.CallsRemaining remaining</span>
+                                    </div>
+                                    <div class="progress" role="progressbar" aria-valuenow="@cs.CallsUsed" aria-valuemin="0" aria-valuemax="@cs.FreeTierMonthlyQuota">
+                                        <div class="progress-bar bg-info" style="width: @(cs.FreeTierMonthlyQuota > 0 ? Math.Min(100, (int)Math.Round(100.0 * cs.CallsUsed / cs.FreeTierMonthlyQuota)) : 0)%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-secondary small mb-0">
+                                    CardSight reports total calls but not your plan limit. The bar is scaled to the free tier of 750 identifications/month — if you're on a paid plan your actual cap is higher.
+                                </div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(Model.CardsightUsageError))
+                            {
+                                <div class="alert alert-danger small mb-0">@Model.CardsightUsageError</div>
                             }
 
                             <form asp-action="RefreshUsage" method="post" class="mt-3">
@@ -646,11 +718,11 @@
                                 </tr>
                                 <tr>
                                     <td>
-                                        <strong>Ximilar</strong><br>
-                                        <span class="text-muted">api.ximilar.com</span>
+                                        <strong>CardSight</strong><br>
+                                        <span class="text-muted">api.cardsight.ai</span>
                                     </td>
-                                    <td>Card images only.</td>
-                                    <td>First-pass scanner when Ximilar mode is enabled in scan settings (disabled by default).</td>
+                                    <td>Card images only (multipart upload).</td>
+                                    <td>First-pass sports-card scanner when a CardSight key is configured. 750 free identifications/month; on miss or low confidence FlipKit falls back to OpenRouter.</td>
                                 </tr>
                                 <tr>
                                     <td>

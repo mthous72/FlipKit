@@ -3,6 +3,7 @@ using System.Text.Json;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
+using FlipKit.Core.Services.Implementations;
 using FlipKit.Core.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -11,18 +12,20 @@ namespace FlipKit.Core.Tests.Services;
 
 /// <summary>
 /// Composite scanner tests use real <see cref="OpenRouterScannerService"/> and
-/// real <see cref="XimilarService"/> instances backed by stub HTTP handlers
-/// (per Phase 4b walk-through Q-a option ii — the OpenRouter scanner is a concrete
-/// class with no virtual methods, so NSubstitute can't mock it cleanly without
-/// extracting an interface in Phase 5).
+/// real <see cref="CardsightScannerService"/> instances backed by stub HTTP handlers.
+/// CardSight runs first; OpenRouter is the fallback for miss / low-confidence / error.
 /// </summary>
 public class CompositeScannerServiceTests
 {
-    private static ISettingsService SettingsWith(string? openRouterKey = "or-key", string? ximilarKey = "xim-key") =>
+    private static ISettingsService SettingsWith(
+        string? openRouterKey = "or-key",
+        string? cardsightKey = "cs-key",
+        CardsightConfidenceTier minTier = CardsightConfidenceTier.Medium) =>
         Substitute.For<ISettingsService>().Tap(s => s.Load().Returns(new AppSettings
         {
             OpenRouterApiKey = openRouterKey,
-            XimilarApiKey = ximilarKey,
+            CardsightApiKey = cardsightKey,
+            MinCardsightConfidence = minTier,
         }));
 
     private const string MinimalScannedCardJson = @"{
@@ -38,147 +41,127 @@ public class CompositeScannerServiceTests
         return $@"{{""choices"":[{{""message"":{{""content"":{inner}}},""finish_reason"":""stop""}}]}}";
     }
 
-    private static (CompositeScannerService svc, StubHttpMessageHandler ximHandler, StubHttpMessageHandler orHandler) Build(
-        XimilarScanMode mode,
-        Func<HttpRequestMessage, HttpResponseMessage> ximResponder,
+    private static string CardsightBody(string playerName, string confidence, string cardId = "00000000-0000-0000-0000-000000000001") => $@"{{
+        ""success"": true,
+        ""requestId"": ""req-1"",
+        ""detections"": [{{
+            ""confidence"": ""{confidence}"",
+            ""card"": {{
+                ""id"": ""{cardId}"",
+                ""name"": ""{playerName}"",
+                ""year"": ""2025"",
+                ""manufacturer"": ""Topps"",
+                ""releaseName"": ""Topps Chrome"",
+                ""setName"": ""Base Set"",
+                ""number"": ""RC-1""
+            }}
+        }}]
+    }}";
+
+    private const string CardsightEmptyBody = @"{""success"": true, ""requestId"": ""req-empty"", ""detections"": []}";
+
+    private static (CompositeScannerService svc, StubHttpMessageHandler csHandler, StubHttpMessageHandler orHandler) Build(
+        Func<HttpRequestMessage, HttpResponseMessage> csResponder,
         Func<HttpRequestMessage, HttpResponseMessage> orResponder,
         ISettingsService? settings = null)
     {
         var settingsSvc = settings ?? SettingsWith();
-        var ximHandler = new StubHttpMessageHandler(ximResponder);
+        var csHandler = new StubHttpMessageHandler(csResponder);
         var orHandler = new StubHttpMessageHandler(orResponder);
 
-        var ximilar = new XimilarService(new HttpClient(ximHandler), settingsSvc, NullLogger<XimilarService>.Instance);
+        var cardsight = new CardsightScannerService(new HttpClient(csHandler), settingsSvc, NullLogger<CardsightScannerService>.Instance);
         var openRouter = new OpenRouterScannerService(new HttpClient(orHandler), settingsSvc, NullLogger<OpenRouterScannerService>.Instance);
-        var composite = new CompositeScannerService(ximilar, openRouter, NullLogger<CompositeScannerService>.Instance);
-        return (composite, ximHandler, orHandler);
+        var composite = new CompositeScannerService(cardsight, openRouter, NullLogger<CompositeScannerService>.Instance);
+        return (composite, csHandler, orHandler);
     }
 
-    private static HttpResponseMessage Json(string body) =>
-        new(HttpStatusCode.OK) { Content = new StringContent(body) };
+    private static HttpResponseMessage Json(string body, HttpStatusCode status = HttpStatusCode.OK) =>
+        new(status) { Content = new StringContent(body) };
 
-    private static HttpResponseMessage NotFound() =>
-        new(HttpStatusCode.NotFound) { Content = new StringContent("{}") };
-
-    // === Ximilar disabled mode ===
+    // === CardSight not configured ===
 
     [Fact]
-    public async Task Should_SkipXimilarAndUseOpenRouter_When_ModeIsDisabled()
+    public async Task Should_SkipCardsightAndUseOpenRouter_When_CardsightApiKeyMissing()
     {
         using var image = new TempImageFile();
-        var (svc, ximH, orH) = Build(
-            XimilarScanMode.Disabled,
-            ximResponder: _ => throw new InvalidOperationException("Ximilar should not be called"),
-            orResponder: _ => Json(OpenRouterBodyWith(MinimalScannedCardJson)));
-
-        var result = await svc.ScanCardAsync(image.Path, ximilarMode: XimilarScanMode.Disabled);
-
-        Assert.Empty(ximH.Requests);
-        Assert.Single(orH.Requests);
-        Assert.Equal("LLM Fallback Player", result.Card.PlayerName);
-    }
-
-    // === Ximilar not configured ===
-
-    [Fact]
-    public async Task Should_SkipXimilarAndUseOpenRouter_When_XimilarApiKeyMissing()
-    {
-        using var image = new TempImageFile();
-        var (svc, ximH, orH) = Build(
-            XimilarScanMode.Standard,
-            ximResponder: _ => throw new InvalidOperationException("Ximilar should not be called"),
+        var (svc, csH, orH) = Build(
+            csResponder: _ => throw new InvalidOperationException("CardSight should not be called"),
             orResponder: _ => Json(OpenRouterBodyWith(MinimalScannedCardJson)),
-            settings: SettingsWith(ximilarKey: null));
+            settings: SettingsWith(cardsightKey: null));
 
         var result = await svc.ScanCardAsync(image.Path);
 
-        Assert.Empty(ximH.Requests);
+        Assert.Empty(csH.Requests);
         Assert.Single(orH.Requests);
         Assert.Equal("LLM Fallback Player", result.Card.PlayerName);
     }
 
-    // === Ximilar high confidence wins ===
+    // === CardSight high-confidence match wins ===
 
     [Fact]
-    public async Task Should_UseXimilarResult_When_ConfidenceIsHighEnough()
+    public async Task Should_UseCardsightResult_When_ConfidenceMeetsThreshold()
     {
         using var image = new TempImageFile();
-        const string ximBody = @"{
-            ""records"": [{
-                ""_objects"": [{
-                    ""prob"": 0.92,
-                    ""_identification"": {
-                        ""best_match"": {
-                            ""name"": ""Ximilar Match"",
-                            ""year"": ""2025"",
-                            ""subcategory"": ""Baseball""
-                        }
-                    },
-                    ""_tags"": {}
-                }]
-            }]
-        }";
-
-        var (svc, ximH, orH) = Build(
-            XimilarScanMode.Standard,
-            ximResponder: _ => Json(ximBody),
+        var (svc, csH, orH) = Build(
+            csResponder: _ => Json(CardsightBody("CardSight Match", "High")),
             orResponder: _ => throw new InvalidOperationException("OpenRouter should not be called"));
 
         var result = await svc.ScanCardAsync(image.Path);
 
-        Assert.Single(ximH.Requests);
+        Assert.Single(csH.Requests);
         Assert.Empty(orH.Requests);
-        Assert.Equal("Ximilar Match", result.Card.PlayerName);
+        Assert.Equal("CardSight Match", result.Card.PlayerName);
+        Assert.Equal(CardsightScannerService.ProviderId, result.UsedModelId);
     }
 
-    // === Ximilar low confidence falls through ===
+    // === CardSight low-confidence falls through ===
 
     [Fact]
-    public async Task Should_FallBackToOpenRouter_When_XimilarConfidenceIsLow()
+    public async Task Should_FallBackToOpenRouter_When_CardsightConfidenceBelowThreshold()
     {
-        // Ximilar found a match but confidence < 0.8 → fall back to LLM.
+        // Settings require Medium; CardSight returns Low → fall through.
         using var image = new TempImageFile();
-        const string ximBody = @"{
-            ""records"": [{
-                ""_objects"": [{
-                    ""prob"": 0.5,
-                    ""_identification"": {
-                        ""best_match"": {
-                            ""name"": ""Low Confidence Match"",
-                            ""subcategory"": ""Baseball""
-                        }
-                    },
-                    ""_tags"": {}
-                }]
-            }]
-        }";
-
-        var (svc, ximH, orH) = Build(
-            XimilarScanMode.Standard,
-            ximResponder: _ => Json(ximBody),
+        var (svc, csH, orH) = Build(
+            csResponder: _ => Json(CardsightBody("Low Conf Match", "Low")),
             orResponder: _ => Json(OpenRouterBodyWith(MinimalScannedCardJson)));
 
         var result = await svc.ScanCardAsync(image.Path);
 
-        Assert.Single(ximH.Requests);
+        Assert.Single(csH.Requests);
         Assert.Single(orH.Requests);
-        Assert.Equal("LLM Fallback Player", result.Card.PlayerName); // OpenRouter wins
+        Assert.Equal("LLM Fallback Player", result.Card.PlayerName);
     }
 
-    // === Ximilar returned no match ===
+    // === CardSight returned no detections ===
 
     [Fact]
-    public async Task Should_FallBackToOpenRouter_When_XimilarReturnsNoMatch()
+    public async Task Should_FallBackToOpenRouter_When_CardsightReturnsNoDetections()
     {
         using var image = new TempImageFile();
-        var (svc, ximH, orH) = Build(
-            XimilarScanMode.Standard,
-            ximResponder: _ => Json(@"{""records"":[]}"),
+        var (svc, csH, orH) = Build(
+            csResponder: _ => Json(CardsightEmptyBody),
             orResponder: _ => Json(OpenRouterBodyWith(MinimalScannedCardJson)));
 
         var result = await svc.ScanCardAsync(image.Path);
 
-        Assert.Single(ximH.Requests);
+        Assert.Single(csH.Requests);
+        Assert.Single(orH.Requests);
+        Assert.Equal("LLM Fallback Player", result.Card.PlayerName);
+    }
+
+    // === CardSight HTTP error falls through ===
+
+    [Fact]
+    public async Task Should_FallBackToOpenRouter_When_CardsightReturnsServerError()
+    {
+        using var image = new TempImageFile();
+        var (svc, csH, orH) = Build(
+            csResponder: _ => Json(@"{""error"":""boom"",""code"":""server_error""}", HttpStatusCode.InternalServerError),
+            orResponder: _ => Json(OpenRouterBodyWith(MinimalScannedCardJson)));
+
+        var result = await svc.ScanCardAsync(image.Path);
+
+        Assert.Single(csH.Requests);
         Assert.Single(orH.Requests);
         Assert.Equal("LLM Fallback Player", result.Card.PlayerName);
     }
@@ -189,14 +172,13 @@ public class CompositeScannerServiceTests
     public async Task Should_AlwaysRouteCustomPromptToOpenRouter_When_UsingSendCustomPromptAsync()
     {
         using var image = new TempImageFile();
-        var (svc, ximH, orH) = Build(
-            XimilarScanMode.Standard, // even with Ximilar enabled...
-            ximResponder: _ => throw new InvalidOperationException("Ximilar should not be called for custom prompts"),
+        var (svc, csH, orH) = Build(
+            csResponder: _ => throw new InvalidOperationException("CardSight should not be called for custom prompts"),
             orResponder: _ => Json(OpenRouterBodyWith("custom answer text")));
 
         var result = await svc.SendCustomPromptAsync(image.Path, "What's on this card?");
 
-        Assert.Empty(ximH.Requests);
+        Assert.Empty(csH.Requests);
         Assert.Single(orH.Requests);
         Assert.Equal("custom answer text", result);
     }

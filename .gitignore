@@ -9,6 +9,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+*.csproj.lscache
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -396,3 +397,7 @@ appsettings.Development.json
 # user-downloaded files stay local; FlipKit ships parser code only.
 Docs/References/*.xlsx
 FlipKit.Core.Tests/Fixtures/Checklists/*.xlsx
+
+# Local build/run scratch — developer convenience, not part of the shipped build
+build-hub-win-local.ps1
+.run-logs/
