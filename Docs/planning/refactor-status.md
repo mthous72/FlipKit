@@ -4,9 +4,9 @@
 **Master HEAD:** `84666ab` (Phase 6 close-out); push pipeline linear (origin master rebased to drop merge commits per branch protection rule)
 **Phase 5:** Closed at 5c.1. **Phase 5d (BulkScanViewModel split) skipped** after re-read showed the plan's named extractions don't survive contact with the code — see plan §7.4b for the full reasoning.
 **Phase 6:** ✓ Done. Roadmap re-baselined, Doc 07 rewritten, stale doc references swept, 5 ADRs added under `Docs/ADR/`.
-**Refactor status:** complete. No further phases planned. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md).
-**Plan:** [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md)
-**Audit:** [AUDIT-2026-05.md](AUDIT-2026-05.md)
+**Refactor status:** complete. No further phases planned. Future work tracked in [17-FUTURE-ROADMAP.md](roadmap.md).
+**Plan:** [29-REFACTORING-PLAN.md](refactor-plan.md)
+**Audit:** [AUDIT-2026-05.md](audit-2026-05.md)
 
 This is a **breakpoint snapshot** — a single doc to read when picking the work back up. Sources of truth are still the plan and audit; this just summarizes "where we are / where we're going" in one place.
 
@@ -152,7 +152,7 @@ Delivered:
 - VM split fate recorded in roadmap: `BulkScanViewModel` 5d skipped permanently; `Inventory/Scan/Export` deferred indefinitely (all ≥80% covered, no concrete decomposition opportunity).
 - 5 ADRs added under `Docs/ADR/`: Hub architecture, net8/net9 mix, EnsureCreated+SchemaUpdater, user-driven Checklist Insider, Avalonia choice.
 
-**Refactor wrap-up:** the original 6-phase plan is fully executed. The codebase is cleaner, has 490 tests with a CI gate, and every architectural decision worth capturing is now documented. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md); this status doc stops being a living doc once the Phase 6 merge lands.
+**Refactor wrap-up:** the original 6-phase plan is fully executed. The codebase is cleaner, has 490 tests with a CI gate, and every architectural decision worth capturing is now documented. Future work tracked in [17-FUTURE-ROADMAP.md](roadmap.md); this status doc stops being a living doc once the Phase 6 merge lands.
 
 ---
 

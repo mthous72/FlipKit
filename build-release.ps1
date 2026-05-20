@@ -120,10 +120,10 @@ foreach ($target in $hubTargets) {
     $docsDir = "$hubDir\Docs"
     New-Item -ItemType Directory -Path $docsDir -Force | Out-Null
 
-    Copy-Item ".\Docs\USER-GUIDE.md" "$docsDir\" -ErrorAction SilentlyContinue
-    Copy-Item ".\Docs\WEB-USER-GUIDE.md" "$docsDir\" -ErrorAction SilentlyContinue
-    Copy-Item ".\Docs\DEPLOYMENT-GUIDE.md" "$docsDir\" -ErrorAction SilentlyContinue
-    Copy-Item ".\Docs\HUB-ARCHITECTURE.md" "$docsDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".\Docs\guides\user-guide.md" "$docsDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".\Docs\guides\web-guide.md" "$docsDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".\Docs\guides\deployment.md" "$docsDir\" -ErrorAction SilentlyContinue
+    Copy-Item ".\Docs\architecture\overview.md" "$docsDir\" -ErrorAction SilentlyContinue
     Copy-Item ".\README.md" "$docsDir\" -ErrorAction SilentlyContinue
     Copy-Item ".\LICENSE" "$hubDir\" -ErrorAction SilentlyContinue
 

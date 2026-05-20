@@ -2,7 +2,7 @@
 
 ## Document Purpose
 
-This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.3.6 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. The Phase 1–6 refactor (see [29-REFACTORING-PLAN.md](29-REFACTORING-PLAN.md) and [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md)) is complete: codebase is cleaned, 490 tests in place, several latent production bugs fixed. This roadmap re-baselines what comes next against that cleaned reality.
+This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.3.6 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. The Phase 1–6 refactor (see [29-REFACTORING-PLAN.md](refactor-plan.md) and [30-REFACTOR-STATUS.md](refactor-status.md)) is complete: codebase is cleaned, 490 tests in place, several latent production bugs fixed. This roadmap re-baselines what comes next against that cleaned reality.
 
 ---
 
@@ -51,7 +51,7 @@ Restructure `Docs/` into topic folders (`architecture/`, `features/`, `guides/`,
 
 **Status:** 🟡 Partially shipped — Phase 1 + Phase 2 vertical slice done. Remaining Phase 2 items + Phases 3-4 indefinitely deferred (2026-05-04). Re-evaluate on real user friction.
 **Effort:** Shipped portion ≈ 1.5 weeks of work. Deferred remainder estimated at 2-3 weeks if revived.
-**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md) (decision log entry 2026-05-04)
+**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](checklist-insider-import-plan.md) (decision log entry 2026-05-04)
 
 **What's live (master):**
 - Surface A — Settings → Checklists → Import from Excel on both Desktop and Web; ClosedXML parser handles both Mosaic-style (column-A-subset) and Bowman-style (inline-header) layouts.
@@ -85,7 +85,7 @@ Let users populate `SetChecklist` by downloading per-set Excel files from [check
 ### 2. Webcam Capture for Scanning
 
 **Status:** ✅ Shipped 2026-05-04 (`feature/webcam-capture`, 5 commits)
-**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](27-WEBCAM-CAPTURE-PLAN.md) — see §12 "Outcome" for what landed, smoke-test findings, and follow-ups.
+**Plan Doc:** [27-WEBCAM-CAPTURE-PLAN.md](../archive/27-WEBCAM-CAPTURE-PLAN.md) — see §12 "Outcome" for what landed, smoke-test findings, and follow-ups.
 
 📷 Webcam buttons on Scan + Edit (Desktop, OpenCvSharp4) and Scan (Web, `getUserMedia`+canvas). Settings → Webcam Capture exposes a master toggle, device picker with max-resolution labels, and a Test capture button. Browser capture requires HTTPS or `localhost`; on HTTP-via-Tailscale the trigger buttons hide and a banner explains why.
 
@@ -127,7 +127,7 @@ Import an eBay Seller Hub "All active listings" CSV export into the inventory. E
 
 **Status:** ✅ Done (Phase 4a–4e of the refactor)
 
-Originally a roadmap item assuming zero tests. Delivered as Phase 4 of the refactor: **490 tests** (267 Core, 175 Desktop, 48 Web), real-SQLite-in-memory + NSubstitute HTTP-mock patterns, CI gate wired into `build-installers.ps1` and `build-release.ps1`. Coverage targets met: helpers ≥95%, stateless services ≥84%, ViewModels ≥80% (with documented carryovers in [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md)).
+Originally a roadmap item assuming zero tests. Delivered as Phase 4 of the refactor: **490 tests** (267 Core, 175 Desktop, 48 Web), real-SQLite-in-memory + NSubstitute HTTP-mock patterns, CI gate wired into `build-installers.ps1` and `build-release.ps1`. Coverage targets met: helpers ≥95%, stateless services ≥84%, ViewModels ≥80% (with documented carryovers in [30-REFACTOR-STATUS.md](refactor-status.md)).
 
 Two latent production bugs surfaced and fixed during test writing — see audit D2 (OpenRouter retry filter) and D3 (SetChecklist ValueComparer).
 
@@ -203,7 +203,7 @@ Standing cleanup items:
 
 ### Documentation
 
-- ADRs for non-obvious choices live in [ADR/](ADR/). Five of them landed in Phase 6: Hub-vs-separate-apps, net8/net9 mix, EnsureCreated+SchemaUpdater vs migrations, user-driven Checklist Insider, Avalonia choice.
+- ADRs for non-obvious choices live in [ADR/](../architecture/adr/). Five of them landed in Phase 6: Hub-vs-separate-apps, net8/net9 mix, EnsureCreated+SchemaUpdater vs migrations, user-driven Checklist Insider, Avalonia choice.
 - `Docs/07-CLAUDE-CODE-GUIDE.md` was rewritten in Phase 6 to reflect the 4-project architecture (was a single-project guide).
 - Inline XML comments on public Core APIs — still pending, low priority.
 - End-user help (Desktop F1, screenshots) — `M:\Software Development\Releases\Help\` per Motz SOP.
@@ -222,7 +222,7 @@ When deciding what to build next:
 
 1. **User Impact:** Does it solve a real pain point in the daily reseller workflow?
 2. **Effort vs ROI:** How long, and what does it unlock?
-3. **Risk:** Could it break existing flows? Use the [REGRESSION-CHECKLIST.md](REGRESSION-CHECKLIST.md) gate before merge.
+3. **Risk:** Could it break existing flows? Use the [REGRESSION-CHECKLIST.md](../development/regression-checklist.md) gate before merge.
 4. **Dependencies:** Does it block higher-priority work?
 5. **Maintenance:** Ongoing support burden?
 
@@ -232,9 +232,9 @@ When deciding what to build next:
 **Next Review:** August 2026
 
 **Recent changes:**
-- 2026-05-08 — **Roadmap #0 added: Documentation Cleanup — Full Restructure** queued as next up. Plan checked in as [32-DOCUMENTATION-CLEANUP-PLAN.md](32-DOCUMENTATION-CLEANUP-PLAN.md) on `fix/docs-cleanup`. Mandatory pre-execution rescan must run before any restructure commits to re-baseline the file-by-file action list against current `master` and any in-flight branches.
+- 2026-05-08 — **Roadmap #0 added: Documentation Cleanup — Full Restructure** queued as next up. Plan checked in as [32-DOCUMENTATION-CLEANUP-PLAN.md](documentation-cleanup-plan.md) on `fix/docs-cleanup`. Mandatory pre-execution rescan must run before any restructure commits to re-baseline the file-by-file action list against current `master` and any in-flight branches.
 - 2026-05-04 — **Roadmap 1 partial ship.** Phase 1 (Surface A) + Phase 2 foundation + first Phase 2 UI slice landed (commits `1053f11`, `4b9009f`, `d036bfd`). Remaining Phase 2 polish items (typeahead, parallel dropdown, picker, BulkScan tier collapsing, Web parity, round-trip JS) and Phases 3-4 deferred indefinitely; re-evaluate on real friction or when an adjacent feature needs them. Schema fields kept regardless of UI state.
 - 2026-05-04 — **Phase 6 re-baseline.** Roadmap #4 (Tests) marked Done, delivered by refactor Phase 4. Roadmap #1 effort cut from 4-5 wk → 3-4 wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering a shelved sold-price service (since removed in 2026-05-05). Roadmap #5 (COMC) re-read found more wiring than previously implied — flagged for downgrade or drop pending demand signal. Tech-debt section rewritten against actual post-Phase-5 ViewModel sizes. Pointer added to new `Docs/ADR/` directory.
 - 2026-05-02 — Promoted Webcam Capture from Medium #4 to High #2; pushed Price Scraping → #3, Tests → #4.
 - 2026-05-02 — Audit pass: removed completed items (Bulk Scan, Architecture Refactor, eBay Bulk CSV) and dropped items no longer in scope (Cloud Sync/Backup, MySlabs, TCGPlayer, Barcode/QR Scanning, Multi-User/Team). Renumbered.
-- 2026-05-01 — Added "User-Driven Checklist Excel Import" — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](28-CHECKLIST-INSIDER-IMPORT-PLAN.md)
+- 2026-05-01 — Added "User-Driven Checklist Excel Import" — see [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](checklist-insider-import-plan.md)

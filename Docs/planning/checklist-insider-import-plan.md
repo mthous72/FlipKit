@@ -5,13 +5,13 @@
 **Effort:** High (4-5 weeks for full surface set, mobile parity, and lookup wizard)
 **Created:** 2026-05-01
 **Last Updated:** 2026-05-02
-**Related Docs:** [16-CHECKLIST-DATA-SPEC.md](16-CHECKLIST-DATA-SPEC.md), [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md), [14-VARIATION-VERIFICATION.md](14-VARIATION-VERIFICATION.md)
+**Related Docs:** [16-CHECKLIST-DATA-SPEC.md](../architecture/checklist-data.md), [17-FUTURE-ROADMAP.md](roadmap.md), [14-VARIATION-VERIFICATION.md](../features/verification.md)
 
 ---
 
 ## 1. Problem
 
-Today FlipKit's `SetChecklist` table is seeded by hand and only covers a small set of products (see [16-CHECKLIST-DATA-SPEC.md](16-CHECKLIST-DATA-SPEC.md) Tier 1). The variation verification flow ([14-VARIATION-VERIFICATION.md](14-VARIATION-VERIFICATION.md)) silently no-ops whenever a user scans a card from a set we haven't pre-seeded — which is most modern releases.
+Today FlipKit's `SetChecklist` table is seeded by hand and only covers a small set of products (see [16-CHECKLIST-DATA-SPEC.md](../architecture/checklist-data.md) Tier 1). The variation verification flow ([14-VARIATION-VERIFICATION.md](../features/verification.md)) silently no-ops whenever a user scans a card from a set we haven't pre-seeded — which is most modern releases.
 
 We need a path to bulk-populate `SetChecklist` for any product the user actually owns, without:
 
@@ -173,7 +173,7 @@ FlipKit.Web/wwwroot/js/
 
 ## 7. Schema additions
 
-[16-CHECKLIST-DATA-SPEC.md](16-CHECKLIST-DATA-SPEC.md) defines `ChecklistCard` as a JSON sub-object with `card_number`, `player_name`, `team`, `is_rookie`, `subset`. The new fields needed for verification + variation flagging:
+[16-CHECKLIST-DATA-SPEC.md](../architecture/checklist-data.md) defines `ChecklistCard` as a JSON sub-object with `card_number`, `player_name`, `team`, `is_rookie`, `subset`. The new fields needed for verification + variation flagging:
 
 ```csharp
 public class ChecklistCard
@@ -287,7 +287,7 @@ A new embedded JSON resource (`FlipKit.Core/Resources/KnownSetsCatalog.json`) se
 
 ### 8b. Post-scan verification badge + import hint (Surface B — discoverability)
 
-After [OpenRouterScannerService.cs:414](../FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs#L414) — the `MapToCard` step — runs a follow-up:
+After [OpenRouterScannerService.cs:414](../../FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs#L414) — the `MapToCard` step — runs a follow-up:
 
 1. Look up `SetChecklist` by `(Year, Sport, Manufacturer, Brand, SetName)`.
 2. **If found:** fuzzy-match the scanned `CardNumber` + `PlayerName` against children. Three possible outcomes:
@@ -552,7 +552,7 @@ Phase the work so each phase is shippable on its own — stops half-done work fr
 3. **Some sets have no xlsx, only PDF.** Basketball/football releases skew PDF-only. Until the PDF importer ships (§13), those sets won't import via this feature. The "Get Checklist" deeplink still works; users will just see "No xlsx available" on the post.
 4. **Filename-based metadata guessing.** Filenames like `2026-Bowman-Baseball-Checklist-Downloads-Excel-spreadsheet.xlsx` parse cleanly, but `-SUBJECT-TO-CHANGE` suffix and casing variants (`Excel-spreadsheet` vs `Excel-Spreadsheet`) exist. The preview UI must let users correct any wrong guess before commit.
 5. **Conflict with existing seeded data.** If a user imports a set we already shipped, what wins? Default = imported version replaces shipped version, with a confirmation dialog showing diff counts ("Replace shipped checklist with imported one? (1,285 → 1,290 cards)").
-6. **Should imports sync across devices?** WAL-mode shared SQLite already covers Desktop+Web on the same machine via Tailscale (§10e). True multi-device cloud sync is a separate roadmap item (currently out of scope per [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md)) — but if it lands, imported checklists should be part of the synced data since they're user content.
+6. **Should imports sync across devices?** WAL-mode shared SQLite already covers Desktop+Web on the same machine via Tailscale (§10e). True multi-device cloud sync is a separate roadmap item (currently out of scope per [17-FUTURE-ROADMAP.md](roadmap.md)) — but if it lands, imported checklists should be part of the synced data since they're user content.
 7. **Round-trip state on mobile (§10a).** When the user leaves FlipKit to download from Checklist Insider, returning to FlipKit must find them where they left off. Mitigated by localStorage stash. Risk if localStorage is cleared or disabled — fall back to surfacing the import banner on the next scan. Server-side session pin is a fallback if localStorage proves unreliable in the wild.
 8. **`KnownSetsCatalog` maintenance.** New sets drop monthly; the bundled catalog will go stale between FlipKit releases. Mitigation: catalog is embedded JSON (easy to ship updates with each FlipKit release), and unknown sets fall through to State C (freeform) gracefully. Long-term option: remote-fetched JSON updates without a full FlipKit release.
 9. **iOS file-handling friction (§10b).** Even with platform-aware help copy, the iOS Save-to-Files → re-open-from-Files flow is genuinely awkward. No way to fully eliminate it without an iOS-native FlipKit app or a custom file-handler shortcut. Accept the friction; document it clearly.
@@ -567,8 +567,8 @@ Phase the work so each phase is shippable on its own — stops half-done work fr
 ## 14. Out of scope for this feature
 
 - Automated downloads from Checklist Insider — explicitly NOT doing this.
-- Pricing data ingestion — Checklist Insider doesn't ship pricing in the xlsx; that's eBay Browse / 130point territory (see [09-EBAY-API.md](09-EBAY-API.md)).
-- A bundled seed DB built from Checklist Insider — also out, for the same ToU reason. Bundled seeds remain manually-curated per [16-CHECKLIST-DATA-SPEC.md](16-CHECKLIST-DATA-SPEC.md).
+- Pricing data ingestion — Checklist Insider doesn't ship pricing in the xlsx; that's eBay Browse / 130point territory (see [09-EBAY-API.md](../features/ebay-integration.md)).
+- A bundled seed DB built from Checklist Insider — also out, for the same ToU reason. Bundled seeds remain manually-curated per [16-CHECKLIST-DATA-SPEC.md](../architecture/checklist-data.md).
 
 ---
 

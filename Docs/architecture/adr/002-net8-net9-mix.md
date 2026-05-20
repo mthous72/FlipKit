@@ -2,7 +2,7 @@
 
 **Status:** Accepted (transitional — see "Future")
 **Date:** 2026-05-04
-**Related:** [`FlipKit.Api.csproj`](../../FlipKit.Api/FlipKit.Api.csproj), [`FlipKit.Core.csproj`](../../FlipKit.Core/FlipKit.Core.csproj)
+**Related:** [`FlipKit.Api.csproj`](../../../FlipKit.Api/FlipKit.Api.csproj), [`FlipKit.Core.csproj`](../../../FlipKit.Core/FlipKit.Core.csproj)
 
 ## Context
 
@@ -32,12 +32,12 @@ Keep the split. Api gets net9.0; everything else stays on net8.0.
 
 **Negative:**
 - Two SDKs required for development. CI installs both.
-- New contributors get tripped up by the version mismatch on first build. The repo [CLAUDE.md](../../CLAUDE.md) calls this out under Important Conventions.
+- New contributors get tripped up by the version mismatch on first build. The repo [CLAUDE.md](../../../CLAUDE.md) calls this out under Important Conventions.
 - Slight risk of "works on Api, broken on Desktop" if someone uses a net9-only API in a Core type that Desktop also references. So far this hasn't happened — Core stays carefully net8-compatible.
 
 ## Future
 
-Collapse to a single TFM **once Avalonia officially supports the same .NET version we want for the Api side.** Likely path: when Avalonia 12 lands and supports net10 LTS, move the whole solution to net10. Cited in [17-FUTURE-ROADMAP.md](../17-FUTURE-ROADMAP.md) under "Dependency Hygiene".
+Collapse to a single TFM **once Avalonia officially supports the same .NET version we want for the Api side.** Likely path: when Avalonia 12 lands and supports net10 LTS, move the whole solution to net10. Cited in [17-FUTURE-ROADMAP.md](../../planning/roadmap.md) under "Dependency Hygiene".
 
 Until then, the cost of keeping two TFMs is small and the benefit is real. Don't try to unify prematurely by downgrading Api back to net8 — we'd lose the ASP.NET Core 9 improvements for no architectural gain.
 

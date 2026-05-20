@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-05-04
-**Related:** [10-GUI-ARCHITECTURE.md](../10-GUI-ARCHITECTURE.md), [`FlipKit.Desktop/FlipKit.Desktop.csproj`](../../FlipKit.Desktop/FlipKit.Desktop.csproj)
+**Related:** [10-GUI-ARCHITECTURE.md](../overview.md), [`FlipKit.Desktop/FlipKit.Desktop.csproj`](../../../FlipKit.Desktop/FlipKit.Desktop.csproj)
 
 ## Context
 
@@ -51,4 +51,4 @@ Use **Avalonia UI 11** for the Desktop project. Pair it with **CommunityToolkit.
 
 ## Status
 
-Accepted. Plan to migrate to Avalonia 12 once it stabilizes (per [17-FUTURE-ROADMAP.md](../17-FUTURE-ROADMAP.md) "Dependency Hygiene").
+Accepted. Plan to migrate to Avalonia 12 once it stabilizes (per [17-FUTURE-ROADMAP.md](../../planning/roadmap.md) "Dependency Hygiene").

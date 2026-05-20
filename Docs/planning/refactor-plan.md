@@ -3,9 +3,9 @@
 **Target codebase:** FlipKit Hub v3.3.6 (`c:\Users\Matthew Houston\source\repos\FlipKit`)
 **Goal:** Heavy cleanup with zero behavioral regressions, preserving roadmap-aligned code, ending in a roadmap revisit.
 **Created:** 2026-05-04
-**Status:** ✓ Complete — All 6 phases executed and merged to master. See [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for the final snapshot. Future work tracked in [17-FUTURE-ROADMAP.md](17-FUTURE-ROADMAP.md). This plan is now historical.
+**Status:** ✓ Complete — All 6 phases executed and merged to master. See [30-REFACTOR-STATUS.md](refactor-status.md) for the final snapshot. Future work tracked in [17-FUTURE-ROADMAP.md](roadmap.md). This plan is now historical.
 
-> **Resume here?** Skip to [30-REFACTOR-STATUS.md](30-REFACTOR-STATUS.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
+> **Resume here?** Skip to [30-REFACTOR-STATUS.md](refactor-status.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
 
 ---
 
@@ -525,7 +525,7 @@ This doc referenced `MockScannerService` and `BoolToVisibilityConverter` as live
 
 ### 7.8 OpenRouterScannerService retry filter fix (BUG, discovered in Phase 4b — **DONE in Phase 5a**)
 
-While writing scanner tests, the fallback chain logic was found broken for everything except 404 errors. See [AUDIT-2026-05.md §5.9](AUDIT-2026-05.md) for the full diagnosis.
+While writing scanner tests, the fallback chain logic was found broken for everything except 404 errors. See [AUDIT-2026-05.md §5.9](audit-2026-05.md) for the full diagnosis.
 
 **Summary:** `IsRetryableHttpError` checks `msg.Contains("500")` etc., but the exception message contains the enum name (`"InternalServerError"`) rather than the digit. So 5xx and 429 errors propagate immediately without triggering the fallback chain, defeating the whole retry design for those status codes.
 
@@ -551,7 +551,7 @@ Two production races surfaced while writing SettingsViewModel tests in Phase 4c.
 
 ### 7.9 SetChecklist JSON-column ValueComparer (BUG, discovered in Phase 4b — **DONE in Phase 4.5**)
 
-While writing ChecklistLearningService tests, the "enrich existing checklist" code path was found to silently lose every mutation. See [AUDIT-2026-05.md §5.10](AUDIT-2026-05.md) for the full diagnosis.
+While writing ChecklistLearningService tests, the "enrich existing checklist" code path was found to silently lose every mutation. See [AUDIT-2026-05.md §5.10](audit-2026-05.md) for the full diagnosis.
 
 **Summary:** `SetChecklist.Cards` and `SetChecklist.KnownVariations` are JSON-converted via `HasConversion(serialize, deserialize)` at `FlipKitDbContext.cs:105-113` without a `ValueComparer`. EF Core's change tracker can't detect collection mutations on JSON-converted properties, so `checklist.Cards.Add(...)` followed by `SaveChangesAsync()` is a no-op.
 
@@ -658,4 +658,4 @@ The Phase 1 audit raised five additional questions. Decisions:
 | A5 | OpenRouter catalog — `OpenRouterModelCatalog` or new `ScannerDefaults`? | `OpenRouterModelCatalog` owns live + fallback + default. Closes empty-catalog-on-fetch-failure bug as side effect. See Phase 5.2 §7.2. |
 | — | `installers/FlipKit-Windows-x64-v3.3.0.zip` | Delete + add `installers/*.zip` to `.gitignore` (Phase 2 §4.2). |
 
-Full audit at [AUDIT-2026-05.md](AUDIT-2026-05.md).
+Full audit at [AUDIT-2026-05.md](audit-2026-05.md).
