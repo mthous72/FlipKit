@@ -44,9 +44,8 @@ Verify: `Test-Path "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"` (or check
 ### Build
 
 ```powershell
-# From the repo root. Set the version near the top of the script first
-# (it is currently hardcoded — see "Known gotchas").
-.\build-hub-for-installer.ps1
+# From the repo root:
+.\build-hub-for-installer.ps1 -Version <version>
 ```
 
 This (1) publishes Desktop + Web + API self-contained into `releases\temp\FlipKit-Hub-Windows-x64-v<version>\`, then (2) runs `ISCC /DVersion=<version> Installer\Windows\FlipKit.iss`, producing **`releases\FlipKit-Setup-v<version>.exe`**.
@@ -78,10 +77,6 @@ Workarounds:
 - **Release publish**: a *fresh* self-contained publish (to a clean output dir) generally succeeds even when an incremental `bin\Debug` copy is blocked.
 - **Durable fix**: add a Windows Defender **exclusion** for the repo folder and `%LocalAppData%\FlipKit*` (Settings → Virus & threat protection → Manage settings → Exclusions). Requires admin.
 
-### `build-hub-for-installer.ps1` hardcodes the version
-
-The script sets `$Version = "<n>"` near the top instead of taking a parameter. Update it to the release version before running (or pass `/DVersion=` to ISCC manually as shown above). Making it accept a `-Version` parameter is a good future cleanup.
-
 ---
 
 ## Release publish checklist
@@ -93,7 +88,7 @@ The full path from merged code to a published GitHub release:
 3. **Verify on master**: `dotnet test FlipKit.sln -p:UseAppHost=false` (see Defender gotcha).
 4. **Build artifacts**:
    - Hub zips (Windows + Linux): `.\build-release.ps1 -Version <version>` → `releases\FlipKit-Hub-*-v<version>.zip`
-   - Windows installer: `.\build-hub-for-installer.ps1` → `releases\FlipKit-Setup-v<version>.exe`
+   - Windows installer: `.\build-hub-for-installer.ps1 -Version <version>` → `releases\FlipKit-Setup-v<version>.exe`
 5. **Tag + release**:
    ```powershell
    gh release create v<version> --target master --title "FlipKit Hub v<version>" --notes-file <notes.md> `
