@@ -2,14 +2,15 @@
 
 ## Document Purpose
 
-This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.3.6 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. The Phase 1–6 refactor (see [29-REFACTORING-PLAN.md](refactor-plan.md) and [30-REFACTOR-STATUS.md](refactor-status.md)) is complete: codebase is cleaned, 490 tests in place, several latent production bugs fixed. This roadmap re-baselines what comes next against that cleaned reality.
+This document outlines planned future enhancements for FlipKit. As of May 2026, FlipKit Hub v3.7.0 is shipping — Desktop app with embedded Web and API servers, full end-to-end inventory + scanning + export workflow. The Phase 1–6 refactor (see [refactor-plan.md](refactor-plan.md) and [refactor-status.md](refactor-status.md)) is complete: codebase is cleaned, 919 tests in place, several latent production bugs fixed. This roadmap re-baselines what comes next against that cleaned reality.
 
 ---
 
 ## Current Status Summary
 
-**✅ Shipped (as of v3.3.6):**
+**✅ Shipped (as of v3.7.0):**
 - AI-powered card scanning with live OpenRouter model catalog (now with `IsFallback`-flagged static fallback when the live fetch fails) and paid-model consent
+- **CardSight first-pass recognition** — optional purpose-built sports-card recognition tried before OpenRouter (750 free identifications/month), with a CardSight subscription/quota panel in Desktop + Web Settings; falls through to OpenRouter on miss / low confidence / quota exhaustion. **Ximilar was fully removed in v3.7.0** — the scan pipeline is now CardSight → OpenRouter
 - Bulk scanning workflow with front/back pairing, semaphore-throttled concurrent scans, free-tier rate-limit handling, and per-session error logs
 - Variation verification with bundled checklists + confirmation pass
 - Inventory management with filtering, search, and editing
@@ -21,8 +22,9 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 - 4-project architecture (Core / Desktop / Web / Api) with shared SQLite + WAL
 - Tailscale-friendly remote access via Api server
 - Inno Setup Windows installer + Hub zip portables
-- **490 unit + integration tests** (267 Core, 175 Desktop, 48 Web) wired into the build pipeline as a CI gate
+- **919 unit + integration tests** (634 Core, 224 Desktop, 61 Web) wired into the build pipeline as a CI gate
 - `NetworkAddressProvider` (Phase 5c.1) — IP/QR/URL logic split out of `SettingsViewModel` so it's testable without real adapters
+- **Documentation restructure** — `Docs/` reorganized into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), all active docs refreshed to v3.7.0, CardSight documented, Ximilar scrubbed from active docs (see Roadmap #0 below)
 
 ---
 
@@ -30,11 +32,13 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 
 ### 0. Documentation Cleanup — Full Restructure
 
-**Status:** ⏳ Next up — plan approved 2026-05-08, awaiting pre-execution rescan before commit 1
-**Effort:** Medium (1-2 weeks across 4 commits)
-**Plan Doc:** [documentation-cleanup-plan.md](documentation-cleanup-plan.md)
+**Status:** ✅ Shipped 2026-05-20 (`fix/docs-cleanup`, PR #30 — 4 content commits on top of the re-baselined plan)
+**Effort:** Medium (delivered across 4 commits)
+**Plan Doc:** [documentation-cleanup-plan.md](../archive/documentation-cleanup-plan.md) (now archived — completed plan, kept as a historical record with its rescan/delta)
 
-Restructure `Docs/` into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), refresh stale content, add missing documentation, and consolidate overlap.
+Restructured `Docs/` into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), refreshed stale content, added missing documentation, and consolidated overlap.
+
+**What shipped:** topic-folder restructure (move-only commit 1), stale-content refresh to v3.7.0 (commit 2), new content — CardSight feature docs + `AiModelUsed` schema, Linux install guide, top-level `Docs/README.md` index (commit 3), and cross-cutting updates to root `README.md` / `CLAUDE.md` / `.github/copilot-instructions.md` + link integrity (commit 4). Ximilar references scrubbed from active docs (annotated as "removed in v3.7.0" in living planning docs). Original scope below for reference.
 
 **Scope:**
 - **Move/restructure** ~30 files from flat `Docs/00-…/31-…` numbering into topic folders.
@@ -51,7 +55,7 @@ Restructure `Docs/` into topic folders (`architecture/`, `features/`, `guides/`,
 
 **Status:** 🟡 Partially shipped — Phase 1 + Phase 2 vertical slice done. Remaining Phase 2 items + Phases 3-4 indefinitely deferred (2026-05-04). Re-evaluate on real user friction.
 **Effort:** Shipped portion ≈ 1.5 weeks of work. Deferred remainder estimated at 2-3 weeks if revived.
-**Plan Doc:** [28-CHECKLIST-INSIDER-IMPORT-PLAN.md](checklist-insider-import-plan.md) (decision log entry 2026-05-04)
+**Plan Doc:** [checklist-insider-import-plan.md](checklist-insider-import-plan.md) (decision log entry 2026-05-04)
 
 **What's live (master):**
 - Surface A — Settings → Checklists → Import from Excel on both Desktop and Web; ClosedXML parser handles both Mosaic-style (column-A-subset) and Bowman-style (inline-header) layouts.
@@ -127,7 +131,7 @@ Import an eBay Seller Hub "All active listings" CSV export into the inventory. E
 
 **Status:** ✅ Done (Phase 4a–4e of the refactor)
 
-Originally a roadmap item assuming zero tests. Delivered as Phase 4 of the refactor: **490 tests** (267 Core, 175 Desktop, 48 Web), real-SQLite-in-memory + NSubstitute HTTP-mock patterns, CI gate wired into `build-installers.ps1` and `build-release.ps1`. Coverage targets met: helpers ≥95%, stateless services ≥84%, ViewModels ≥80% (with documented carryovers in [30-REFACTOR-STATUS.md](refactor-status.md)).
+Originally a roadmap item assuming zero tests. Delivered as Phase 4 of the refactor: the suite started at **490 tests** (267 Core, 175 Desktop, 48 Web) at refactor close-out and has since grown to **919 tests** (634 Core, 224 Desktop, 61 Web) as later features landed. Real-SQLite-in-memory + NSubstitute HTTP-mock patterns, CI gate wired into `build-installers.ps1` and `build-release.ps1`. Coverage targets met: helpers ≥95%, stateless services ≥84%, ViewModels ≥80% (with documented carryovers in [refactor-status.md](refactor-status.md)).
 
 Two latent production bugs surfaced and fixed during test writing — see audit D2 (OpenRouter retry filter) and D3 (SetChecklist ValueComparer).
 
@@ -228,11 +232,12 @@ When deciding what to build next:
 
 ---
 
-**Last Updated:** 2026-05-08 (Documentation Cleanup queued as next up)
+**Last Updated:** 2026-05-20 (v3.7.0 + documentation cleanup shipped)
 **Next Review:** August 2026
 
 **Recent changes:**
-- 2026-05-08 — **Roadmap #0 added: Documentation Cleanup — Full Restructure** queued as next up. Plan checked in as [32-DOCUMENTATION-CLEANUP-PLAN.md](documentation-cleanup-plan.md) on `fix/docs-cleanup`. Mandatory pre-execution rescan must run before any restructure commits to re-baseline the file-by-file action list against current `master` and any in-flight branches.
+- 2026-05-20 — **v3.7.0 + documentation cleanup shipped.** Roadmap #0 (Documentation Cleanup — Full Restructure) marked ✅ Shipped (`fix/docs-cleanup`, PR #30). v3.7.0 also shipped **CardSight first-pass recognition + subscription/quota panel** and the **full removal of Ximilar** (scan pipeline is now CardSight → OpenRouter); both folded into the Shipped summary above. Test count updated 490 → 919; framing version v3.3.6 → v3.7.0. The completed cleanup plan was archived to [archive/documentation-cleanup-plan.md](../archive/documentation-cleanup-plan.md).
+- 2026-05-08 — **Roadmap #0 added: Documentation Cleanup — Full Restructure** queued as next up. Plan checked in as `32-DOCUMENTATION-CLEANUP-PLAN.md` on `fix/docs-cleanup`. Mandatory pre-execution rescan must run before any restructure commits to re-baseline the file-by-file action list against current `master` and any in-flight branches.
 - 2026-05-04 — **Roadmap 1 partial ship.** Phase 1 (Surface A) + Phase 2 foundation + first Phase 2 UI slice landed (commits `1053f11`, `4b9009f`, `d036bfd`). Remaining Phase 2 polish items (typeahead, parallel dropdown, picker, BulkScan tier collapsing, Web parity, round-trip JS) and Phases 3-4 deferred indefinitely; re-evaluate on real friction or when an adjacent feature needs them. Schema fields kept regardless of UI state.
 - 2026-05-04 — **Phase 6 re-baseline.** Roadmap #4 (Tests) marked Done, delivered by refactor Phase 4. Roadmap #1 effort cut from 4-5 wk → 3-4 wk after Phase 4.5 D3 fix unblocked it. Roadmap #3 (Price Scraping) gained an explicit "Decision required" gate covering a shelved sold-price service (since removed in 2026-05-05). Roadmap #5 (COMC) re-read found more wiring than previously implied — flagged for downgrade or drop pending demand signal. Tech-debt section rewritten against actual post-Phase-5 ViewModel sizes. Pointer added to new `Docs/ADR/` directory.
 - 2026-05-02 — Promoted Webcam Capture from Medium #4 to High #2; pushed Price Scraping → #3, Tests → #4.

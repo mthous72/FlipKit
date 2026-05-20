@@ -1,5 +1,14 @@
 # FlipKit Documentation Cleanup — Full Restructure
 
+> **✅ Completed 2026-05-20 (`fix/docs-cleanup`, PR #30).** This plan is fully executed and is kept here in `archive/` as a historical record (the pre-execution rescan/delta below stays useful). What shipped, in 4 content commits on top of the re-baselined plan:
+> - **Commit 1 (move-only):** `Docs/` restructured into `architecture/ features/ guides/ development/ planning/ archive/`; `00-PROGRAM-OVERVIEW.md` deleted; `01-PROJECT-PLAN.md`, `11-UX-DESIGN.md`, `26-CSV-EXPORT-IMPLEMENTATION-PLAN.md`, `27-WEBCAM-CAPTURE-PLAN.md`, and `card_listings_export_spec.md` moved to `archive/`.
+> - **Commit 2 (refresh):** version bumps to v3.7.0, brand-drift fixes ("Card Lister" → FlipKit), dead-ref removal, screenshot-placeholder cleanup; HUB + GUI merged into `architecture/overview.md`.
+> - **Commit 3 (add):** CardSight feature docs + subscription/quota panel, `Card.AiModelUsed` schema, verified-fields LLM hint mode, `guides/install-linux.md`, and the top-level `Docs/README.md` index.
+> - **Commit 4 (cross-cutting):** root `README.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, and link integrity across the tree.
+> - **Ximilar** was fully removed in v3.7.0 (PR #31) and scrubbed from active docs; living planning docs annotate it as "removed in v3.7.0" rather than deleting the historical context.
+>
+> See [planning/roadmap.md](../planning/roadmap.md) Roadmap #0 for the shipped summary.
+
 ## Context
 
 The FlipKit `Docs/` folder has accumulated 30+ markdown files over the v1 → v3.6.1 lifecycle, mixing live reference docs, completed planning artifacts, pre-rebrand drafts, and historical phase summaries. Concrete problems found in the inventory pass:

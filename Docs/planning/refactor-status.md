@@ -4,9 +4,11 @@
 **Master HEAD:** `84666ab` (Phase 6 close-out); push pipeline linear (origin master rebased to drop merge commits per branch protection rule)
 **Phase 5:** Closed at 5c.1. **Phase 5d (BulkScanViewModel split) skipped** after re-read showed the plan's named extractions don't survive contact with the code — see plan §7.4b for the full reasoning.
 **Phase 6:** ✓ Done. Roadmap re-baselined, Doc 07 rewritten, stale doc references swept, 5 ADRs added under `Docs/ADR/`.
-**Refactor status:** complete. No further phases planned. Future work tracked in [17-FUTURE-ROADMAP.md](roadmap.md).
-**Plan:** [29-REFACTORING-PLAN.md](refactor-plan.md)
-**Audit:** [AUDIT-2026-05.md](audit-2026-05.md)
+**Refactor status:** complete. No further phases planned. Future work tracked in [roadmap.md](roadmap.md).
+**Plan:** [refactor-plan.md](refactor-plan.md)
+**Audit:** [audit-2026-05.md](audit-2026-05.md)
+
+> **Historical note (test counts):** The 490-test figures below are the refactor close-out snapshot (2026-05-04). The live suite has since grown to **919 tests** (634 Core / 224 Desktop / 61 Web) as later features (Surprise Sets, eBay import, CardSight, etc.) landed. This doc is frozen at refactor close-out and is not updated with later counts — see [roadmap.md](roadmap.md) for the current number.
 
 This is a **breakpoint snapshot** — a single doc to read when picking the work back up. Sources of truth are still the plan and audit; this just summarizes "where we are / where we're going" in one place.
 

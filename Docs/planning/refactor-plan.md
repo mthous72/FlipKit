@@ -3,9 +3,9 @@
 **Target codebase:** FlipKit Hub v3.3.6 (`c:\Users\Matthew Houston\source\repos\FlipKit`)
 **Goal:** Heavy cleanup with zero behavioral regressions, preserving roadmap-aligned code, ending in a roadmap revisit.
 **Created:** 2026-05-04
-**Status:** ✓ Complete — All 6 phases executed and merged to master. See [30-REFACTOR-STATUS.md](refactor-status.md) for the final snapshot. Future work tracked in [17-FUTURE-ROADMAP.md](roadmap.md). This plan is now historical.
+**Status:** ✓ Complete — All 6 phases executed and merged to master. See [refactor-status.md](refactor-status.md) for the final snapshot. Future work tracked in [roadmap.md](roadmap.md). This plan is now historical. (Test count at refactor close-out was 490; the live suite has since grown to 919 as later features landed — see [roadmap.md](roadmap.md).)
 
-> **Resume here?** Skip to [30-REFACTOR-STATUS.md](refactor-status.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
+> **Resume here?** Skip to [refactor-status.md](refactor-status.md) for "where we are / where we're going". This plan doc is now historical baseline + future scope. Status changes go in the status doc; structural plan changes still go here.
 
 ---
 

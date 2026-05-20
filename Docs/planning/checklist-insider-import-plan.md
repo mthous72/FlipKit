@@ -1,11 +1,11 @@
 # Checklist Insider Excel Import — Future Feature Plan
 
-**Status:** Planned (not yet started — no parser code or ClosedXML reference in repo)
+**Status:** 🟡 Partially shipped — Phase 1 (Surface A) + Phase 2 foundation + first Phase 2 UI slice landed (2026-05-04, commits `1053f11`/`4b9009f`/`d036bfd`). Remaining Phase 2 items + Phases 3-4 indefinitely deferred. See the decision log entry below and [roadmap.md](roadmap.md) #1.
 **Priority:** High (#1 on roadmap)
-**Effort:** High (4-5 weeks for full surface set, mobile parity, and lookup wizard)
+**Effort:** Shipped portion ≈ 1.5 weeks. Deferred remainder estimated 2-3 weeks if revived.
 **Created:** 2026-05-01
-**Last Updated:** 2026-05-02
-**Related Docs:** [16-CHECKLIST-DATA-SPEC.md](../architecture/checklist-data.md), [17-FUTURE-ROADMAP.md](roadmap.md), [14-VARIATION-VERIFICATION.md](../features/verification.md)
+**Last Updated:** 2026-05-20 (status reconciled with roadmap #1 — shipped portion was previously mislabeled "not yet started")
+**Related Docs:** [checklist-data.md](../architecture/checklist-data.md), [roadmap.md](roadmap.md), [verification.md](../features/verification.md)
 
 ---
 

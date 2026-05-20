@@ -62,9 +62,8 @@ for working in the codebase.
 | [refactor-plan.md](planning/refactor-plan.md) / [refactor-status.md](planning/refactor-status.md) | Refactor plan and live status |
 | [audit-2026-05.md](planning/audit-2026-05.md) | Code/doc audit and discovery log |
 | [checklist-insider-import-plan.md](planning/checklist-insider-import-plan.md) | Checklist Insider import plan |
-| [documentation-cleanup-plan.md](planning/documentation-cleanup-plan.md) | This docs restructure plan + rescan delta |
 
 ## Other
 
 - [Windows installer build guide](../installer/README.md) — building the Windows installer.
-- [archive/](archive/README.md) — frozen historical content (not maintained).
+- [archive/](archive/README.md) — frozen historical content (not maintained). Includes the completed [documentation-cleanup-plan.md](archive/documentation-cleanup-plan.md) (this restructure, shipped 2026-05-20).
