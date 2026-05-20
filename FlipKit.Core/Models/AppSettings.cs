@@ -10,7 +10,12 @@ namespace FlipKit.Core.Models
     {
         public string? OpenRouterApiKey { get; set; }
         public string? ImgBBApiKey { get; set; }
-        public string? XimilarApiKey { get; set; }
+        public string? CardsightApiKey { get; set; }
+
+        // CardSight returns "High" / "Medium" / "Low". Anything strictly below this
+        // tier triggers the OpenRouter fallback. "High" = 90-100%, "Medium" = 75-89%,
+        // "Low" = 50-74% per the CardSight docs.
+        public CardsightConfidenceTier MinCardsightConfidence { get; set; } = CardsightConfidenceTier.Medium;
         public string? EbayClientId { get; set; }
         public string? EbayClientSecret { get; set; }
 
@@ -113,7 +118,7 @@ namespace FlipKit.Core.Models
         public int ServerHealthCheckTimeoutSeconds { get; set; } = 2;
 
         // First-run AI scan consent — set to true once the user acknowledges that
-        // card images are sent to OpenRouter/Ximilar. Checked before every scan;
+        // card images are sent to CardSight/OpenRouter. Checked before every scan;
         // if false, a consent dialog is shown with a "remember this choice" toggle.
         public bool AiScanConsentGiven { get; set; } = false;
 

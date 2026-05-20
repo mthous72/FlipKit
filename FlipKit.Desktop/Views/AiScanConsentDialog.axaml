@@ -25,11 +25,11 @@
                 <StackPanel Spacing="8">
                     <TextBlock FontSize="13" FontWeight="SemiBold">What gets sent</TextBlock>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
-                        • <Run FontWeight="SemiBold">OpenRouter</Run> (openrouter.ai) — card image(s) as JPEG + a text prompt.
-                        OpenRouter routes each request to the AI model you select (Google, Anthropic, OpenAI, etc.).
+                        • <Run FontWeight="SemiBold">CardSight</Run> (api.cardsight.ai) — card image(s) only, used for the first-pass card recognition.
                     </TextBlock>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
-                        • <Run FontWeight="SemiBold">Ximilar</Run> (api.ximilar.com) — card image(s) only, when Ximilar mode is enabled in scan settings.
+                        • <Run FontWeight="SemiBold">OpenRouter</Run> (openrouter.ai) — card image(s) as JPEG + a text prompt, used as the fallback.
+                        OpenRouter routes each request to the AI model you select (Google, Anthropic, OpenAI, etc.).
                     </TextBlock>
                     <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85">
                         Nothing else is sent. No account data, inventory data, or pricing data leaves FlipKit.
@@ -39,7 +39,7 @@
 
             <TextBlock Grid.Row="3" TextWrapping="Wrap" FontSize="11" Opacity="0.65">
                 Each provider stores and processes images under their own privacy policy.
-                Review them at openrouter.ai and ximilar.com before continuing.
+                Review them at cardsight.ai and openrouter.ai before continuing.
             </TextBlock>
 
             <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="8"

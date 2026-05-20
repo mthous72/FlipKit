@@ -70,7 +70,6 @@ public class SettingsViewModelTests
         {
             OpenRouterApiKey = "or-key",
             ImgBBApiKey = "imgbb-key",
-            XimilarApiKey = "xim-key",
             WhatnotFeePercent = 13m,
             EbayFeePercent = 14m,
             DefaultModel = ModelOption.AutoValue,
@@ -81,7 +80,6 @@ public class SettingsViewModelTests
 
         Assert.Equal("or-key", vm.OpenRouterApiKey);
         Assert.Equal("imgbb-key", vm.ImgBBApiKey);
-        Assert.Equal("xim-key", vm.XimilarApiKey);
         Assert.Equal(13m, vm.WhatnotFeePercent);
         Assert.Equal(ExportPlatform.eBay, vm.ActiveExportPlatform);
     }
@@ -94,7 +92,6 @@ public class SettingsViewModelTests
         {
             OpenRouterApiKey = "set",
             ImgBBApiKey = "",
-            XimilarApiKey = null,
             DefaultModel = ModelOption.AutoValue,
             CustomGradingCompanies = new List<string>(),
         });
@@ -102,7 +99,6 @@ public class SettingsViewModelTests
 
         Assert.Contains("Configured", vm.OpenRouterStatus);
         Assert.Contains("Not configured", vm.ImgBBStatus);
-        Assert.Contains("Not configured", vm.XimilarStatus);
     }
 
     // === SaveSettings persists current state ===
@@ -160,20 +156,6 @@ public class SettingsViewModelTests
 
         Assert.Contains("Connected", vm.OpenRouterStatus);
         Assert.False(vm.IsTestingOpenRouter);
-    }
-
-    [Fact]
-    public async Task Should_MarkXimilarFailed_When_TestFails()
-    {
-        var settings = Substitute.For<ISettingsService>();
-        settings.Load().Returns(new AppSettings { DefaultModel = ModelOption.AutoValue, CustomGradingCompanies = new() });
-        settings.TestXimilarConnectionAsync(Arg.Any<string>()).Returns(false);
-        using var vm = Create(settings: settings);
-        vm.XimilarApiKey = "bad";
-
-        await vm.TestXimilarCommand.ExecuteAsync(null);
-
-        Assert.Contains("failed", vm.XimilarStatus);
     }
 
     // === Template reset / validation commands ===

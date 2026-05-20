@@ -14,8 +14,8 @@ namespace FlipKit.Web.Models
         [Display(Name = "ImgBB API Key")]
         public string? ImgBBApiKey { get; set; }
 
-        [Display(Name = "Ximilar API Key")]
-        public string? XimilarApiKey { get; set; }
+        [Display(Name = "CardSight API Key")]
+        public string? CardsightApiKey { get; set; }
 
         [Display(Name = "eBay Client ID")]
         public string? EbayClientId { get; set; }
@@ -76,10 +76,23 @@ namespace FlipKit.Web.Models
         public OpenRouterKeyInfo? OpenRouterUsage { get; set; }
         public string? OpenRouterUsageError { get; set; }
 
+        // CardSight Usage card — populated server-side in
+        // SettingsController.Index() when a CardSight key is configured. The
+        // Razor view renders the card iff CardsightUsage is set (success) or
+        // CardsightUsageError is set (graceful inline failure). CardSight reports
+        // an aggregate call count but no plan limit, so usage is framed against
+        // the documented free-tier allowance (750/mo), clearly labelled as such.
+        public CardsightSubscriptionStatus? CardsightUsage { get; set; }
+        public string? CardsightUsageError { get; set; }
+        public int CardsightCallsUsed => CardsightUsage?.CallsUsed ?? 0;
+        public int CardsightCallsRemaining => CardsightUsage?.CallsRemaining ?? 0;
+        public int CardsightFreeTierQuota =>
+            CardsightUsage?.FreeTierMonthlyQuota ?? ICardsightSubscriptionService.DefaultFreeTierMonthlyQuota;
+
         // Status flags (read-only for display)
         public bool HasOpenRouterKey { get; set; }
         public bool HasImgBBKey { get; set; }
-        public bool HasXimilarKey { get; set; }
+        public bool HasCardsightKey { get; set; }
         public bool HasEbayCredentials { get; set; }
         public bool IsDockerEnvironment { get; set; }
     }

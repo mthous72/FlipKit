@@ -19,8 +19,8 @@
                 Your images leave your machine each time you scan.
             </p>
             <ul class="mb-2 small">
-                <li><strong>OpenRouter</strong> (openrouter.ai) — card image(s) as JPEG + a text prompt, routed to the AI model you select.</li>
-                <li><strong>Ximilar</strong> (api.ximilar.com) — card image(s) only, when Ximilar mode is enabled.</li>
+                <li><strong>CardSight</strong> (api.cardsight.ai) — card image(s) only, used for the first-pass card recognition.</li>
+                <li><strong>OpenRouter</strong> (openrouter.ai) — card image(s) as JPEG + a text prompt, routed to the AI model you select, used as the fallback.</li>
             </ul>
             <p class="small mb-3">Nothing else is sent. Each provider processes images under their own privacy policy.</p>
             <form asp-action="AcknowledgeConsent" method="post" class="d-inline">
@@ -121,34 +121,10 @@
                             </div>
                         </div>
 
-                        <!-- Ximilar Scan Mode -->
-                        <div class="mb-4">
-                            <label for="ximilarMode" class="form-label">
-                                <strong>Card Recognition</strong>
-                            </label>
-                            <select class="form-select form-select-lg" id="ximilarMode" name="ximilarMode">
-                                <option value="Standard" selected="@(Model.XimilarMode == FlipKit.Core.Models.Enums.XimilarScanMode.Standard)">
-                                    Ximilar Scan
-                                </option>
-                                <option value="Magic" selected="@(Model.XimilarMode == FlipKit.Core.Models.Enums.XimilarScanMode.Magic)">
-                                    Ximilar Scan with Magic
-                                </option>
-                                <option value="Disabled" selected="@(Model.XimilarMode == FlipKit.Core.Models.Enums.XimilarScanMode.Disabled)">
-                                    No Ximilar Scan
-                                </option>
-                            </select>
-                            <small class="text-muted d-block mt-2" style="line-height: 1.5;">
-                                <i class="bi bi-info-circle"></i>
-                                <strong>Ximilar Scan:</strong> Fast database lookup.
-                                <strong>With Magic:</strong> Extra tokens for newer/short print cards.
-                                <strong>No Ximilar:</strong> AI vision only.
-                            </small>
-                        </div>
-
                         <!-- Model Selection -->
                         <div class="mb-4">
                             <label for="selectedModel" class="form-label">
-                                <strong>AI Model</strong> <span class="text-muted">(fallback when Ximilar doesn't match)</span>
+                                <strong>AI Model</strong> <span class="text-muted">(fallback when CardSight doesn't match)</span>
                             </label>
                             <select class="form-select form-select-lg" id="selectedModel" name="selectedModel">
                                 <optgroup label="Recommended">

@@ -73,14 +73,17 @@ else
         return new ApiCardRepository(httpClient, settings.SyncServerUrl!, logger);
     });
 }
-// Scanner services - Ximilar checked first, then falls back to OpenRouter LLM
-builder.Services.AddSingleton<IXimilarService, XimilarService>();
+// Scanner services — CardSight checked first (free 750/mo quota, sports-card-tuned),
+// then falls back to OpenRouter LLM on miss/low-confidence/error.
+builder.Services.AddSingleton<FlipKit.Core.Services.Implementations.CardsightScannerService>();
 builder.Services.AddSingleton<OpenRouterScannerService>();
 builder.Services.AddSingleton<IScannerService, CompositeScannerService>();
 // Live model catalog from OpenRouter — single instance, app-lifetime cache
 builder.Services.AddSingleton<IOpenRouterModelCatalog, FlipKit.Core.Services.Scanning.OpenRouterModelCatalog>();
 // Wraps GET /api/v1/key for the Settings → Usage panel.
 builder.Services.AddSingleton<IOpenRouterKeyInfoService, FlipKit.Core.Services.Implementations.OpenRouterKeyInfoService>();
+// Wraps GET /v1/subscription for the Settings → CardSight Usage panel.
+builder.Services.AddSingleton<ICardsightSubscriptionService, FlipKit.Core.Services.Implementations.CardsightSubscriptionService>();
 builder.Services.AddScoped<IPricerService, PricerService>(); // Depends on DbContext via repositories
 // Export pipeline — registered unconditionally (no DbContext dependency).
 builder.Services.AddSingleton<FlipKit.Core.Services.Export.WhatnotValuesProvider>();

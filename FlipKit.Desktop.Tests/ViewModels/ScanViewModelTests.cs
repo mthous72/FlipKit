@@ -1,3 +1,4 @@
+using System.Threading;
 using FlipKit.Core.Models;
 using FlipKit.Core.Models.Enums;
 using FlipKit.Core.Services;
@@ -141,7 +142,8 @@ public class ScanViewModelTests
     public async Task Should_PopulateScannedCard_When_ScanSucceeds()
     {
         var scanner = Substitute.For<IScannerService>();
-        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(),
+                Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns(ScanResultFor("Mike Trout"));
         var vm = Create(scanner: scanner);
         vm.ImagePath = "/tmp/front.jpg";
@@ -163,7 +165,8 @@ public class ScanViewModelTests
     public async Task Should_SurfaceErrorMessage_When_ScanThrows()
     {
         var scanner = Substitute.For<IScannerService>();
-        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<XimilarScanMode>())
+        scanner.ScanCardAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(),
+                Arg.Any<ScanDepth>(), Arg.Any<OcrHint?>(), Arg.Any<CancellationToken>())
                .Returns<ScanResult>(_ => throw new Exception("model down"));
         var vm = Create(scanner: scanner);
         vm.ImagePath = "/tmp/front.jpg";

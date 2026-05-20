@@ -15,17 +15,20 @@ namespace FlipKit.Web.Controllers
         private readonly ISettingsService _settingsService;
         private readonly IOpenRouterModelCatalog _modelCatalog;
         private readonly IOpenRouterKeyInfoService _keyInfoService;
+        private readonly ICardsightSubscriptionService _cardsightSubscriptionService;
         private readonly ILogger<SettingsController> _logger;
 
         public SettingsController(
             ISettingsService settingsService,
             IOpenRouterModelCatalog modelCatalog,
             IOpenRouterKeyInfoService keyInfoService,
+            ICardsightSubscriptionService cardsightSubscriptionService,
             ILogger<SettingsController> logger)
         {
             _settingsService = settingsService;
             _modelCatalog = modelCatalog;
             _keyInfoService = keyInfoService;
+            _cardsightSubscriptionService = cardsightSubscriptionService;
             _logger = logger;
         }
 
@@ -52,12 +55,12 @@ namespace FlipKit.Web.Controllers
                 // Don't expose full API keys, just show if they're configured
                 OpenRouterApiKey = string.IsNullOrEmpty(settings.OpenRouterApiKey) ? "" : "••••••••" + settings.OpenRouterApiKey[^4..],
                 ImgBBApiKey = string.IsNullOrEmpty(settings.ImgBBApiKey) ? "" : "••••••••" + settings.ImgBBApiKey[^4..],
-                XimilarApiKey = string.IsNullOrEmpty(settings.XimilarApiKey) ? "" : "••••••••" + settings.XimilarApiKey[^4..],
+                CardsightApiKey = string.IsNullOrEmpty(settings.CardsightApiKey) ? "" : "••••••••" + settings.CardsightApiKey[^4..],
                 EbayClientId = string.IsNullOrEmpty(settings.EbayClientId) ? "" : "••••••••" + settings.EbayClientId[^4..],
                 EbayClientSecret = string.IsNullOrEmpty(settings.EbayClientSecret) ? "" : "••••••••" + settings.EbayClientSecret[^4..],
                 HasOpenRouterKey = !string.IsNullOrEmpty(settings.OpenRouterApiKey),
                 HasImgBBKey = !string.IsNullOrEmpty(settings.ImgBBApiKey),
-                HasXimilarKey = !string.IsNullOrEmpty(settings.XimilarApiKey),
+                HasCardsightKey = !string.IsNullOrEmpty(settings.CardsightApiKey),
                 HasEbayCredentials = !string.IsNullOrEmpty(settings.EbayClientId) && !string.IsNullOrEmpty(settings.EbayClientSecret),
                 WhatnotFeePercent = settings.WhatnotFeePercent,
                 EbayFeePercent = settings.EbayFeePercent,
@@ -115,6 +118,35 @@ namespace FlipKit.Web.Controllers
                 }
             }
 
+            // CardSight Usage card — fetches calls-used this period so the
+            // Settings page surfaces how much of the free-tier allowance has
+            // been consumed. Best-effort: any failure populates
+            // CardsightUsageError so the Razor view renders a graceful inline
+            // message instead of crashing the page.
+            if (viewModel.HasCardsightKey)
+            {
+                try
+                {
+                    viewModel.CardsightUsage = await _cardsightSubscriptionService.GetAsync();
+                }
+                catch (CardsightException cex)
+                {
+                    viewModel.CardsightUsageError = cex.Reason switch
+                    {
+                        CardsightFailureReason.NotConfigured => "Enter your CardSight key to see usage.",
+                        CardsightFailureReason.InvalidKey => "CardSight rejected the key — double-check it.",
+                        CardsightFailureReason.QuotaExceeded => "CardSight quota exceeded for this billing period.",
+                        CardsightFailureReason.RateLimited => "CardSight is rate limiting requests. Try again in a minute.",
+                        _ => $"Couldn't load CardSight usage: {cex.Message}"
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "CardSight subscription fetch failed on Settings/Index GET");
+                    viewModel.CardsightUsageError = $"Couldn't load CardSight usage: {ex.Message}";
+                }
+            }
+
             return View(viewModel);
         }
 
@@ -166,9 +198,9 @@ namespace FlipKit.Web.Controllers
                     settings.ImgBBApiKey = model.ImgBBApiKey.Trim();
                 }
 
-                if (!string.IsNullOrEmpty(model.XimilarApiKey) && !model.XimilarApiKey.StartsWith("••••"))
+                if (!string.IsNullOrEmpty(model.CardsightApiKey) && !model.CardsightApiKey.StartsWith("••••"))
                 {
-                    settings.XimilarApiKey = model.XimilarApiKey.Trim();
+                    settings.CardsightApiKey = model.CardsightApiKey.Trim();
                 }
 
                 if (!string.IsNullOrEmpty(model.EbayClientId) && !model.EbayClientId.StartsWith("••••"))
@@ -245,14 +277,14 @@ namespace FlipKit.Web.Controllers
                 var isValid = await _settingsService.TestImgBBConnectionAsync(settings.ImgBBApiKey);
                 return Json(new { success = isValid, message = isValid ? "Connection successful!" : "Connection failed" });
             }
-            else if (service == "ximilar")
+            else if (service == "cardsight")
             {
-                if (string.IsNullOrEmpty(settings.XimilarApiKey))
+                if (string.IsNullOrEmpty(settings.CardsightApiKey))
                 {
                     return Json(new { success = false, message = "No API key configured" });
                 }
 
-                var isValid = await _settingsService.TestXimilarConnectionAsync(settings.XimilarApiKey);
+                var isValid = await _settingsService.TestCardsightConnectionAsync(settings.CardsightApiKey);
                 return Json(new { success = isValid, message = isValid ? "Connection successful!" : "Connection failed" });
             }
 

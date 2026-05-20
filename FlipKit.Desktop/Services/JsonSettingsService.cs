@@ -59,7 +59,7 @@ namespace FlipKit.Desktop.Services
             var copy = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions)!;
             copy.OpenRouterApiKey  = _encryption.Protect(src.OpenRouterApiKey);
             copy.ImgBBApiKey       = _encryption.Protect(src.ImgBBApiKey);
-            copy.XimilarApiKey     = _encryption.Protect(src.XimilarApiKey);
+            copy.CardsightApiKey   = _encryption.Protect(src.CardsightApiKey);
             copy.EbayClientId      = _encryption.Protect(src.EbayClientId);
             copy.EbayClientSecret  = _encryption.Protect(src.EbayClientSecret);
             copy.EbayAccessToken   = _encryption.Protect(src.EbayAccessToken);
@@ -72,7 +72,7 @@ namespace FlipKit.Desktop.Services
         {
             s.OpenRouterApiKey = _encryption.Unprotect(s.OpenRouterApiKey);
             s.ImgBBApiKey      = _encryption.Unprotect(s.ImgBBApiKey);
-            s.XimilarApiKey    = _encryption.Unprotect(s.XimilarApiKey);
+            s.CardsightApiKey  = _encryption.Unprotect(s.CardsightApiKey);
             s.EbayClientId     = _encryption.Unprotect(s.EbayClientId);
             s.EbayClientSecret = _encryption.Unprotect(s.EbayClientSecret);
             s.EbayAccessToken  = _encryption.Unprotect(s.EbayAccessToken);
@@ -127,15 +127,15 @@ namespace FlipKit.Desktop.Services
             }
         }
 
-        public async Task<bool> TestXimilarConnectionAsync(string apiKey)
+        public async Task<bool> TestCardsightConnectionAsync(string apiKey)
         {
             if (string.IsNullOrWhiteSpace(apiKey))
                 return false;
 
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.ximilar.com/account/v2/details/");
-                request.Headers.Add("Authorization", $"Token {apiKey}");
+                using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.cardsight.ai/health/auth");
+                request.Headers.Add("X-API-Key", apiKey);
 
                 var response = await _httpClient.SendAsync(request);
                 return response.IsSuccessStatusCode;
