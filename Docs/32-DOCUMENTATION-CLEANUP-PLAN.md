@@ -242,3 +242,72 @@ End-to-end check after restructure:
 6. **CLAUDE.md works**: skim `CLAUDE.md` Planning Documents section — every linked path should exist.
 7. **Build still passes**: `dotnet build FlipKit.sln` — moves shouldn't affect build, but confirm no `.csproj` references doc paths (unlikely).
 8. **Spot-check rewrites**: open `architecture/database-schema.md` and verify it lists every entity present in `FlipKit.Core/Models/`. Open `features/verification.md` and confirm LLM hint mode is described.
+
+---
+
+## Pre-execution rescan delta — 2026-05-20 (re-baselined against `master` @ v3.7.0)
+
+This section is the mandatory rescan output (Steps 1–4 above), run against `master` after the v3.7.0 release. It supersedes the snapshot wherever they conflict.
+
+### Branch / timing state (Steps 1–2, 5)
+
+- **In-flight branches:** only `fix/docs-cleanup` (this branch, now merged up to `master`) and the stale auto-branch `origin/claude/investigate-surprise-set-LsY0U`. **No pending feature branches.** The plan's central worry — many side branches invalidating the inventory — is effectively resolved.
+- **Recommendation:** confirm `claude/investigate-surprise-set-LsY0U` is abandoned and delete it (no doc impact either way). Timing window is clear; safe to proceed to execution after this delta.
+- **Doc-affecting merges since the 2026-05-07 snapshot:** `#31` (CardSight + subscription panel + **Ximilar removal**), `#32` (installer build guide + `build-hub-for-installer.ps1 -Version`), `#25` (OCR + verified-fields hint).
+
+### Baseline shift: v3.6.1 → **v3.7.0**
+
+- Current shipping version is **v3.7.0**. Version-drift checks must now flag `v3.6.0` **and** `v3.6.1`/`v3.6.x`, not just `v3.6.0`.
+- **Root `README.md`**: the entire download table is `v3.6.0` → bump to `v3.7.0` (note: macOS `.dmg` assets were not built for 3.7.0, so either omit or mark "build on Mac"). The `build-release.ps1` example shows `3.3.6`.
+- **Root `CLAUDE.md`**: "Current State: **v3.3.6**" and build examples `v3.2.0` — worse drift than the snapshot noted (it only flagged v3.2.0). Bump to v3.7.0.
+- **`HUB-ARCHITECTURE.md`**: 15 version references → heavy rewrite confirmed.
+
+### NEW — Ximilar fully removed; scrub from docs
+
+Ximilar was deleted from all code in v3.7.0 but still appears in **7 docs**:
+
+- **Active (must edit):** `09-EBAY-API.md` (1), `integration-roadmap.md` (1) — remove Ximilar references.
+- **Living (note removal):** `29-REFACTORING-PLAN.md` (5), `30-REFACTOR-STATUS.md` (3), `AUDIT-2026-05.md` (3) — annotate as "Ximilar removed in v3.7.0" rather than deleting the historical context.
+- **Archive-bound (no action):** `26-CSV-EXPORT-IMPLEMENTATION-PLAN.md`, `References/card_listings_export_spec.md`.
+- `features/ai-scanning.md` (from `03-OPENROUTER-INTEGRATION`) must describe **CardSight → OpenRouter** and **not** mention Ximilar.
+- **Add `Ximilar` to the dead-ref verification grep** (Verification §4) — should appear only in `archive/` and living planning docs after cleanup.
+
+### NEW — CardSight is undocumented in `Docs/`
+
+Zero CardSight mentions exist anywhere under `Docs/` (only root `README.md` + `CHANGELOG.md`). The restructure must **add** CardSight content (commit 3):
+
+- `features/ai-scanning.md`: CardSight first-pass recognition, confidence tiers, fallthrough to OpenRouter, and the **subscription/quota panel** (`ICardsightSubscriptionService`, `GET /v1/subscription`, 750/mo free tier).
+- `architecture/database-schema.md`: add `Card.AiModelUsed` (shipped in `#29`, undocumented) alongside the SurpriseSet/verified-fields additions.
+- Consider a new ADR for the CardSight-replaces-Ximilar provider swap (optional).
+- Read for accuracy: `FlipKit.Core/Services/Implementations/CardsightScannerService.cs`, `CardsightSubscriptionService.cs`, `Services/ApiModels/CardsightModels.cs`.
+
+### NEW — docs the original action list MISSED (now classified)
+
+| Doc | Disposition |
+|---|---|
+| `Docs/05-PRICING-RESEARCH.md` | → `features/pricing-research.md` (active feature doc; light update). **Omitted entirely from the snapshot's file-by-file list.** |
+| `Docs/27-WEBCAM-CAPTURE-PLAN.md` | → `archive/` — header says **"✅ Shipped 2026-05-04."** Salvage a brief webcam-capture blurb into `guides/user-guide.md` if useful. |
+| `Docs/28-CHECKLIST-INSIDER-IMPORT-PLAN.md` | → `planning/checklist-insider-import-plan.md` — **"Planned (not yet started)"**, a living plan. |
+| `installer/README.md` | **Leave in place** — now a maintained Windows-installer build guide (from `#32`). Link it from the new `Docs/README.md` index; do not move. |
+| `AGENTS.md` (repo root, untracked) | **Out of scope** for the `Docs/` restructure. Separate decision needed: track it as agent guidance (sibling to `CLAUDE.md`) or delete. Flag to user. |
+
+### Brand drift is wider than the snapshot documented
+
+"Card Lister" still appears in active/living docs the snapshot did **not** flag (it only named `00-PROGRAM-OVERVIEW` + `card_listings_export_spec`). Add to commit 2 (refresh) scope:
+
+- `09-EBAY-API.md` (2), **`12-INSTALL-GUIDE.md` (12)**, `14-VARIATION-VERIFICATION.md` (3), `16-CHECKLIST-DATA-SPEC.md` (1), `17-FUTURE-ROADMAP.md` (2), `29/30` (living). `12-INSTALL-GUIDE` is being rewritten anyway; the rest move from "move only" → "move + fix brand".
+
+### Screenshot placeholders
+
+- Only **`USER-GUIDE.md`** still has them (**41** markers) → heavy cleanup confirmed.
+- **`WEB-USER-GUIDE.md` is now clean (0)** → downgrade from "littered with placeholders" to plain light update.
+
+### Corrections to the snapshot
+
+- The "Critical files to read" list cites `OpenRouterScanService.cs`; the actual file is **`OpenRouterScannerService.cs`**.
+- `02-DATABASE-SCHEMA` rewrite must also add `Card.AiModelUsed`; verify the full entity set against `FlipKit.Core/Models/` (SurpriseSet is shipped).
+- This plan file (`32-…`) → move to **`planning/documentation-cleanup-plan.md`** (keep — the rescan/delta record stays useful), not archived.
+
+### Verdict
+
+Inventory is re-baselined. The 4-commit execution order still holds; the deltas above are folded into each commit (esp. commit 2 = wider brand/version/Ximilar scrub, commit 3 = add CardSight + the three newly-classified docs). **Cleared to proceed to execution.**
