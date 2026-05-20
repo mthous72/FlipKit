@@ -1,8 +1,142 @@
-# OpenRouter Integration for Card Scanning
+# AI Card Scanning (CardSight → OpenRouter)
 
 ## Overview
 
-Use OpenRouter.ai to access vision-capable models (Claude, GPT-4o, Gemini) for analyzing sports card images and extracting structured data.
+FlipKit identifies cards from photos with a **two-provider pipeline**, composed
+by `CompositeScannerService` (`IScannerService`):
+
+1. **CardSight (first pass)** — a sports-card-specific recognition API. Tried
+   first when a CardSight key is configured. On a confident exact match it
+   returns structured card data (and grading-slab data when present) without
+   spending an LLM call.
+2. **OpenRouter (fallback)** — a vision-capable LLM (Claude / GPT-4o / Gemini /
+   free models) via OpenRouter.ai. Used when CardSight is not configured, isn't
+   confident, or returns no exact match. Also handles custom prompts and the
+   "Enhance with AI" flow.
+
+```
+              ┌──────────────────────────┐
+  image  ───▶ │ CompositeScannerService  │
+              └────────────┬─────────────┘
+                           │ CardSight key configured?
+                ┌──── yes ─┴── no ────────────┐
+                ▼                              ▼
+       CardsightScannerService          OpenRouterScannerService
+       POST /v1/identify/card           POST /v1/chat/completions
+                │                              ▲
+       confident exact match? ── no ───────────┘ (fallback)
+                │ yes
+                ▼
+          ScanResult (Card + confidences, AiModelUsed)
+```
+
+The provider that produced a result is stamped on `Card.AiModelUsed`
+(`"cardsight"` for a CardSight match, or the OpenRouter model id for an LLM
+scan). See [../architecture/database-schema.md](../architecture/database-schema.md).
+
+> **Note:** Ximilar was the previous first-pass provider; it was fully removed in
+> v3.7.0 and replaced by CardSight.
+
+---
+
+## CardSight (first pass)
+
+**Service:** `FlipKit.Core/Services/Implementations/CardsightScannerService.cs`
+**Models:** `FlipKit.Core/Services/ApiModels/CardsightModels.cs`
+**Base URL:** `https://api.cardsight.ai`
+
+### Configuration
+
+CardSight is enabled by setting `CardsightApiKey` in Settings → Scanning. The key
+is sent as the `X-API-Key` header on every request. `IsConfigured` is simply
+"is the key non-empty." When unconfigured, `CompositeScannerService` skips
+straight to OpenRouter.
+
+### Identify request
+
+`POST /v1/identify/card` with the front image as `multipart/form-data` (field
+name `image`). The response (`CardsightIdentifyResponse`) contains a list of
+`detections`; FlipKit uses the first one.
+
+### Confidence tiers
+
+CardSight returns a `confidence` string per detection — `High`, `Medium`, or
+`Low` (mirrored by the `CardsightConfidenceTier` enum: High ≈ 90-100%,
+Medium ≈ 75-89%, Low ≈ 50-74%). A scan is accepted only when:
+
+- the detection carries a **card `id`** (present only for *exact* card matches;
+  set-level-only matches are treated as a miss because they aren't actionable
+  for inventory), **and**
+- the detected tier is **at or above** the configured
+  `MinCardsightConfidence` threshold.
+
+### Fallthrough to OpenRouter
+
+`CardsightScannerService` throws a `CardsightException` carrying a
+`CardsightFailureReason` for any non-success outcome. `CompositeScannerService`
+catches it, logs the reason, and **falls back to OpenRouter**. Failure reasons:
+
+| Reason | Trigger |
+|---|---|
+| `NotConfigured` | No API key set |
+| `NoMatch` | No detections / no exact card id / HTTP 404 |
+| `LowConfidence` | Detection below `MinCardsightConfidence` |
+| `InvalidKey` | HTTP 401 |
+| `QuotaExceeded` | HTTP 402 |
+| `RateLimited` | HTTP 429 |
+| `BadRequest` | HTTP 400 / missing file |
+| `Transient` | HTTP 408/5xx, network errors |
+| `Unknown` | Unparseable response |
+
+### Field mapping
+
+A CardSight match maps onto `Card` as: `Name → PlayerName`, `Number →
+CardNumber`, `Year`, `Manufacturer`, `ReleaseName → Brand`, `SetName`,
+`Parallel.Name → ParallelName`, and serial number from `Parallel.NumberedTo` or
+`NumberedTo` (`/N`). `VariationType` is `Parallel` when a parallel name is
+present, else `Base`. Attribute strings set the `IsRookie`/`IsAuto`/`IsRelic`/
+`IsShortPrint`/`IsSSP` flags; grading detail sets `IsGraded`, `GradeCompany`,
+`GradeValue`, `AutoGrade`, and `Condition`. `DataSource = Ai`,
+`AiModelUsed = "cardsight"`.
+
+### Subscription / quota panel
+
+**Service:** `CardsightSubscriptionService` (`ICardsightSubscriptionService`)
+**Endpoint:** `GET https://api.cardsight.ai/v1/subscription` (same `X-API-Key`).
+
+The endpoint returns an aggregate `calls` count and a per-key breakdown, but
+**no quota limit, reset date, or plan field**. FlipKit frames usage against the
+documented **free-tier allowance of 750 identifications/month**
+(`DefaultFreeTierMonthlyQuota = 750`), computing `CallsRemaining = max(0, 750 -
+calls)`. This surfaces in the **Settings → CardSight Usage** panel (Desktop +
+Web), mirroring the OpenRouter usage panel. The 750 figure is labelled as the
+free-tier quota so paid users aren't misled into thinking it's a hard cap. There
+is no internal cache — the caller owns refresh cadence.
+
+---
+
+## OpenRouter (fallback / LLM scanning)
+
+**Service:** `FlipKit.Core/Services/Implementations/OpenRouterScannerService.cs`
+
+Use OpenRouter.ai to access vision-capable models (Claude, GPT-4o, Gemini, and
+free models) for analyzing sports card images and extracting structured data.
+The shipping service sends a structured-output request (`response_format` with a
+`json_schema`) rather than relying on free-form JSON, and supports:
+
+- **Scan depth** — `Quick` (lot-labeling prompt) vs. `Standard`.
+- **Verified-fields hint mode** — when an `OcrHint` carries confirmed fields, a
+  slimmer "Enhance" prompt asks the model to echo those fields verbatim and focus
+  on visual-pattern fields. See
+  [verification.md](verification.md#shipped-verified-fields-llm-hint-mode).
+- **Model fallback** — on retryable (5xx / rate-limit) errors the service falls
+  back across the model list.
+- **Billing guard** — the UI "auto" sentinel is never sent on the wire (it would
+  route to a premium model); it's resolved to the free default first.
+
+The sections below document the OpenRouter HTTP contract and prompt design as
+reference material. The pseudocode is illustrative — the production
+implementation is the C# service above.
 
 ---
 
