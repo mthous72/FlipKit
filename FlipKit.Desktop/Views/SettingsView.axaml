@@ -116,20 +116,6 @@
                         Optional: sports-card recognition via CardSight (750 free identifications/month). When set, FlipKit tries CardSight first and falls back to OpenRouter on miss or low confidence — so OpenRouter quota is preserved for cards CardSight can't identify. Sign up at https://cardsight.ai/ and copy your API key from the dashboard. API reference: https://api.cardsight.ai/documentation
                     </TextBlock>
 
-                    <!-- Ximilar (Optional, currently not in the active scan chain) -->
-                    <TextBlock Text="Ximilar API Key (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
-                                Command="{Binding TestXimilarCommand}"
-                                IsEnabled="{Binding !IsTestingXimilar}"/>
-                        <TextBox Text="{Binding XimilarApiKey}"
-                                 PasswordChar="*" Watermark="Your Ximilar API key"/>
-                    </DockPanel>
-                    <TextBlock Text="{Binding XimilarStatus}" FontSize="12" Opacity="0.7"/>
-                    <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.6" Margin="0,-6,0,0">
-                        Not used in the active scan chain (CardSight replaced it). Key is retained for legacy/manual use. Get key at: https://www.ximilar.com/
-                    </TextBlock>
-
                     <!-- eBay API Credentials -->
                     <TextBlock Text="eBay API Credentials (Optional)" FontWeight="SemiBold" Margin="0,12,0,0"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Opacity="0.7" Margin="0,2,0,6">
@@ -938,9 +924,9 @@
                             </StackPanel>
 
                             <StackPanel Spacing="2">
-                                <TextBlock Text="Ximilar — api.ximilar.com" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock Text="CardSight — api.cardsight.ai" FontWeight="SemiBold" FontSize="13"/>
                                 <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8">
-                                    Alternate card identifier (sport / TCG / slab grading). Sends card images only. Used as the first-pass scanner when Ximilar mode is enabled in scan settings; disabled by default.
+                                    Purpose-built sports-card identifier used as the first-pass scanner. Sends card images only. Falls back to OpenRouter on a miss, low confidence, or error.
                                 </TextBlock>
                             </StackPanel>
 

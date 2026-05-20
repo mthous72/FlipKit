@@ -326,7 +326,7 @@ namespace FlipKit.Desktop.ViewModels
                 var settings = _settingsService.Load();
 
                 // First-run consent: if the user hasn't yet acknowledged that images
-                // are sent to OpenRouter/Ximilar, show the dialog before scanning.
+                // are sent to CardSight/OpenRouter, show the dialog before scanning.
                 if (!settings.AiScanConsentGiven)
                 {
                     var consent = await _aiScanConsentService.AskAsync();

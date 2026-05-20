@@ -161,9 +161,7 @@ namespace FlipKit.Desktop
                     });
                 }
                 // Scanner services — CardSight checked first (free 750/mo quota, sports-card-tuned),
-                // then falls back to OpenRouter LLM on miss/low-confidence/error. Ximilar is no
-                // longer in the active chain; service registration retained for legacy callers.
-                services.AddSingleton<IXimilarService, XimilarService>();
+                // then falls back to OpenRouter LLM on miss/low-confidence/error.
                 services.AddSingleton<FlipKit.Core.Services.Implementations.CardsightScannerService>();
                 services.AddSingleton<OpenRouterScannerService>();
                 services.AddSingleton<IScannerService, CompositeScannerService>();

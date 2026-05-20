@@ -11,7 +11,7 @@ namespace FlipKit.Desktop.Services
 {
     /// <summary>
     /// Avalonia implementation of <see cref="IAiScanConsentService"/> — shows a
-    /// modal dialog explaining that card images are sent to OpenRouter/Ximilar,
+    /// modal dialog explaining that card images are sent to CardSight/OpenRouter,
     /// with an optional "remember this choice" checkbox. Returns false (cancel) on
     /// any failure so the caller aborts the scan rather than crashing.
     /// </summary>
