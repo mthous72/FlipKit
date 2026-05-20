@@ -104,7 +104,6 @@ ImgBB is only needed if you want card image URLs embedded in your Whatnot or eBa
 | **OpenRouter** | [openrouter.ai/keys](https://openrouter.ai/keys) | AI card scanning (free tier available) |
 | **CardSight** | [cardsight.ai](https://cardsight.ai/) | First-pass sports-card recognition before OpenRouter (optional, 750 free identifications/month) |
 | **ImgBB** | [api.imgbb.com](https://api.imgbb.com/) | Image URLs in CSV exports (optional) |
-| **Ximilar** | [ximilar.com](https://www.ximilar.com/) | Legacy — no longer in the active scan chain (CardSight replaced it). Key field retained for manual use |
 | **eBay Client ID + Secret** | [developer.ebay.com/my/keys](https://developer.ebay.com/my/keys) | Direct eBay listing creation (optional) |
 
 **Desktop:** Configure via the Settings page (gear icon in the sidebar)

@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Removed
+- **Ximilar card-recognition integration** — fully removed from the codebase, Settings UI, and scan flow. The active recognition chain is now CardSight (first pass) → OpenRouter (fallback), which `CompositeScannerService` already used; Ximilar was no longer invoked. Deleted the Ximilar service, models, and `XimilarScanMode` enum; dropped the Ximilar API-key field, scan-mode dropdown ("Magic AI"), and test-connection button from Desktop and Web Settings; and updated the AI-scan consent text to name CardSight and OpenRouter only. Old `config.json` files with a leftover `XimilarApiKey` are ignored on load.
 
 ## [3.6.1] - 2026-05
 
