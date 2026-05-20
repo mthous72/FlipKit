@@ -648,7 +648,7 @@ SaleRecord:
 
 **Summary:** Audit current DPAPI approach and address cross-platform gaps before adding Whatnot + additional eBay scopes.
 
-**Problem:** Current approach works well on Windows. On Linux (Web server on a headless box), key storage relies on file permissions only. With more platforms and more tokens (eBay refresh token, Whatnot API token, OpenRouter key, ImgBB key, Ximilar key), the config.json grows and any plaintext leak of the file is serious.
+**Problem:** Current approach works well on Windows. On Linux (Web server on a headless box), key storage relies on file permissions only. With more platforms and more tokens (eBay refresh token, Whatnot API token, OpenRouter key, ImgBB key, CardSight key), the config.json grows and any plaintext leak of the file is serious.
 
 **Current state:** `DataProtectionSecretEncryption` with ASP.NET Core Data Protection — good on Windows (DPAPI), acceptable on Linux with file permissions, no cross-machine portability.
 

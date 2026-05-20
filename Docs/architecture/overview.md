@@ -1,458 +1,202 @@
-# Avalonia MVVM Desktop App Architecture
+# Architecture Overview
 
-## Overview
+FlipKit is a C# / .NET 8 application suite for sports-card sellers. It ships as
+**FlipKit Hub** (v3.7.0): a single package containing the Avalonia desktop app
+plus embedded Web and API servers, all managed from the Desktop UI.
 
-The app is a **native cross-platform desktop application** built with Avalonia UI and the MVVM pattern. Users double-click an executable — no Python, no browser, no runtime dependencies.
+This document covers two layers:
 
-**Key Principles:**
-- **Local-first:** All data stays on user's computer
-- **User owns credentials:** They create their own API accounts
-- **Simple setup:** First-run wizard for non-technical users
-- **KISS:** Keep It Simple, Stupid — one obvious way to do each task
-- **No Norman Doors:** UI does what it looks like it does
-- **MVVM:** ViewModels are testable, Views are declarative XAML
+1. **The Hub package** — how Desktop, Web, and API fit together and how the
+   Desktop app manages the embedded server processes.
+2. **The Desktop MVVM app** — DI, navigation, and the View/ViewModel conventions.
 
----
-
-## Why Avalonia + MVVM
-
-| Factor | Avalonia MVVM | NiceGUI (Python/Browser) | WPF |
-|--------|--------------|--------------------------|-----|
-| Cross-platform | ✅ Win/Mac/Linux | ✅ Anywhere with browser | ❌ Windows only |
-| Native feel | ✅ True desktop window | ❌ Browser tab | ✅ Native |
-| No runtime deps | ✅ Self-contained exe | ❌ Needs Python installed | ✅ But Windows only |
-| Modern UI | ✅ Fluent theme, XAML | ✅ Quasar/Vue | ✅ But dated patterns |
-| Testable logic | ✅ ViewModels unit-testable | ❌ No formal separation | ✅ Same MVVM |
-| Distribution | ✅ Single file publish | ❌ Folder + install steps | ✅ But Windows only |
-| XAML ecosystem | ✅ Shared skills with WPF/MAUI | ❌ Different paradigm | ✅ Origin of XAML |
-
-**How it works:**
-1. User double-clicks `FlipKit.exe` (Windows) or `FlipKit.app` (Mac)
-2. Native window appears immediately
-3. First run → Setup Wizard guides API key configuration
-4. Everything runs on their machine, data stored locally in SQLite
+For the data-access split (Local SQLite vs. Remote API over Tailscale) see
+[data-access.md](data-access.md). For the schema see
+[database-schema.md](database-schema.md).
 
 ---
 
-## Dependency Injection Setup
+## FlipKit Hub Package
 
-All services and ViewModels are registered in `App.axaml.cs`:
+Instead of three separate downloads, FlipKit Hub bundles everything into one
+package and lets the Desktop app orchestrate the rest:
 
-```csharp
-public partial class App : Application
-{
-    public static IServiceProvider Services { get; private set; } = null!;
+- **Single download** — one package contains Desktop + servers.
+- **Unified management** — start/stop the Web and API servers from
+  Settings → Servers in the Desktop app.
+- **Auto-start** — servers can start automatically when Desktop launches.
+- **QR-code access** — connect a phone to the Web UI by scanning a QR code.
+- **Clean shutdown** — the Desktop app kills its server child processes on exit.
 
-    public override void OnFrameworkInitializationCompleted()
-    {
-        var services = new ServiceCollection();
-
-        // Database
-        services.AddDbContext<FlipKitDbContext>(options =>
-            options.UseSqlite($"Data Source={GetDbPath()}"));
-
-        // Services
-        services.AddSingleton<ISettingsService, JsonSettingsService>();
-        services.AddTransient<ICardRepository, CardRepository>();
-        services.AddHttpClient<IScannerService, OpenRouterScannerService>();
-        services.AddHttpClient<IImageUploadService, ImgBBUploadService>();
-        services.AddTransient<IPricerService, PricerService>();
-        services.AddTransient<IExportService, CsvExportService>();
-        services.AddSingleton<IBrowserService, SystemBrowserService>();
-        services.AddSingleton<IFileDialogService, AvaloniaFileDialogService>();
-
-        // ViewModels
-        services.AddTransient<MainWindowViewModel>();
-        services.AddTransient<ScanViewModel>();
-        services.AddTransient<InventoryViewModel>();
-        services.AddTransient<PricingViewModel>();
-        services.AddTransient<ExportViewModel>();
-        services.AddTransient<SettingsViewModel>();
-        services.AddTransient<SetupWizardViewModel>();
-        services.AddTransient<RepriceViewModel>();
-
-        Services = services.BuildServiceProvider();
-
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = Services.GetRequiredService<MainWindowViewModel>()
-            };
-        }
-
-        base.OnFrameworkInitializationCompleted();
-    }
-}
 ```
+┌─────────────────────────────────────────────────────────────┐
+│ FlipKit Hub Package                                          │
+├─────────────────────────────────────────────────────────────┤
+│  FlipKit.Desktop(.exe)  — Avalonia UI 11 (.NET 8)            │
+│  ├─ ServerManagementService (spawns + monitors servers)      │
+│  ├─ Settings → Servers UI (start/stop/logs/QR)               │
+│  └─ Auto-start logic                                         │
+│                                                              │
+│  servers/                                                    │
+│  ├─ FlipKit.Web(.exe)   — ASP.NET Core 8 MVC, default :5000  │
+│  └─ FlipKit.Api(.exe)   — Minimal API (.NET 9), default :5001│
+│                                                              │
+│  Shared DB: %LOCALAPPDATA%\FlipKit\cards.db (SQLite, WAL)    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The Desktop, Web, and API projects all reference **FlipKit.Core** and never
+reference each other. The API targets **net9.0**; Core, Desktop, and Web target
+**net8.0**.
+
+### Components
+
+| Component | Tech | Default port | Health |
+|---|---|---|---|
+| FlipKit.Desktop | Avalonia UI 11, .NET 8 | — | — |
+| FlipKit.Web | ASP.NET Core 8 MVC, Bootstrap 5 | 5000 | `/health` |
+| FlipKit.Api | Minimal API, .NET 9 | 5001 | `/health` |
+
+The shared SQLite database runs in **Write-Ahead Logging (WAL)** mode so
+Desktop, Web, and API can read concurrently without lock contention.
+
+### Server lifecycle (`ServerManagementService`)
+
+`FlipKit.Desktop/Services/ServerManagementService.cs` owns the server child
+processes. Behavior reflects the shipping code, not the original v3.1 design:
+
+- **Executable resolution** — looks for `FlipKit.Web`/`FlipKit.Api` (with or
+  without `.exe`) first in a `servers/` subfolder next to the Desktop binary,
+  then falls back to the Desktop directory for development runs.
+- **Startup** — each server is launched with
+  `--urls http://0.0.0.0:{port}`, with stdout/stderr captured into an in-memory
+  ring buffer (last 100 lines, surfaced in Settings → Servers → Server Logs).
+- **Port fallback** — if the requested port is taken, the service probes up to
+  10 consecutive ports and uses the first free one; the actual port is reported
+  back to the UI (and the QR code).
+- **Health gating** — after launch the service polls `GET /health` (with a
+  ~2 s warm-up) until success or a 10 s timeout, then reports the result.
+- **Crash detection** — a 5 s timer checks whether either process has exited
+  unexpectedly and clears its state so the UI shows it as stopped.
+- **Shutdown** — servers are console apps, so they don't respond to
+  `CloseMainWindow()`. The service calls `Process.Kill(entireProcessTree: true)`
+  on each. `Dispose()` stops both servers synchronously so closing the Desktop
+  app never orphans a server.
+
+### Network binding & security
+
+- The Web and API servers bind to `http://0.0.0.0:{port}` — reachable on every
+  local interface. There is **no built-in authentication**; the trust model is
+  "your local network."
+- Recommendations: restrict with a firewall, connect phones over trusted Wi-Fi,
+  use **Tailscale** for remote access, and never expose the servers to the
+  public internet. See [data-access.md](data-access.md) and the Tailscale guides
+  under `Docs/guides/`.
+
+### Use cases
+
+- **Mobile scanning at home** — launch Desktop (servers auto-start), open
+  Settings → Servers, scan the QR code with a phone, and scan cards from the Web
+  UI. Cards sync through the shared database.
+- **Card-show scanning** — with Desktop running at home and the phone on
+  Tailscale, browse to the Tailscale IP to scan purchases on the go.
+- **Desktop-only** — uncheck the auto-start options in Settings → Servers to run
+  the desktop app alone with no servers.
 
 ---
 
-## ViewLocator Pattern
+## Desktop MVVM App
 
-Maps ViewModels to Views automatically by naming convention:
+The Desktop app is a native cross-platform desktop application built with
+Avalonia UI 11 and the MVVM pattern. Users double-click an executable — no
+Python, no browser, no runtime dependency on the target machine
+(self-contained publish).
 
-```csharp
-public class ViewLocator : IDataTemplate
-{
-    public Control Build(object? data)
-    {
-        if (data is null) return new TextBlock { Text = "No data" };
+**Key principles:**
 
-        var name = data.GetType().FullName!
-            .Replace("Core.ViewModels", "App.Views")
-            .Replace("ViewModel", "View");
+- **Local-first** — data stays on the user's computer.
+- **User owns credentials** — users create their own API accounts.
+- **Simple setup** — a first-run wizard guides API-key configuration.
+- **MVVM** — ViewModels are unit-testable; Views are declarative XAML.
 
-        var type = Type.GetType(name);
-        if (type != null) return (Control)Activator.CreateInstance(type)!;
+### Dependency injection
 
-        return new TextBlock { Text = $"View not found: {name}" };
-    }
+Services and ViewModels are registered in `App.axaml.cs`. The scan service is
+the `CompositeScannerService` (CardSight first, OpenRouter fallback — see
+[../features/ai-scanning.md](../features/ai-scanning.md)).
 
-    public bool Match(object? data) => data is ObservableObject;
-}
+DI lifetime rule: any service that takes `FlipKitDbContext` (directly or
+transitively) must be **Scoped**; ViewModels are **Transient**; pure helpers
+with no DB dependency can be **Singleton**.
+
+### ViewLocator pattern
+
+ViewModels are mapped to Views by naming convention — the type name's
+`ViewModel` suffix is replaced with `View` and the namespace is remapped to the
+Views namespace. So `ScanViewModel` resolves to `ScanView`. The `ViewLocator` is
+registered as an application-level `DataTemplate` in `App.axaml`.
+
+### Navigation
+
+Navigation is ViewModel-first. `MainWindowViewModel.CurrentPage` holds the active
+ViewModel and a `NavigateTo` relay command swaps it for the requested page
+(Scan, Inventory, Pricing, Export, Settings, etc.). `MainWindow.axaml` hosts a
+sidebar plus a `ContentControl` bound to `CurrentPage`; the `ViewLocator`
+resolves the matching View automatically.
+
+### Where things live
+
+```
+FlipKit.Desktop/
+├── App.axaml(.cs)        # Theme, resources, ViewLocator, DI container
+├── ViewLocator.cs        # ViewModel → View resolver
+├── Views/                # Pure XAML (MainWindow, Scan, Inventory, …)
+├── ViewModels/           # [ObservableProperty] / [RelayCommand] VMs
+├── Services/             # Platform-coupled services (file dialogs, ServerManagementService)
+├── Converters/           # XAML value converters
+└── Assets/               # Icons, logo
 ```
 
-Registered in `App.axaml`:
-```xml
-<Application.DataTemplates>
-    <local:ViewLocator />
-</Application.DataTemplates>
+Views are pure XAML with declarative bindings — no business logic in code-behind.
+ViewModels use CommunityToolkit.Mvvm source generators (`[ObservableProperty]`,
+`[RelayCommand]`); note the generator drops the `Async` suffix from command names
+(`LoadAsync` → `LoadCommand`).
+
+### Credential & data storage
+
+User configuration and data live under the platform app-data folder:
+
 ```
+%LOCALAPPDATA%\FlipKit\        (Windows; ~/.local/share/FlipKit on Linux,
+├── config.json                 ~/Library/Application Support/FlipKit on macOS)
+├── cards.db                    ← SQLite inventory (WAL)
+├── images/                     ← local card photos
+├── exports/                    ← generated CSV files
+└── logs/                       ← app logs
+```
+
+API keys and OAuth tokens (OpenRouter, ImgBB, CardSight, eBay) are stored in
+`config.json`. Secrets are encrypted at rest via
+`DataProtectionSecretEncryption` (ASP.NET Core Data Protection — DPAPI on
+Windows, file-based key ring on Linux/macOS) using a `protected:` prefix.
 
 ---
 
-## Navigation Architecture
+## Service interfaces
 
-`MainWindowViewModel` manages page navigation:
+Business logic is accessed through interfaces defined in `FlipKit.Core`. Key
+ones include `ICardRepository`, `IScannerService` (implemented by
+`CompositeScannerService`), `ICardsightSubscriptionService`, `IPricerService`,
+`IImageUploadService`, `IExportService`, `ISettingsService`, and
+`IServerManagementService`. See `FlipKit.Core/Services/Interfaces/` for the
+authoritative list.
 
-```csharp
-public partial class MainWindowViewModel : ObservableObject
-{
-    private readonly IServiceProvider _services;
-    private readonly ISettingsService _settings;
+## Architecture decision records
 
-    [ObservableProperty] private ObservableObject _currentPage;
-    [ObservableProperty] private bool _isFirstRun;
+Significant decisions are recorded under [adr/](adr/):
 
-    public MainWindowViewModel(IServiceProvider services, ISettingsService settings)
-    {
-        _services = services;
-        _settings = settings;
-
-        IsFirstRun = !_settings.HasValidConfig();
-        CurrentPage = IsFirstRun
-            ? _services.GetRequiredService<SetupWizardViewModel>()
-            : _services.GetRequiredService<ScanViewModel>();
-    }
-
-    [RelayCommand]
-    private void NavigateTo(string page)
-    {
-        CurrentPage = page switch
-        {
-            "Scan"      => _services.GetRequiredService<ScanViewModel>(),
-            "Inventory" => _services.GetRequiredService<InventoryViewModel>(),
-            "Pricing"   => _services.GetRequiredService<PricingViewModel>(),
-            "Export"    => _services.GetRequiredService<ExportViewModel>(),
-            "Settings"  => _services.GetRequiredService<SettingsViewModel>(),
-            "Reprice"   => _services.GetRequiredService<RepriceViewModel>(),
-            _ => CurrentPage
-        };
-    }
-}
-```
-
-`MainWindow.axaml` hosts sidebar + content area:
-```xml
-<Window>
-    <DockPanel>
-        <!-- Sidebar Navigation -->
-        <StackPanel DockPanel.Dock="Left" Width="80" Background="{DynamicResource SystemChromeLowColor}">
-            <Button Command="{Binding NavigateToCommand}" CommandParameter="Scan">
-                <StackPanel><PathIcon Data="{StaticResource CameraIcon}"/><TextBlock Text="Scan"/></StackPanel>
-            </Button>
-            <Button Command="{Binding NavigateToCommand}" CommandParameter="Inventory">
-                <StackPanel><PathIcon Data="{StaticResource ListIcon}"/><TextBlock Text="Cards"/></StackPanel>
-            </Button>
-            <!-- ... more nav buttons ... -->
-        </StackPanel>
-
-        <!-- Active Page Content -->
-        <ContentControl Content="{Binding CurrentPage}" />
-    </DockPanel>
-</Window>
-```
-
-The `ViewLocator` automatically resolves the correct View for whatever ViewModel is in `CurrentPage`.
-
----
-
-## App File Structure
-
-```
-FlipKit.App/
-├── App.axaml                          # Theme, resources, ViewLocator
-├── App.axaml.cs                       # DI container, startup logic
-├── Program.cs                         # Entry point
-├── ViewLocator.cs                     # ViewModel → View resolver
-│
-├── Views/
-│   ├── MainWindow.axaml               # Shell: sidebar + content area
-│   ├── ScanView.axaml                 # Drop zone + preview + form + save
-│   ├── InventoryView.axaml            # DataGrid + filters + bulk actions
-│   ├── PricingView.axaml              # Card picker + research + price input
-│   ├── ExportView.axaml               # Upload images + download CSV
-│   ├── SettingsView.axaml             # API keys + preferences + data mgmt
-│   ├── SetupWizardView.axaml          # First-run 3-step setup
-│   ├── CardDetailView.axaml           # Reusable card edit form (UserControl)
-│   └── RepriceView.axaml              # Stale card queue
-│
-├── Styles/
-│   ├── AppStyles.axaml                # Brand colors, typography, spacing
-│   └── Controls.axaml                 # Custom control templates
-│
-├── Converters/                         # Authoritative list lives in
-│   │                                    # FlipKit.Desktop/Converters/; sample shown below
-│   ├── PriceAgeToColorConverter.cs    # Days since priced → 🟢🟡🔴 brush
-│   ├── StatusToBadgeConverter.cs      # CardStatus → display string/color
-│   ├── CurrencyFormatConverter.cs     # decimal → "$12.99"
-│   └── NullToVisibilityConverter.cs   # null check → show/hide
-│   # NOTE: BoolToVisibilityConverter was deleted in Phase 3 — no XAML reference found.
-│
-└── Assets/
-    ├── logo.png
-    └── Icons/                         # SVG path data for sidebar icons
-```
-
----
-
-## Key Views Detail
-
-### 1. Scan View
-
-**Purpose:** Upload image → AI scan → review → save to inventory
-
-**Layout (two-column):**
-- Left: Image drop zone / preview (accepts drag & drop or file browse)
-- Right: Card detail form (populates after scan)
-- Bottom: "Scan Card" button → "Save to My Cards" button
-
-**ViewModel bindings:**
-- `ImagePath` → image preview
-- `IsScanning` → spinner overlay + disabled buttons
-- `ScannedCard` (CardDetailViewModel) → form fields
-- `ErrorMessage` → error banner with "Try Again" / "Enter Manually" options
-- `ScanCardCommand` → async relay command
-- `SaveCardCommand` → async relay command
-
-**Drag & drop:** Avalonia supports `DragDrop.Drop` attached events on any control.
-
-### 2. Inventory View
-
-**Purpose:** View, filter, search, edit, and bulk-manage all cards
-
-**Layout:**
-- Top bar: Search TextBox + Sport ComboBox + Status ComboBox + Price Age filter
-- Center: DataGrid with columns: checkbox, thumbnail, player, year, brand, price, price age indicator, status
-- Bottom: Bulk action buttons (Delete Selected, Mark Ready)
-- Double-click row → opens card detail as a dialog or side panel
-
-**Key features:**
-- `CollectionViewSource` with filters for real-time filtering
-- Price age column uses `PriceAgeToColorConverter` for 🟢🟡🔴 circles
-- Badge on nav button shows total card count
-- "Reprice Stale Cards (N)" button when stale cards exist
-
-### 3. Pricing View
-
-**Purpose:** Research comps and set prices, one card at a time
-
-**Layout:**
-- Card display: thumbnail + details
-- Research buttons: "Open Terapeak" / "Open eBay Sold" (open system browser)
-- Market value input → auto-calculated suggested price (accounting for fees)
-- Listing price input (user can override)
-- Cost basis section: cost, source dropdown, date, notes
-- "Save & Next →" button for batch pricing flow
-
-### 4. Export View
-
-**Purpose:** Upload images to ImgBB and generate Whatnot CSV
-
-**Layout (stepped):**
-- Step 1: Filter cards (status = Ready), show count and preview table
-- Step 2: "Upload Images" button with progress bar
-- Step 3: "Download Whatnot CSV" button → native save dialog
-- Step 4: Instructions for uploading to Whatnot Seller Hub + link button
-
-### 5. Settings View
-
-**Sections:**
-- API Connections: OpenRouter key (masked) + test button, ImgBB key (masked) + test button
-- Preferences: eBay seller toggle, default shipping profile, default condition
-- Financial Settings: default platform fee %, default shipping costs, staleness threshold
-- Your Data: card count, DB location, Open Folder, Backup, Clear All Data
-
-### 6. Setup Wizard View
-
-**Modal overlay on first run. Three steps:**
-
-Step 1 — OpenRouter:
-- Explanation of what it does
-- "Create Free Account" link button (opens browser)
-- API key paste field
-- "Test Connection" button → ✅ Connected or ❌ Failed
-
-Step 2 — ImgBB:
-- Same pattern as step 1
-
-Step 3 — Preferences:
-- "I sell on eBay" checkbox (enables Terapeak links)
-- Default shipping profile dropdown
-- "Finish" button → dismisses wizard, navigates to Scan page
-
----
-
-## Credential Storage
-
-User API keys stored in a local JSON config file:
-
-```
-{AppDataFolder}/FlipKit/
-├── config.json             ← API keys and preferences
-├── cards.db                ← Card inventory (SQLite)
-├── images/                 ← Local card photos
-│   ├── front/
-│   └── back/
-├── exports/                ← Generated CSV files
-└── logs/                   ← App logs
-```
-
-**config.json structure:**
-```json
-{
-  "openRouterApiKey": "sk-or-v1-...",
-  "imgbbApiKey": "...",
-  "isEbaySeller": true,
-  "defaultShippingProfile": "4 oz",
-  "defaultCondition": "Near Mint",
-  "whatnotFeePercent": 11.0,
-  "ebayFeePercent": 13.25,
-  "defaultShippingCostPwe": 1.00,
-  "defaultShippingCostBmwt": 4.50,
-  "priceStalenessThresholdDays": 30
-}
-```
-
-**Security:**
-- Keys stored in plain text (acceptable for local desktop app)
-- File is in user's AppData/Application Support folder
-- Never transmitted except to the respective API services
-- User can delete config.json to reset and re-run wizard
-
----
-
-## Service Interfaces
-
-All business logic is accessed through interfaces (defined in `FlipKit.Core`):
-
-```csharp
-public interface ICardRepository
-{
-    Task<int> InsertCardAsync(Card card);
-    Task UpdateCardAsync(Card card);
-    Task<Card?> GetCardAsync(int id);
-    Task<List<Card>> GetAllCardsAsync(CardStatus? status = null, Sport? sport = null);
-    Task DeleteCardAsync(int id);
-    Task<List<Card>> SearchCardsAsync(string query);
-    Task<List<Card>> GetStaleCardsAsync(int thresholdDays);
-    Task AddPriceHistoryAsync(PriceHistory history);
-    Task<int> GetCardCountAsync();
-}
-
-public interface IScannerService
-{
-    Task<Card> ScanCardAsync(string imagePath, string model = "openai/gpt-4o-mini");
-}
-
-public interface IPricerService
-{
-    string BuildTerapeakUrl(Card card);
-    string BuildEbaySoldUrl(Card card);
-    decimal SuggestPrice(decimal estimatedValue, Card card);
-    decimal CalculateNet(decimal salePrice, decimal feePercent = 11m);
-}
-
-public interface IImageUploadService
-{
-    Task<string> UploadImageAsync(string imagePath, string? name = null);
-    Task<(string? url1, string? url2)> UploadCardImagesAsync(string frontPath, string? backPath = null);
-}
-
-public interface IExportService
-{
-    string GenerateTitle(Card card);
-    string GenerateDescription(Card card);
-    Task ExportCsvAsync(List<Card> cards, string outputPath);
-    List<string> ValidateCardForExport(Card card);
-    Task ExportTaxCsvAsync(List<Card> soldCards, string outputPath);
-}
-
-public interface ISettingsService
-{
-    AppSettings Load();
-    void Save(AppSettings settings);
-    bool HasValidConfig();
-    Task<bool> TestOpenRouterConnectionAsync(string apiKey);
-    Task<bool> TestImgBBConnectionAsync(string apiKey);
-}
-
-public interface IBrowserService
-{
-    void OpenUrl(string url);
-}
-
-public interface IFileDialogService
-{
-    Task<string?> OpenImageFileAsync();
-    Task<string?> SaveCsvFileAsync(string defaultFileName);
-}
-```
-
----
-
-## Development Notes for Claude Code
-
-### Build Order (for iterative development)
-
-1. **Create solution + 3 projects** — `dotnet new sln`, class libraries + Avalonia app
-2. **Models + Enums** — Card, PriceHistory, AppSettings, CardStatus, Sport, CostSource
-3. **Service interfaces** — All `I*` interfaces in Core
-4. **EF Core DbContext + migrations** — Schema creation
-5. **SettingsService** — config.json read/write (needed for everything else)
-6. **MainWindow shell** — Sidebar nav + ContentControl + ViewLocator
-7. **ScanView + ScanViewModel** — First working feature end-to-end
-8. **InventoryView** — DataGrid with real data
-9. **PricingView** — URL generation + price calculation
-10. **ExportView** — CSV generation
-11. **SetupWizard** — First-run experience
-12. **Polish** — Styles, error handling, loading states
-
-### Key Claude Code Tips
-
-- Build one ViewModel + View pair at a time
-- Test ViewModel logic independently (no UI needed)
-- Use `[ObservableProperty]` and `[RelayCommand]` to minimize boilerplate
-- Keep Views as pure XAML — if you're writing C# in code-behind, move it to the ViewModel
-- Reference this plan's code samples in your prompts
-- Test with real card images early
-
----
-
-## Requirements Summary
-
-**.NET SDK:** 8.0+
-**IDE:** Any (VS Code, Rider, Visual Studio)
-**Target platforms:** Windows x64, macOS arm64/x64, Linux x64
-**Self-contained publish:** Yes (no .NET runtime required on user's machine)
+- ADR-001 — Hub architecture (embedded servers).
+- ADR-002 — net8/net9 project mix.
+- ADR-003 — `EnsureCreated`/`SchemaUpdater` vs. migrations.
+- ADR-004 — User-driven checklist import.
+- ADR-005 — Avalonia over MAUI/WPF.

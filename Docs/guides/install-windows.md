@@ -1,47 +1,55 @@
-# Installation Guide (For Non-Technical Users)
+# Windows Installation Guide (For Non-Technical Users)
+
+**Applies to:** FlipKit v3.7.0 (Windows x64)
 
 ## What You're Installing
 
-**Card Lister** is a desktop program that helps you:
+**FlipKit** is a desktop program that helps you:
 1. Take photos of sports cards
 2. Automatically read the card details (player, year, brand, etc.)
 3. Research prices
-4. Create listings for Whatnot
+4. Create listings for Whatnot and eBay
 
-It runs directly on your computer — just double-click to open. No browser, no extra software needed.
+It runs directly on your computer — just double-click to open. No browser, no
+extra software needed. FlipKit Hub also bundles a built-in Web server you can
+reach from your phone (managed from Settings → Servers); that's optional.
 
 ---
 
 ## Before You Start
 
-You'll need to create **two free accounts** to use Card Lister:
+You'll need a couple of free accounts to get the most out of FlipKit:
 
-### 1. OpenRouter Account (For Card Scanning)
-This service reads your card photos and extracts the details.
+### 1. OpenRouter Account (Card Scanning — required)
+This service reads your card photos and extracts the details when CardSight
+can't.
 
 - **Cost:** Pay-as-you-go, about $0.01-0.02 per card scanned
 - **To start:** Add $5 credit (enough for ~250-500 cards)
 
-### 2. ImgBB Account (For Image Hosting)
-Whatnot needs your card images hosted online. ImgBB does this for free.
+### 2. ImgBB Account (Image Hosting — required for export)
+Whatnot and eBay need your card images hosted online. ImgBB does this for free.
 
 - **Cost:** Free
-- **Limit:** More than enough for your needs
+
+### 3. CardSight Account (optional, recommended)
+CardSight is a sports-card-specific recognition service. When configured,
+FlipKit tries it **first** on every scan and only falls back to OpenRouter when
+CardSight isn't confident. The free tier covers 750 identifications/month.
+
+- **Cost:** Free tier (750 IDs/month); paid tiers above that
+- **Where:** enter the API key in Settings → Scanning after first run
 
 ---
 
 ## Installation Steps
 
-### Step 1: Download Card Lister
+### Step 1: Download FlipKit
 
-1. Download the Card Lister file for your computer:
-   - **Windows:** `FlipKit-win-x64.zip`
-   - **Mac (Apple Silicon):** `FlipKit-osx-arm64.zip`
-   - **Mac (Intel):** `FlipKit-osx-x64.zip`
-2. Unzip/extract the folder
-3. Move the folder somewhere permanent, like:
-   - Windows: `C:\Users\YourName\FlipKit`
-   - Mac: `/Users/YourName/Applications/FlipKit`
+1. Download the Windows package: **`FlipKit-Hub-Windows-x64-v3.7.0.zip`**
+   from the [Releases page](https://github.com/mthous72/FlipKit/releases).
+2. Unzip/extract the folder.
+3. Move the folder somewhere permanent, like `C:\Users\YourName\FlipKit`.
 
 **That's it for installation. No Python, no extra downloads, no command prompt.**
 
@@ -52,162 +60,121 @@ Whatnot needs your card images hosted online. ImgBB does this for free.
 #### OpenRouter (Required)
 
 1. Go to: https://openrouter.ai/
-2. Click "Sign Up" (top right)
-3. Create account with email or Google
-4. After signing in, click your profile → "Keys"
-5. Click "Create Key"
-6. Name it: "Card Lister"
-7. Copy the key (starts with `sk-or-v1-...`)
-8. **Save this key somewhere safe!** You'll need it in a moment.
-9. Click "Credits" → Add $5 to start
+2. Click "Sign Up" (top right) and create an account
+3. After signing in, click your profile → "Keys"
+4. Click "Create Key"
+5. Name it: "FlipKit"
+6. Copy the key (starts with `sk-or-v1-...`) and save it somewhere safe
+7. Click "Credits" → Add $5 to start
 
 #### ImgBB (Required)
 
 1. Go to: https://api.imgbb.com/
-2. Click "Get API Key"
-3. Sign up for a free account
-4. After signing in, you'll see your API key
-5. Copy the key
-6. **Save this key somewhere safe!**
+2. Click "Get API Key" and sign up for a free account
+3. Copy the key and save it somewhere safe
 
 ---
 
-### Step 3: Start Card Lister
+### Step 3: Start FlipKit
 
-**For Windows:**
 1. Open the FlipKit folder
-2. Double-click `FlipKit.exe`
-3. The app window opens directly — no browser needed!
+2. Double-click `FlipKit.Desktop.exe`
+3. The app window opens directly — no browser needed
 
-**For Mac:**
-1. Open the FlipKit folder
-2. Double-click `FlipKit`
-3. If Mac blocks it: Right-click → Open → click "Open" in the dialog
-4. The app window opens directly
+If Windows shows **"Windows protected your PC"**, click **More info → Run anyway**.
+This happens because the app isn't code-signed (it's safe).
 
 ---
 
 ### Step 4: First-Time Setup
 
-When Card Lister opens for the first time:
+When FlipKit opens for the first time, a setup wizard walks you through:
 
-1. **Welcome screen appears**
-2. **Step 1: OpenRouter**
-   - Paste your OpenRouter API key
-   - Click "Test Connection"
-   - Should show ✅ Connected
-   - Click "Next"
-3. **Step 2: ImgBB**
-   - Paste your ImgBB API key
-   - Click "Test Connection"
-   - Should show ✅ Connected
-   - Click "Next"
-4. **Step 3: Preferences**
-   - Check "I sell on eBay" if you do (enables Terapeak)
-   - Click "Finish"
-5. **Done!** You're ready to scan cards.
+1. **OpenRouter** — paste your key, click "Test Connection" (should show ✅), Next
+2. **ImgBB** — paste your key, click "Test Connection", Next
+3. **Preferences** — check "I sell on eBay" if you do, then Finish
+
+You're ready to scan. To enable CardSight later, go to **Settings → Scanning**
+and paste your CardSight API key; the CardSight usage panel shows your monthly
+quota.
 
 ---
 
-## Using Card Lister
+## Using FlipKit
 
 ### Scanning a Card
 
 1. Click the **Scan** tab in the sidebar
-2. Drag a card photo into the drop area (or click to browse)
-3. Click **Scan Card**
-4. Wait 5-10 seconds
-5. Review the details — fix anything wrong
-6. Click **Save to My Cards**
+2. Drag a card photo into the drop area (or click to browse), or use the webcam
+3. Click **Scan Card** (FlipKit tries CardSight first, then OpenRouter)
+4. Review the details — fix anything wrong
+5. Click **Save to My Cards**
 
-**Tips for good photos:**
-- Good lighting (no harsh shadows)
-- Card fills most of the frame
-- Flat, not at an angle
-- Clear, not blurry
+**Tips for good photos:** good lighting, card fills the frame, flat (not angled),
+clear (not blurry).
 
 ### Pricing Your Cards
 
 1. Click the **Price** tab
-2. For each card:
-   - Click **Open Terapeak** (if you're an eBay seller) or **Open eBay Sold**
-   - Look at what similar cards sold for recently
-   - Enter that value in the "Market Value" box
-   - The app suggests a Whatnot price (accounting for fees)
-   - Adjust if you want
-   - Click **Save & Next**
+2. For each card, click **Open Terapeak** (eBay sellers) or **Open eBay Sold**
+3. Enter the market value you find; FlipKit suggests a price (accounting for fees)
+4. Click **Save & Next**
 
-### Exporting to Whatnot
+### Exporting to Whatnot / eBay
 
 1. Click the **Export** tab
 2. Click **Upload Images** (uploads your photos to ImgBB)
-3. Wait for upload to complete
-4. Click **Download CSV**
-5. Go to Whatnot Seller Hub → Inventory → Import Products
-6. Upload the CSV file
-7. Review and publish your listings!
+3. Click **Download CSV**
+4. Import the CSV into Whatnot Seller Hub (or use the eBay listing flow)
 
 ---
 
 ## Troubleshooting
 
 ### Windows says "Windows protected your PC"
-- Click "More info"
-- Click "Run anyway"
-- This happens because the app isn't signed with a certificate (it's safe)
-
-### Mac says "FlipKit can't be opened"
-- Right-click the app → "Open" → click "Open" in the dialog
-- Or: System Settings → Privacy & Security → scroll down → click "Open Anyway"
+Click "More info" → "Run anyway". The app isn't signed with a certificate.
 
 ### "API key invalid"
-- Double-check you copied the entire key
-- Make sure there are no extra spaces
-- Try generating a new key
+Double-check you copied the entire key with no extra spaces; try a new key.
 
 ### Card scan isn't accurate
-- Try a clearer photo
-- Make sure the card is well-lit and fills the frame
-- You can always edit the details manually after scanning
+Try a clearer, well-lit photo that fills the frame. You can always edit details
+manually after scanning.
 
 ### App won't start
-- Make sure you downloaded the right version for your computer (Windows vs Mac, Intel vs Apple Silicon)
-- Try restarting your computer
-- Check the `logs/` folder for error details
-
-### Need more help?
-Contact [your support info here]
+Make sure you downloaded the Windows x64 package. Check the
+`%LOCALAPPDATA%\FlipKit\logs\` folder for error details.
 
 ---
 
-## Closing Card Lister
+## Closing FlipKit
 
-Just close the window like any other app. Your cards are saved automatically — nothing will be lost.
+Just close the window like any other app. Your cards save automatically, and the
+embedded servers (if running) stop when the Desktop app closes.
 
 ---
 
-## Updating Card Lister
-
-When a new version is available:
+## Updating FlipKit
 
 1. Download the new version
 2. Replace your FlipKit folder with the new one
-3. Your card database and settings are preserved (stored separately in your user data folder)
-4. Start Card Lister as usual
+3. Your card database and settings are preserved (stored separately in your user
+   data folder)
+4. Start FlipKit as usual
 
 ---
 
 ## Keeping Your Data Safe
 
-Your card data is stored in your user data folder:
-- **Windows:** `C:\Users\YourName\AppData\Local\FlipKit\`
-- **Mac:** `/Users/YourName/Library/Application Support/FlipKit/`
+Your card data lives in your user data folder:
+`C:\Users\YourName\AppData\Local\FlipKit\`
 
-**To back up your data:**
-1. Open Card Lister → Settings → Click "Backup Data"
-2. Choose where to save the backup
-3. Or manually copy the `cards.db` file from the data folder
+**To back up:** Open FlipKit → Settings → "Backup Data", or manually copy
+`cards.db` from that folder.
 
-**To restore from backup:**
-1. Copy your backed-up `cards.db` into the data folder
-2. Replace the existing file if asked
+**To restore:** copy your backed-up `cards.db` back into that folder.
+
+---
+
+See also: [install-mac.md](install-mac.md), [install-linux.md](install-linux.md),
+and [user-guide.md](user-guide.md).

@@ -27,7 +27,7 @@
 
 ---
 
-## Use Cases for Your Card Lister
+## Use Cases for FlipKit
 
 ### Use Case 1: Competitive Pricing Check
 
@@ -268,10 +268,6 @@ https://www.ebay.com/sch/i.html?_nkw={query}&_sacat=212&LH_Sold=1&LH_Complete=1
 - Has bulk pricing data across sets
 - CSV downloads available
 
-### 5. Ximilar Collectibles API (Paid)
-- Returns eBay listing data including prices and direct links when you identify a card
-- Combines card identification with pricing
-
 ---
 
 ## Recommended Approach for Your Project
@@ -347,4 +343,4 @@ python main.py competition 42
 | Competitor asking prices | What actually sells |
 | Image-based search | Market research data |
 
-**For your card lister:** eBay API is a nice-to-have for competitive analysis, but **not essential**. Your core pricing workflow should use manually-researched sold comps (via eBay sold search URLs or Terapeak) rather than relying on API data.
+**For FlipKit:** eBay API is a nice-to-have for competitive analysis, but **not essential**. The core pricing workflow uses manually-researched sold comps (via eBay sold search URLs or Terapeak) rather than relying on API data.

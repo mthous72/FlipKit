@@ -2,227 +2,215 @@
 
 ## Overview
 
-SQLite database with a single `cards` table. Designed to capture everything needed for:
-- Card identification
-- Variation/parallel tracking
-- Pricing
-- Whatnot listing generation
+FlipKit uses a single SQLite database (`%LOCALAPPDATA%\FlipKit\cards.db`) in
+**WAL mode** so Desktop, Web, and API can read concurrently. The schema is
+defined by EF Core entities in `FlipKit.Core/Models/` and the
+`FlipKitDbContext` in `FlipKit.Core/Data/`. Enums are stored as **strings**,
+money fields as **decimal**, and dates as **DateTime** (UTC).
+
+> Fresh installs are created from EF migrations; existing user databases are
+> upgraded additively by `SchemaUpdater` on launch (see ADR-003). When you add a
+> column, update both.
+
+This document mirrors the C# entities. The authoritative source is always the
+model classes — read them directly if in doubt.
 
 ---
 
-## Cards Table
+## Entities
 
-```sql
-CREATE TABLE cards (
-    -- Primary key
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-
-    -- === CARD IDENTITY ===
-    player_name         TEXT NOT NULL,
-    card_number         TEXT,           -- e.g., "127", "RC-15"
-    year                INTEGER,        -- e.g., 2023
-    sport               TEXT,           -- Football, Baseball, Basketball
-
-    -- === MANUFACTURER / SET ===
-    manufacturer        TEXT,           -- Panini, Topps, Upper Deck
-    brand               TEXT,           -- Prizm, Donruss, Chrome, Bowman
-    set_name            TEXT,           -- Full set name if different from brand
-    team                TEXT,           -- Team name
-
-    -- === VARIATION / PARALLEL ===
-    variation_type      TEXT DEFAULT 'Base',  
-                                        -- Base, Parallel, Insert, Refractor, etc.
-    parallel_name       TEXT,           -- Silver, Blue, Gold, Holo, etc.
-    serial_numbered     TEXT,           -- "/99", "/25", "1/1", or NULL
-    is_short_print      INTEGER DEFAULT 0,  -- SP indicator
-    is_ssp              INTEGER DEFAULT 0,  -- SSP indicator
-
-    -- === SPECIAL ATTRIBUTES ===
-    is_rookie           INTEGER DEFAULT 0,
-    is_auto             INTEGER DEFAULT 0,  -- Has autograph
-    is_relic            INTEGER DEFAULT 0,  -- Has jersey/memorabilia piece
-
-    -- === CONDITION / GRADING ===
-    condition           TEXT DEFAULT 'Near Mint',
-    is_graded           INTEGER DEFAULT 0,
-    grade_company       TEXT,           -- PSA, BGS, SGC, CGC
-    grade_value         TEXT,           -- "10", "9.5", "9"
-    cert_number         TEXT,           -- Grading cert # for lookup
-
-    -- === ACQUISITION / COST BASIS (for tax tracking) ===
-    cost_basis          REAL,           -- What you paid for the card
-    cost_source         TEXT,           -- LCS, Online, Break, Trade, Gift, etc.
-    cost_date           TEXT,           -- When you acquired it (YYYY-MM-DD)
-    cost_notes          TEXT,           -- Receipt #, seller name, etc.
-
-    -- === PRICING ===
-    estimated_value     REAL,           -- Market value from comps
-    price_source        TEXT,           -- "Terapeak", "eBay comps", etc.
-    price_date          TEXT,           -- When price was last researched (YYYY-MM-DD)
-    listing_price       REAL,           -- Your asking price
-    price_check_count   INTEGER DEFAULT 0,  -- How many times repriced
-
-    -- === SALE INFORMATION (when sold) ===
-    sale_price          REAL,           -- What it sold for
-    sale_date           TEXT,           -- When it sold (YYYY-MM-DD)
-    sale_platform       TEXT,           -- Whatnot, eBay, etc.
-    fees_paid           REAL,           -- Platform + payment processing fees
-    shipping_cost       REAL,           -- Your actual shipping cost
-    net_profit          REAL,           -- Auto-calculated: sale - cost - fees - shipping
-
-    -- === LISTING SETTINGS ===
-    quantity            INTEGER DEFAULT 1,
-    listing_type        TEXT DEFAULT 'Buy It Now',  
-                                        -- "Buy It Now", "Auction"
-    offerable           INTEGER DEFAULT 1,  -- Accept offers on BIN
-    shipping_profile    TEXT DEFAULT '4 oz',
-
-    -- === IMAGES ===
-    image_path_front    TEXT,           -- Local path to front image
-    image_path_back     TEXT,           -- Local path to back image
-    image_url_1         TEXT,           -- Public URL (ImgBB) for front
-    image_url_2         TEXT,           -- Public URL for back
-
-    -- === WHATNOT-SPECIFIC ===
-    whatnot_category    TEXT DEFAULT 'Sports Cards',
-    whatnot_subcategory TEXT,           -- Football Cards, Baseball Cards, etc.
-
-    -- === STATUS / METADATA ===
-    status              TEXT DEFAULT 'draft',  
-                                        -- draft, priced, ready, listed, sold
-    notes               TEXT,           -- Free-form notes
-    created_at          TEXT DEFAULT (datetime('now')),
-    updated_at          TEXT DEFAULT (datetime('now'))
-);
-
--- Price history for tracking changes over time
-CREATE TABLE price_history (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    card_id         INTEGER NOT NULL,
-    estimated_value REAL,
-    listing_price   REAL,
-    price_source    TEXT,
-    notes           TEXT,
-    recorded_at     TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
-);
-```
+| Entity | File | Purpose |
+|---|---|---|
+| `Card` | `Models/Card.cs` | Core inventory row — identity, variation, pricing, sale, listing, verification, surprise-set linkage. |
+| `PriceHistory` | `Models/PriceHistory.cs` | Per-card price-change log. |
+| `SetChecklist` | `Models/SetChecklist.cs` | Imported set checklist (cards stored as a JSON blob). Drives verification. |
+| `SurpriseSet` | `Models/SurpriseSet.cs` | Whatnot "surprise set" mystery-lot grouping. |
+| `ModelScanRecord` | `Models/ModelScanRecord.cs` | Per-model scan accuracy scoreboard records. |
 
 ---
 
-## Indexes
+## Card
 
-```sql
-CREATE INDEX idx_cards_sport ON cards(sport);
-CREATE INDEX idx_cards_player ON cards(player_name);
-CREATE INDEX idx_cards_status ON cards(status);
-CREATE INDEX idx_cards_year ON cards(year);
-```
+The central entity. Field groups (C# property names; columns are the
+EF-generated snake/Pascal mapping):
+
+### Identity
+- `PlayerName` (string, required), `CardNumber`, `Year` (int?),
+  `Sport` (`Sport` enum, stored as string).
+
+### Manufacturer / set
+- `Manufacturer`, `Brand`, `SetName`, `Team`.
+
+### Variation / parallel
+- `VariationType` (default `"Base"`), `ParallelName`, `SerialNumbered`
+  (e.g. `"/99"`, `"1/1"`), `IsShortPrint`, `IsSSP`.
+
+### Special attributes
+- `IsRookie`, `IsAuto`, `IsRelic`.
+
+### Condition / grading
+- `Condition` (default `"Near Mint"`), `IsGraded`, `GradeCompany`,
+  `GradeValue`, `CertNumber`, `AutoGrade`.
+
+### Acquisition / cost basis
+- `CostBasis` (decimal?), `CostSource` (`CostSource` enum?), `CostDate`,
+  `CostNotes`.
+
+### Pricing
+- `EstimatedValue`, `PriceSource`, `PriceDate`, `ListingPrice`,
+  `PriceCheckCount`.
+
+### Sale information
+- `SalePrice`, `SaleDate`, `SalePlatform`, `FeesPaid`, `ShippingCost`,
+  `NetProfit`.
+
+### Listing settings
+- `Quantity` (default 1), `ListingType` (default `"Buy It Now"`),
+  `Offerable` (default true), `ShippingProfile` (default `"4 oz"`).
+
+### Images
+- Eight front/back/extra slots: `ImagePathFront`, `ImagePathBack`,
+  `ImagePath3`–`ImagePath8` (local paths) and `ImageUrl1`–`ImageUrl8`
+  (public ImgBB URLs). Slots 1 (front) and 2 (back) are captured at scan time
+  and sent to the AI for identification; slots 3–8 are user-attached extras
+  (condition shots, slab close-ups) uploaded to ImgBB but never sent to the LLM.
+
+### Export & marketplace linkage
+- `Sku` (export identifier).
+- `EbayItemId` — eBay listing ID for cards imported from a Seller Hub CSV; used
+  as the upsert key so re-importing the same listing updates the existing row.
+- `ListedAt` (DateTime?).
+
+### Whatnot-specific
+- `WhatnotCategory` (default `"Sports Cards"`), `WhatnotSubcategory`.
+
+### Checklist verification (Phase 2 — Checklist Insider)
+- `VerificationStatus` (`VerificationStatus` enum, default `NotChecked`) — the
+  tier outcome the user accepted on save; drives the editor badge.
+- `MatchedChecklistKey` — composite re-find key
+  `"{setChecklistId}:{normalizedCardNumber}:{subsetLower}"`. (ChecklistCard rows
+  live inside a JSON blob on `SetChecklist`, so a true FK isn't possible without
+  a relational migration; this string is enough to look the matched row back up.)
+
+### Surprise set linkage
+- `SurpriseSetId` (int?), `SurpriseSetSlot` (int?, 1-based position in the set's
+  checklist), `SurpriseSet` (navigation).
+
+### Status / metadata
+- `Status` (`CardStatus` enum, default `Draft`).
+- `DataSource` (`CardDataSource` enum, default `None`).
+- `AiModelUsed` (string?) — the scan provider/model id stamped at save time when
+  `DataSource == Ai`. For LLM scans this is the OpenRouter model id; for a
+  CardSight match it is `"cardsight"`. Drives user-correction attribution in the
+  model-accuracy scoreboard.
+- `Notes`, `CreatedAt`, `UpdatedAt`.
+
+### Navigation
+- `PriceHistories` (`ICollection<PriceHistory>`).
 
 ---
 
-## Key Field Notes
+## PriceHistory
 
-### variation_type
-Common values:
-- `Base` — Standard base card
-- `Parallel` — Color/pattern variant of base
-- `Insert` — Special subset card
-- `Refractor` — Chrome/Prizm refractor parallel
-- `Auto` — Autograph card (also set `is_auto = 1`)
-- `Relic` — Memorabilia card (also set `is_relic = 1`)
+Tracks price changes over time.
 
-### parallel_name
-Examples by manufacturer:
-
-**Panini Prizm:**
-- Silver, Red, Blue, Green, Gold, Orange, Purple
-- Hyper, Shimmer, Neon Green, Pink Ice
-- Black (1/1)
-
-**Topps Chrome:**
-- Refractor, Sepia, Pink, Purple, Gold, Red
-- X-Fractor, Prism, Atomic, SuperFractor (1/1)
-
-**Panini Donruss:**
-- Rated Rookie, Press Proof, Holo variants
-- Optic parallels (various colors)
-
-### shipping_profile
-Must match Whatnot's exact values:
-- `4 oz` — Single raw card in toploader + bubble mailer
-- `8 oz` — Multiple cards or graded slab
-- `1 lb` — Several slabs or small box
-
-### whatnot_subcategory
-Must be one of:
-- `Football Cards`
-- `Baseball Cards`
-- `Basketball Cards`
-- `Hockey Cards`
-- `Soccer Cards`
-- `Other Sports Cards`
+- `Id`, `CardId` (FK → Card, cascade delete), `EstimatedValue`, `ListingPrice`,
+  `PriceSource`, `Notes`, `RecordedAt`.
 
 ---
 
-## Status Flow
+## SurpriseSet
 
-```
-draft → priced → ready → listed → sold
-  ↑       ↑        │        │
-  └───────┴────────┘        │
-     (can revert)           │
-                            ▼
-                   (archived in reports)
-```
+A Whatnot mystery-lot grouping: multiple cards sold under one shared listing,
+with revenue allocated back to the constituent cards on completion.
 
-- **draft**: Just scanned, missing price or other data
-- **priced**: Has listing price, may need images uploaded
-- **ready**: Has price + images uploaded, ready for CSV export
-- **listed**: Exported to Whatnot CSV and uploaded
-- **sold**: Marked as sold (for financial tracking/reports)
+### Identity
+- `Name` (required), `ShowName`, `Notes`.
 
-### Price Staleness
+### Lifecycle
+- `State` (`SurpriseSetState` enum, default `Draft`).
+- Timestamps: `CreatedAt`, `UpdatedAt`, `ExportedAt`, `LiveAt`, `CompletedAt`,
+  `CancelledAt`.
 
-Cards in `priced`, `ready`, or `listed` status can become "stale" if `price_date` is more than 30 days ago. The app will flag these for re-pricing.
+### Shared listing fields
+Stamped onto every CSV row at export time (Whatnot's consistency rule is enforced
+by construction): `Title`, `SharedListingType` (default `"Buy it Now"`),
+`SpotPrice`, `SharedCondition`, `SharedShippingProfile`, `SharedWhatnotCategory`
+(default `"Sports Trading Cards"`), `SharedWhatnotSubcategory`, `Offerable`
+(default false), and gallery images `SharedImageUrl1`–`SharedImageUrl8`.
+
+### Economics
+- `AllocationMethod` (`RevenueAllocationMethod` enum, default `EqualSplit`).
+- `LotCostBasis` (decimal?) — optional total cost paid for all cards as a lot,
+  auto-split evenly (CostSource = LotSplit); per-card overrides survive re-balance.
+- Completion fields: `SpotsSold`, `GrossRevenue`, `TotalFees`, `TotalShipping`.
+
+### Navigation
+- `Cards` (`ICollection<Card>`).
 
 ---
 
-## Example Queries
+## SetChecklist
 
-### Get all cards ready for export
-```sql
-SELECT * FROM cards 
-WHERE status = 'ready' 
-  AND listing_price > 0 
-  AND image_url_1 IS NOT NULL;
+Imported set checklist used by the verification matcher. The `Cards` list and
+`KnownVariations` list are stored as JSON-converted columns (with a
+`ValueComparer` so EF detects collection mutations — see the claude-code-guide
+gotcha). Keyed on `(Manufacturer, Brand, Year, Sport)`.
+
+---
+
+## Enums
+
+All stored as strings.
+
+### CardStatus (`Models/Enums/CardStatus.cs`)
+`Draft`, `Priced`, `Ready`, `Listed`, `Sold`, `ReservedForSet` (locked into a
+SurpriseSet; excluded from individual listing flows), `SoldInSet` (sold as part
+of a completed SurpriseSet; included in revenue reports).
+
+### VerificationStatus (`Models/Enums/VerificationStatus.cs`)
+`NotChecked` (default; never run against a checklist), `Verified` (Tier 1 —
+exact match, all field confidences high, saved as-is), `BestGuess` (Tier 2 —
+card # + player matched but a field was uncertain), `UserCorrected` (user picked
+a different ChecklistCard than the matcher's top candidate), `NoMatchFound`
+(Tier 3 — saved with the AI guess only).
+
+### RevenueAllocationMethod (`Models/Enums/RevenueAllocationMethod.cs`)
+`EqualSplit`, `CostWeighted`, `Manual`.
+
+### CardDataSource (`Models/Enums/CardDataSource.cs`)
+How the card's data was produced (`None`, `Ai`, manual, etc.) — pairs with
+`Card.AiModelUsed` for scoreboard attribution.
+
+### SurpriseSetState (`Models/Enums/SurpriseSetState.cs`)
+Lifecycle states for a SurpriseSet (`Draft`, … `Completed`, `Cancelled`).
+
+### Other enums
+`Sport`, `CostSource`, `ExportPlatform`, `ScanDepth`, `ScanMode`, `ScanOutcome`,
+`RateLimitScope`, `CardsightConfidenceTier`, `VerificationConfidence` — see
+`FlipKit.Core/Models/Enums/`.
+
+---
+
+## Status flow
+
+```
+Draft → Priced → Ready → Listed → Sold
+  ↑        ↑       │        │
+  └────────┴───────┘        └──→ (archived in reports)
+       (can revert)
+
+ReservedForSet ──→ SoldInSet   (SurpriseSet path)
 ```
 
-### Get cards by sport
-```sql
-SELECT * FROM cards WHERE sport = 'Football' ORDER BY player_name;
-```
+- **Draft** — just scanned, missing price/other data.
+- **Priced** — has a listing price, may still need images uploaded.
+- **Ready** — priced + images uploaded, ready for CSV export.
+- **Listed** — exported and uploaded to a marketplace.
+- **Sold** — marked sold (financial reporting).
+- **ReservedForSet / SoldInSet** — card belongs to a SurpriseSet (locked, then
+  sold as part of the completed set).
 
-### Search by player
-```sql
-SELECT * FROM cards 
-WHERE player_name LIKE '%Jefferson%' 
-ORDER BY year DESC;
-```
-
-### Calculate total inventory value
-```sql
-SELECT 
-    sport,
-    COUNT(*) as card_count,
-    SUM(listing_price) as total_value
-FROM cards
-GROUP BY sport;
-```
-
-### Find cards missing prices
-```sql
-SELECT id, player_name, year, brand 
-FROM cards 
-WHERE listing_price IS NULL OR listing_price = 0;
-```
+### Price staleness
+Cards in `Priced`, `Ready`, or `Listed` become "stale" when `PriceDate` is older
+than the configured threshold (default 30 days); the app flags them for repricing.

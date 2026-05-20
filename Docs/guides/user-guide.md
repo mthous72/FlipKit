@@ -30,11 +30,13 @@ FlipKit is a free, open-source desktop application designed for sports card sell
 
 ### Key Features
 
-- **AI-Powered Scanning** - Photograph a card and AI extracts player name, year, brand, parallel, serial number, and more
+- **CardSight + AI Scanning** - Photograph a card and FlipKit identifies it: CardSight (a sports-card recognition service) runs first, and an OpenRouter vision model is the fallback. It extracts player name, year, brand, parallel, serial number, grading, and more
 - **Bulk Processing** - Scan 10, 50, or 100+ cards in one batch with front/back pairing
-- **Automated Pricing** - Fetch current eBay active listing comps with statistics (median, range, confidence)
-- **Inventory Management** - Track all your cards in a local database with search and filtering
-- **Checklist Verification** - Cross-reference AI results against 97+ seeded set checklists to catch errors
+- **Pricing Research** - Open Terapeak / eBay sold links, or fetch eBay active-listing comps, to set fee-aware prices
+- **Inventory Management** - Track all your cards in a local SQLite database with search and filtering
+- **Checklist Verification** - Cross-reference scan results against imported set checklists to catch errors (Verified / Best-guess / pick-from-checklist tiers)
+- **eBay Listing** - Publish listings to eBay via the Sell APIs (OAuth), and import your eBay Seller Hub CSV back into FlipKit
+- **Surprise Sets** - Group cards into Whatnot mystery-lot listings with revenue allocation back to each card
 - **CSV Export** - Generate platform-specific CSV files for Whatnot, eBay, or COMC bulk uploads
 - **Sales Tracking** - Record sold cards with profit calculations and tax reports
 
@@ -42,23 +44,17 @@ FlipKit is a free, open-source desktop application designed for sports card sell
 
 1. **Windows, Mac, or Linux computer** (64-bit)
 2. **Card photos** - Front image required, back image optional
-3. **Free API Keys:**
-   - OpenRouter API key (for AI vision) - Get at https://openrouter.ai/keys
-   - ImgBB API key (for image hosting) - Optional, get at https://api.imgbb.com/
-   - eBay Developer credentials (for automated pricing) - Optional, get at https://developer.ebay.com
+3. **API Keys:**
+   - OpenRouter API key (AI vision fallback, required) - https://openrouter.ai/keys
+   - CardSight API key (first-pass recognition, recommended; free 750 IDs/month) - entered in Settings → Scanning
+   - ImgBB API key (image hosting, required for export) - https://api.imgbb.com/
+   - eBay credentials (optional, for listing + pricing comps) - https://developer.ebay.com
 
 ---
 
 ## Getting Started
 
 ### Download and Install
-
-**📸 SCREENSHOT PLACEHOLDER: `download-page.png`**
-**Instructions:**
-- Open https://github.com/mthous72/FlipKit/releases in your browser
-- Show the latest release page with download links
-- Capture the full browser window
-- **Expected elements:** Windows/Mac/Linux download links, release notes
 
 FlipKit is distributed as a self-contained executable - no .NET runtime installation required.
 
@@ -83,20 +79,6 @@ FlipKit is distributed as a self-contained executable - no .NET runtime installa
 ### First Launch - Setup Wizard
 
 On first launch, you'll see the Setup Wizard to configure your API keys.
-
-**📸 SCREENSHOT PLACEHOLDER: `setup-wizard-welcome.png`**
-**Instructions:**
-- Launch FlipKit for the first time
-- The Setup Wizard should appear automatically
-- Capture the welcome screen
-- **Expected elements:** "Welcome to FlipKit" heading, "Get Started" button
-
-**📸 SCREENSHOT PLACEHOLDER: `setup-wizard-api-keys.png`**
-**Instructions:**
-- Click "Get Started" in the Setup Wizard
-- You should see the API key configuration page
-- Leave fields empty or enter dummy keys for screenshot
-- **Expected elements:** OpenRouter API key field, ImgBB API key field, "Test Connection" buttons
 
 The Setup Wizard will guide you through entering:
 1. **OpenRouter API Key** (required for scanning)
@@ -123,6 +105,19 @@ OpenRouter provides access to 11 free AI vision models with automatic fallback o
 6. Click "Test" to verify connection
 
 **Cost:** $0 - FlipKit uses free models by default
+
+#### CardSight API Key (Recommended)
+
+CardSight is a sports-card-specific recognition service. When a key is set,
+FlipKit tries CardSight **first** on every scan and only falls back to an
+OpenRouter vision model when CardSight isn't confident or doesn't match.
+
+1. Get a CardSight API key from your CardSight account
+2. Paste it into FlipKit Settings → Scanning → CardSight API Key
+3. The **CardSight Usage** panel shows your monthly call count against the free
+   tier (750 identifications/month)
+
+**Cost:** Free tier covers 750 IDs/month; paid tiers above that.
 
 #### ImgBB API Key (Optional)
 
@@ -156,33 +151,21 @@ eBay's official API provides automated active listing comps for pricing research
 
 **Cost:** $0 - Free tier includes 5,000 API calls per day
 
-**📸 SCREENSHOT PLACEHOLDER: `settings-api-keys.png`**
-**Instructions:**
-- Open FlipKit
-- Click "Settings" in the left navigation
-- Scroll to show all three API key sections (OpenRouter, ImgBB, eBay)
-- Enter dummy keys or blur real keys for privacy
-- **Expected elements:** Three API sections, test buttons, eBay compliance warning box (orange)
-
 ---
 
 ## Scanning Cards
 
-The Scan page lets you photograph individual cards and have AI extract all the details automatically.
+The Scan page lets you photograph individual cards and have FlipKit extract all the details automatically.
+
+**How scanning works:** if a CardSight API key is configured, FlipKit sends the
+front image to CardSight first. On a confident match it returns the card details
+(including grading-slab data when present). If CardSight isn't configured, isn't
+confident, or returns no match, FlipKit falls back to the selected OpenRouter
+vision model. The model that produced the result is recorded on the card.
 
 ### How to Scan a Card
 
-**📸 SCREENSHOT PLACEHOLDER: `scan-view-empty.png`**
-**Instructions:**
-- Click "Scan" in the left navigation
-- Make sure no image is loaded (empty state)
-- **Expected elements:**
-  - AI Model dropdown at top showing selected model
-  - "Browse for front image" button
-  - Empty form fields on right side
-  - "Browse for back image" (optional) button
-
-1. **Select AI Model** - Choose from 11 free vision models (default: `nvidia/nemotron-nano-nano-12b-v2-vl:free`)
+1. **Select AI Model** - Choose the OpenRouter fallback vision model (default: `nvidia/nemotron-nano-nano-12b-v2-vl:free`). CardSight, when configured, runs first regardless of this selection
 
 2. **Browse for Front Image** - Click the button and select your card photo
    - Supported formats: JPG, PNG, WEBP
@@ -192,25 +175,7 @@ The Scan page lets you photograph individual cards and have AI extract all the d
 
 4. **Click "Scan Card"** - AI processes the images (~3-5 seconds)
 
-**📸 SCREENSHOT PLACEHOLDER: `scan-view-processing.png`**
-**Instructions:**
-- Browse for any card image (front)
-- Click "Scan Card" button
-- Quickly capture while "Scanning..." spinner is visible
-- **Expected elements:** Loading spinner, "Scanning card..." message
-
 ### Reviewing AI Results
-
-**📸 SCREENSHOT PLACEHOLDER: `scan-view-results.png`**
-**Instructions:**
-- Wait for AI scan to complete
-- Capture the view with populated form fields
-- Use a recognizable card (e.g., rookie card, popular player)
-- **Expected elements:**
-  - Card image displayed on left
-  - All form fields populated (player name, year, brand, etc.)
-  - Verification status indicator
-  - "Save Card" and "Scan Another" buttons
 
 After scanning, the AI fills in:
 - **Player Name** - Full player name
@@ -229,15 +194,6 @@ After scanning, the AI fills in:
 
 If the AI detects a card from a set with a seeded checklist (97+ sets from 2017-2024), you'll see verification results:
 
-**📸 SCREENSHOT PLACEHOLDER: `scan-view-verification-match.png`**
-**Instructions:**
-- Scan a card from a common set (2023 Prizm Football, 2024 Topps Chrome)
-- Wait for verification to complete
-- **Expected elements:**
-  - Green checkmark or verification badge
-  - "Verified against checklist" message
-  - Possibly suggested corrections in yellow box
-
 **Verification Outcomes:**
 
 - **✅ Exact Match** - AI results match checklist perfectly, high confidence
@@ -247,11 +203,6 @@ If the AI detects a card from a set with a seeded checklist (97+ sets from 2017-
 If verification suggests changes, you'll see them highlighted in yellow. Review and click "Apply Suggestion" or edit manually.
 
 ### Saving Your Card
-
-**📸 SCREENSHOT PLACEHOLDER: `scan-view-save-button.png`**
-**Instructions:**
-- Scroll down to show bottom action buttons
-- **Expected elements:** "Save Card" button (blue/accent), "Scan Another" button, "Clear Form" button
 
 1. **Review all fields** - Fix any AI errors
 2. **Click "Save Card"** - Saves to your local inventory database
@@ -267,32 +218,11 @@ For processing large quantities of cards efficiently, use the Bulk Scan feature.
 
 ### Setting Up Bulk Scan
 
-**📸 SCREENSHOT PLACEHOLDER: `bulk-scan-empty.png`**
-**Instructions:**
-- Click "Bulk Scan" in left navigation
-- No images loaded yet
-- **Expected elements:**
-  - AI Model dropdown
-  - Concurrent Scans selector (1-8)
-  - "Add Front Images" button
-  - Empty card list
-  - "Start Scanning" button (disabled)
-
 1. **Select AI Model** - Choose your preferred model
 2. **Set Concurrent Scans** - For paid API credits, use 3-4 for speed. Free models are limited to 1.
 3. **Add Front Images** - Click "Add Front Images" and select multiple card photos
 
 ### Pairing Front and Back Images
-
-**📸 SCREENSHOT PLACEHOLDER: `bulk-scan-pairing.png`**
-**Instructions:**
-- Click "Add Front Images", select 3-5 card images
-- Images should appear in a list with "Pair Back" buttons
-- **Expected elements:**
-  - List of card items with front thumbnails
-  - "Pair Back" button for each item
-  - Status column showing "Ready"
-  - "Start Scanning" button now enabled
 
 If you have back images:
 1. Click "Pair Back" next to a card
@@ -306,18 +236,6 @@ If you have back images:
 
 ### Running Bulk Scan
 
-**📸 SCREENSHOT PLACEHOLDER: `bulk-scan-processing.png`**
-**Instructions:**
-- Add 5-10 images to the bulk scan list
-- Click "Start Scanning"
-- Capture while scanning is in progress
-- **Expected elements:**
-  - Progress bar showing "Scanning 3 of 10"
-  - Some cards marked "Completed" (green)
-  - Some cards "Scanning..." (blue spinner)
-  - "Cancel" button
-  - Concurrent scans indicator if using >1
-
 1. **Click "Start Scanning"** - Batch processing begins
 2. **Watch progress** - Progress bar shows X of Y cards completed
 3. **Wait for completion** - Free models: ~5-10 seconds per card. Paid models with concurrency: ~2-3 seconds per card.
@@ -325,15 +243,6 @@ If you have back images:
 You can cancel at any time - already-scanned cards will be saved.
 
 ### Reviewing Bulk Results
-
-**📸 SCREENSHOT PLACEHOLDER: `bulk-scan-results.png`**
-**Instructions:**
-- Wait for all cards to complete
-- **Expected elements:**
-  - All cards showing "Completed" status (green checkmarks)
-  - "Review & Save All" button
-  - "Clear Completed" button
-  - Success count: "10 cards scanned successfully"
 
 After scanning completes:
 - Each card shows extracted player name and status
@@ -350,16 +259,6 @@ The Pricing page helps you research market values and set listing prices.
 
 ### Pricing Workflow Overview
 
-**📸 SCREENSHOT PLACEHOLDER: `pricing-view-overview.png`**
-**Instructions:**
-- Click "Pricing" in left navigation
-- Should show a card from your "Draft" inventory
-- **Expected elements:**
-  - "Card 1 of X" counter at top
-  - Card thumbnail and details
-  - Pricing section with multiple options
-  - "Save and Next" button at bottom
-
 FlipKit guides you through unpriced cards one at a time:
 1. View card details and photo
 2. Research pricing (automated or manual)
@@ -370,30 +269,9 @@ FlipKit guides you through unpriced cards one at a time:
 
 If you have eBay API credentials configured, you can automatically fetch current eBay listings.
 
-**📸 SCREENSHOT PLACEHOLDER: `pricing-active-comps-button.png`**
-**Instructions:**
-- Scroll to "Active Listing Comps (eBay)" section (blue/accent border)
-- **Expected elements:**
-  - Section header with eBay logo/text
-  - Description of feature
-  - "Get Active Comps" button (blue accent)
-  - Help text about eBay API requirement
-
 1. **Click "Get Active Comps"** - Searches eBay in real-time
 2. **Wait 5-10 seconds** - Fetches listings and calculates statistics
 3. **Review results** - Shows median price, range, sample size, confidence
-
-**📸 SCREENSHOT PLACEHOLDER: `pricing-active-comps-results.png`**
-**Instructions:**
-- Click "Get Active Comps" and wait for results
-- **Expected elements:**
-  - Results box (light background)
-  - Large median price displayed prominently
-  - Range (low - high)
-  - Average price
-  - Sample size (X active listings)
-  - Confidence level (High/Medium/Low)
-  - Market Value field auto-filled with median price
 
 The results show:
 - **Median Price** - Middle value of comparable listings (auto-fills Market Value)
@@ -416,15 +294,6 @@ Results are cached locally for 7 days to minimize API usage.
 
 For cards without automated matches, or to verify automated pricing, use manual research links.
 
-**📸 SCREENSHOT PLACEHOLDER: `pricing-manual-research.png`**
-**Instructions:**
-- Scroll past the "OR" separator
-- Show "Manual Research (Sold Prices)" section
-- **Expected elements:**
-  - "Open Terapeak" button
-  - "Open eBay Sold" button
-  - Help text explaining manual workflow
-
 1. **Click "Open Terapeak"** or **"Open eBay Sold"** - Opens browser with pre-filled search
 2. **Review sold listings** - Look at recent sales (last 30-90 days)
 3. **Calculate median/average** - Mental math or spreadsheet
@@ -433,18 +302,6 @@ For cards without automated matches, or to verify automated pricing, use manual 
 Search queries are automatically built from card details using customizable templates (configured in Settings).
 
 ### Entering Prices
-
-**📸 SCREENSHOT PLACEHOLDER: `pricing-fields.png`**
-**Instructions:**
-- Scroll to pricing input fields section
-- Enter sample values (Market Value: $45.00, Listing Price: $54.99)
-- **Expected elements:**
-  - Market Value input field (pre-filled if using active comps)
-  - Suggested Price (calculated automatically)
-  - Listing Price input field
-  - Net After Fees (calculated automatically, green text)
-  - Cost Basis field (optional)
-  - Cost Notes field (optional)
 
 1. **Market Value** - What the card typically sells for (median of research)
 2. **Suggested Price** - FlipKit calculates: `Market Value × 1.15` to cover fees
@@ -458,14 +315,6 @@ Fee percentages are configured in Settings (default: Whatnot 11%, eBay 13.25%).
 - **Cost Notes** - Where you got it (receipt #, show name, etc.)
 
 ### Saving and Moving On
-
-**📸 SCREENSHOT PLACEHOLDER: `pricing-save-button.png`**
-**Instructions:**
-- Scroll to bottom action buttons
-- **Expected elements:**
-  - "Previous" button
-  - "Save and Next" button (large, accent color)
-  - "Skip" button
 
 1. **Click "Save and Next"** - Saves pricing, marks as "Priced", loads next Draft card
 2. **Click "Skip"** - Skips this card, loads next Draft card (doesn't save)
@@ -483,18 +332,6 @@ The Inventory page shows all your cards in a searchable, filterable grid.
 
 ### Inventory Overview
 
-**📸 SCREENSHOT PLACEHOLDER: `inventory-view-grid.png`**
-**Instructions:**
-- Click "Inventory" in left navigation
-- Make sure you have at least 5-10 cards in your database
-- **Expected elements:**
-  - "My Cards" heading with total count
-  - Search bar and filter dropdowns (Sport, Status)
-  - DataGrid with columns: checkbox, image thumbnail, player, year, brand, parallel, grade, team, price, age indicator, status
-  - Row selection highlighting
-  - Multiple cards visible
-  - Action buttons at bottom
-
 The grid displays:
 - **Checkbox** - Select cards for bulk operations
 - **Thumbnail** - Card front image preview
@@ -510,20 +347,6 @@ The grid displays:
 
 ### Searching and Filtering
 
-**📸 SCREENSHOT PLACEHOLDER: `inventory-filters.png`**
-**Instructions:**
-- Focus on the filter bar at top of grid
-- Enter a search term (e.g., "Mahomes")
-- Select a sport filter (e.g., "Football")
-- **Expected elements:**
-  - Search textbox with watermark "Search players, brands, teams..."
-  - Sport dropdown (All, Football, Baseball, Basketball)
-  - Status dropdown (All, Draft, Priced, Ready, Listed, Sold)
-  - "Refresh" button
-  - Separator line
-  - "Select All" / "Deselect All" buttons
-  - "X selected" count
-
 **Search** - Type player name, brand, team, or manufacturer (searches as you type)
 
 **Sport Filter** - Show only Football, Baseball, or Basketball cards
@@ -537,15 +360,6 @@ The grid displays:
 
 ### Bulk Selection
 
-**📸 SCREENSHOT PLACEHOLDER: `inventory-bulk-select.png`**
-**Instructions:**
-- Click "Select All" button
-- Multiple checkboxes should be checked
-- **Expected elements:**
-  - Multiple rows with checked checkboxes
-  - "X selected" count updated
-  - Action buttons at bottom enabled
-
 1. **Check individual boxes** - Select specific cards
 2. **Click "Select All"** - Check all visible (filtered) cards
 3. **Click "Deselect All"** - Uncheck all
@@ -553,17 +367,6 @@ The grid displays:
 Selection count shows: "5 selected"
 
 ### Card Actions
-
-**📸 SCREENSHOT PLACEHOLDER: `inventory-actions.png`**
-**Instructions:**
-- Select one card (click a row)
-- Show action button row at bottom
-- **Expected elements:**
-  - Summary stats (Total, Priced, Needs Pricing, Value, Stale count)
-  - "Edit Card" button
-  - "Reprice Card" button
-  - "Delete Selected" button
-  - "Mark as Sold" button
 
 **Single Card Actions:**
 - **Edit Card** - Opens edit form to modify any field
@@ -577,21 +380,6 @@ Selection count shows: "5 selected"
 - **Delete Selected** - Remove multiple cards
 
 ### Marking Cards as Sold
-
-**📸 SCREENSHOT PLACEHOLDER: `inventory-sold-dialog.png`**
-**Instructions:**
-- Select a card with a price
-- Click "Mark as Sold" button
-- Dialog should appear
-- **Expected elements:**
-  - "Mark as Sold" heading
-  - Player name displayed
-  - Sale Price input
-  - Platform dropdown (Whatnot/eBay/Other)
-  - Fees input (auto-calculated)
-  - Shipping Cost input
-  - Net Profit display (green text)
-  - "Cancel" and "Mark as Sold" buttons
 
 1. **Select a sold card** - Click row or checkbox
 2. **Click "Mark as Sold"** - Dialog opens
@@ -612,28 +400,11 @@ The Export page generates CSV files for bulk uploads to Whatnot, eBay, or COMC.
 
 ### Preparing for Export
 
-**📸 SCREENSHOT PLACEHOLDER: `export-view-overview.png`**
-**Instructions:**
-- Click "Export" in left navigation
-- **Expected elements:**
-  - Export summary (X cards selected)
-  - Platform selector dropdown (Whatnot/eBay/COMC/Generic)
-  - "Select Cards to Export" button
-  - Preview section (empty or showing selected cards)
-  - Action buttons at bottom
-
 Before exporting:
 1. **Price your cards** - Only cards with listing prices can export
 2. **Upload images** (optional) - For Whatnot, you need hosted image URLs
 
 ### Selecting Export Platform
-
-**📸 SCREENSHOT PLACEHOLDER: `export-platform-selector.png`**
-**Instructions:**
-- Focus on platform selector dropdown
-- **Expected elements:**
-  - Dropdown showing "Whatnot" (or other platform)
-  - Help text explaining platform-specific title templates
 
 Choose your export platform:
 - **Whatnot** - Uses Whatnot-optimized title template
@@ -644,15 +415,6 @@ Choose your export platform:
 Each platform uses a different title template optimized for that marketplace's search algorithm.
 
 ### Selecting Cards
-
-**📸 SCREENSHOT PLACEHOLDER: `export-select-cards.png`**
-**Instructions:**
-- Click "Select Cards to Export" button
-- **Expected elements:**
-  - Card selection grid/list
-  - Checkboxes for each card
-  - Status indicators (only Ready/Priced cards shown)
-  - "Export Selected" button
 
 1. **Click "Select Cards to Export"** - Opens Inventory view
 2. **Check cards to export** - Select using checkboxes
@@ -665,25 +427,10 @@ FlipKit validates each card before export:
 
 ### Exporting CSV
 
-**📸 SCREENSHOT PLACEHOLDER: `export-csv-button.png`**
-**Instructions:**
-- Cards selected and ready for export
-- **Expected elements:**
-  - Export summary showing count
-  - "Export CSV" button (large, accent)
-  - Success/error message area below
-
 1. **Review selected cards** - Verify all are ready
 2. **Click "Export CSV"** - Save dialog appears
 3. **Choose filename** - Default: `whatnot-export-2026-02-07.csv`
 4. **Click Save** - CSV file is generated
-
-**📸 SCREENSHOT PLACEHOLDER: `export-success-message.png`**
-**Instructions:**
-- After export completes
-- **Expected elements:**
-  - Green success message: "Exported X cards to CSV"
-  - File path shown
 
 Success message: `"Exported 25 cards to CSV"`
 
@@ -716,33 +463,11 @@ Your cards are now live on the marketplace!
 
 The Reports page shows sales history and profitability.
 
-**📸 SCREENSHOT PLACEHOLDER: `reports-overview.png`**
-**Instructions:**
-- Click "Reports" in left navigation
-- Must have at least one sold card in database
-- **Expected elements:**
-  - Date range selector (From/To dates)
-  - "Generate Report" button
-  - Summary cards showing totals
-  - Monthly breakdown table
-  - Top sellers list
-
 ### Generating Sales Reports
 
 1. **Select date range** - From and To dates
 2. **Click "Generate Report"** - Calculates sales for date range
 3. **Review summary** - Total revenue, costs, fees, profit
-
-**📸 SCREENSHOT PLACEHOLDER: `reports-summary.png`**
-**Instructions:**
-- After generating a report
-- **Expected elements:**
-  - Four summary cards in a row:
-    - Total Revenue (sale prices sum)
-    - Total Cost (cost basis sum)
-    - Total Fees (fees paid sum)
-    - Net Profit (green, large number)
-  - Profit margin percentage
 
 Summary shows:
 - **Total Revenue** - Sum of all sale prices
@@ -753,14 +478,6 @@ Summary shows:
 
 ### Monthly Breakdown
 
-**📸 SCREENSHOT PLACEHOLDER: `reports-monthly.png`**
-**Instructions:**
-- Scroll to monthly breakdown table
-- **Expected elements:**
-  - Table with columns: Month, Cards Sold, Revenue, Fees, Net Profit
-  - Multiple months listed
-  - Totals row at bottom
-
 Shows sales by month:
 - Month (Jan 2026, Feb 2026, etc.)
 - Cards Sold count
@@ -770,14 +487,6 @@ Shows sales by month:
 
 ### Top Sellers
 
-**📸 SCREENSHOT PLACEHOLDER: `reports-top-sellers.png`**
-**Instructions:**
-- Scroll to "Top Sellers" section
-- **Expected elements:**
-  - List of cards sorted by profit
-  - Player name, sale price, profit for each
-  - Top 10 or 20 cards
-
 Lists your most profitable cards:
 - Player name
 - Sale price
@@ -785,14 +494,6 @@ Lists your most profitable cards:
 - Sorted highest to lowest
 
 ### Tax Report Export
-
-**📸 SCREENSHOT PLACEHOLDER: `reports-tax-export.png`**
-**Instructions:**
-- Show "Export Tax Report" button
-- **Expected elements:**
-  - "Export Tax Report CSV" button
-  - Description of what's included
-  - Date range selector
 
 1. **Set date range** - Full year (Jan 1 - Dec 31)
 2. **Click "Export Tax Report CSV"** - Generates tax-ready CSV
@@ -816,16 +517,6 @@ The Settings page controls all application preferences, API keys, and templates.
 
 ### General Settings
 
-**📸 SCREENSHOT PLACEHOLDER: `settings-general.png`**
-**Instructions:**
-- Click "Settings" in left navigation
-- Show the General/Preferences section
-- **Expected elements:**
-  - Default Model dropdown
-  - eBay Seller checkbox
-  - Default Shipping Profile dropdown
-  - Default Condition dropdown
-
 **Default AI Model** - Which OpenRouter model to use for scanning (default: nvidia/nemotron-nano-12b-v2-vl:free)
 
 **eBay Seller** - Check if you're an eBay seller (affects title templates)
@@ -841,27 +532,7 @@ We covered this in the [Initial Setup](#initial-setup) section. The Settings pag
 - ImgBB API Key
 - eBay Browse API credentials
 
-**📸 SCREENSHOT PLACEHOLDER: `settings-api-complete.png`**
-**Instructions:**
-- Scroll to show all three API sections
-- Enter dummy/test keys or blur real keys
-- Show the eBay compliance warning box
-- **Expected elements:**
-  - Three API key sections with test buttons
-  - Orange compliance warning box for eBay
-  - Status messages for each API
-
 ### Card Scanning Settings
-
-**📸 SCREENSHOT PLACEHOLDER: `settings-scanning.png`**
-**Instructions:**
-- Scroll to "Card Scanning" section
-- **Expected elements:**
-  - Enable Variation Verification checkbox
-  - Auto-Apply High Confidence Suggestions checkbox
-  - Run Confirmation Pass checkbox
-  - Enable Checklist Learning checkbox
-  - Max Concurrent Scans number input (1-8)
 
 **Enable Variation Verification** - Cross-check AI results against checklists
 
@@ -877,16 +548,6 @@ We covered this in the [Initial Setup](#initial-setup) section. The Settings pag
 
 ### Financial Settings
 
-**📸 SCREENSHOT PLACEHOLDER: `settings-financial.png`**
-**Instructions:**
-- Scroll to "Financial" section
-- **Expected elements:**
-  - Whatnot Fee % input (11.0 default)
-  - eBay Fee % input (13.25 default)
-  - Default Shipping Cost PWE (1.00 default)
-  - Default Shipping Cost BMWT (4.50 default)
-  - Price Staleness Threshold Days (30 default)
-
 **Whatnot Fee Percent** - Marketplace fee for Whatnot (default 11%)
 
 **eBay Fee Percent** - Marketplace fee for eBay (default 13.25%)
@@ -899,16 +560,6 @@ We covered this in the [Initial Setup](#initial-setup) section. The Settings pag
 
 ### Title Templates (Advanced)
 
-**📸 SCREENSHOT PLACEHOLDER: `settings-title-templates.png`**
-**Instructions:**
-- Scroll to "Title Templates" section
-- **Expected elements:**
-  - Active Export Platform dropdown
-  - Four template textboxes (Whatnot, eBay, COMC, Generic)
-  - Placeholder help text
-  - Template preview box
-  - "Reset to Default" buttons
-
 FlipKit uses platform-specific title templates optimized for each marketplace's search algorithm. Templates use placeholders like `{Year}`, `{Brand}`, `{Player}`, etc.
 
 **Default templates:**
@@ -920,15 +571,6 @@ You can customize these to match your listing style. Changes apply to future exp
 
 ### Search Query Templates (Advanced)
 
-**📸 SCREENSHOT PLACEHOLDER: `settings-search-templates.png`**
-**Instructions:**
-- Scroll to "Search Query Templates" section
-- **Expected elements:**
-  - Terapeak Search Template textbox
-  - eBay Search Template textbox
-  - Help text
-  - Preview box
-
 These templates control how pricing research links are built:
 - **Terapeak:** `{Year} {Brand} {Player} {Parallel} {Attributes} {Grade}`
 - **eBay Sold:** `{Year} {Manufacturer} {Brand} {Player} {Team} {Parallel} {Attributes} {Grade}`
@@ -936,14 +578,6 @@ These templates control how pricing research links are built:
 Note: Card Number and Serial Number are deliberately excluded to get broader comparable results.
 
 ### Saving Settings
-
-**📸 SCREENSHOT PLACEHOLDER: `settings-save-button.png`**
-**Instructions:**
-- Scroll to very bottom of Settings page
-- **Expected elements:**
-  - "Save Settings" button (large, accent)
-  - Success message area
-  - Database location info
 
 After making changes:
 1. **Click "Save Settings"** - Saves to `config.json` in your app data folder

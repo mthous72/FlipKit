@@ -91,8 +91,8 @@ Earlier phases are intentionally lowest-risk and produce permanent artifacts (ma
 | Item | Path | Why |
 |---|---|---|
 | ScreenshotTool subproject | `ScreenshotTool/` | csproj references `..\FlipKit\FlipKit.csproj` (pre-rebrand path that no longer exists) and uses old `FlipKit.Services.*` namespaces. Not in `FlipKit.sln`. Cannot build. Confirmed kill (§10 Q2). |
-| `LegacyMigrator` | `FlipKit.Core/Helpers/LegacyMigrator.cs` | One-shot CardLister→FlipKit folder migration. Confirmed kill (§10 Q1). |
-| Rebrand rename scripts | `rename-folders.ps1`, `rename-flipkit-content.ps1`, `rename-to-flipkit.ps1` | One-shot CardLister→FlipKit rebrand done Feb 2026. All target paths no longer exist. |
+| `LegacyMigrator` | `FlipKit.Core/Helpers/LegacyMigrator.cs` | One-shot legacy→FlipKit folder migration (old product name → FlipKit). Confirmed kill (§10 Q1). |
+| Rebrand rename scripts | `rename-folders.ps1`, `rename-flipkit-content.ps1`, `rename-to-flipkit.ps1` | One-shot rebrand to FlipKit done Feb 2026. All target paths no longer exist. |
 | GitHub rename instructions | `GITHUB-RENAME-INSTRUCTIONS.md` | Manual steps for the rebrand. Already executed. |
 | Rebrand completion summary | `REBRAND-COMPLETION-SUMMARY.md` | Historical artifact. Delete fully (consistent with §10 Q6). |
 | Stale Inno Setup script | `installer/flipkit-setup.iss` | v3.0.0, hardcoded version. Real installer is `installer/Windows/FlipKit.iss` (v3.3.6) per `build-installers.ps1` and `build-hub-for-installer.ps1`. |
@@ -114,7 +114,7 @@ Earlier phases are intentionally lowest-risk and produce permanent artifacts (ma
 | ~~Shelved sold-price service + `ISoldPriceService`~~ | ~~(removed 2026-05-05; see Roadmap §3)~~ | ~~Comment in `PricingViewModel.cs:19` flagged it as "SHELVED ... kept for potential future use" — mapped to roadmap #3 Automated Price Scraping.~~ Service and interface deleted; row retained for historical context. |
 | ~~`HtmlAgilityPack` package ref~~ | ~~`FlipKit.Core.csproj`, `FlipKit.Desktop.csproj`~~ | ~~Only consumer was the shelved sold-price service (above).~~ Package removed alongside the service. |
 | `ChecklistLearningService`, `MissingChecklist`, `IChecklistLearningService` | `FlipKit.Core/...` | Roadmap #1 Checklist Insider import — these are the learning-from-scans surface. |
-| `XimilarService` + all `XimilarScanMode` plumbing | Core + Web + Desktop | Active in `CompositeScannerService` — used in production scan path with the `XimilarScanMode.Standard/Magic/Disabled` switch in the UI. NOT roadmap-only, currently shipping. |
+| ~~`XimilarService` + all `XimilarScanMode` plumbing~~ | ~~Core + Web + Desktop~~ | **Ximilar removed in v3.7.0** — the provider was deleted and replaced by CardSight (first-pass) → OpenRouter (fallback) in `CompositeScannerService`. Row retained for historical context. |
 | COMC enum value | `ExportPlatform.cs` | Roadmap #5 Finish COMC Exporter. |
 | Dark theme groundwork (`App.axaml` `RequestedThemeVariant="Default"`, `Styles/AppStyles.axaml`) | Desktop | Roadmap #7. |
 
@@ -229,7 +229,7 @@ Update `CHANGELOG.md`:
 
 Update `CLAUDE.md`:
 - Bump version line from "v3.2.0" to "v3.3.6" (drift the user explicitly flagged).
-- Update the troubleshooting note about `CardListerDbContext.cs` once Phase 3 renames the file.
+- Update the troubleshooting note about the legacy pre-rebrand DbContext filename once Phase 3 renames it to `FlipKitDbContext.cs`.
 - Remove the `LegacyMigrator` line at `CLAUDE.md:140` (per AUDIT-2026-05 §5.1) — the helper is being deleted in Phase 3.
 
 Update `README.md` (per AUDIT-2026-05 §5.3):
@@ -246,7 +246,7 @@ Update `README.md` (per AUDIT-2026-05 §5.3):
 
 ### 5.1 File rename
 
-- Rename `FlipKit.Core/Data/CardListerDbContext.cs` → `FlipKit.Core/Data/FlipKitDbContext.cs`. Class name (`FlipKitDbContext`) does not change. Update the `CLAUDE.md` troubleshooting note. **Sequencing constraint:** must happen *before* anyone adds a new EF migration or new schema-update method, so a future contributor doesn't grep for the old name and find nothing.
+- Rename the legacy pre-rebrand DbContext file `FlipKit.Core/Data/<old-name>DbContext.cs` → `FlipKit.Core/Data/FlipKitDbContext.cs`. Class name (`FlipKitDbContext`) does not change. Update the `CLAUDE.md` troubleshooting note. **Sequencing constraint:** must happen *before* anyone adds a new EF migration or new schema-update method, so a future contributor doesn't grep for the old name and find nothing.
 
 ### 5.2 Delete confirmed-dead code
 
@@ -292,7 +292,7 @@ Effort: 3-4 weeks. Phase 5 does not start until coverage targets are green.
 Common scaffolding (set up in 4a, reused by 4b–4d):
 - Test infrastructure folder: `tests/Fixtures/{Cards,Http}/`
   - `Cards/*.json` — embedded sample card records, deserialized in tests via `System.Text.Json`
-  - `Http/{openrouter,ximilar,imgbb,ebay}/*.json` — recorded HTTP responses (VCR pattern)
+  - `Http/{openrouter,ximilar,imgbb,ebay}/*.json` — recorded HTTP responses (VCR pattern). (Note: the `ximilar` fixtures went away when Ximilar was removed in v3.7.0; CardSight replaced it.)
 - `Microsoft.NET.Test.Sdk` + `xunit` + `xunit.runner.visualstudio` + `NSubstitute` + `coverlet.collector` package refs
 - Per-test SQLite helper: `using var conn = new SqliteConnection("Data Source=:memory:"); conn.Open(); var ctx = new FlipKitDbContext(opts.UseSqlite(conn).Options); ctx.Database.EnsureCreated();`
 
@@ -333,7 +333,7 @@ Branch: `refactor/phase-4b-core-data-tests`. First use of real-SQLite-in-memory 
 
 **Scanner services** (target 70%+) — recorded HTTP responses:
 - `OpenRouterScannerService` — JSON parse, markdown stripping, error handling
-- `XimilarService` — mode switching (Standard/Magic/Disabled)
+- `XimilarService` — mode switching (Standard/Magic/Disabled). *(Historical: Ximilar was removed in v3.7.0; these tests went with it. CompositeScannerService now composes CardSight + OpenRouter.)*
 - `CompositeScannerService` — composition logic with NSubstitute-mocked scanners
 - `OpenRouterModelCatalog` — live fetch + fallback path (note: Phase 5.2 will add the fallback; tests added here will already exercise it once 5.2 lands)
 
@@ -470,7 +470,7 @@ Note: `SettingsViewModel` was *not* on the user's flagged list but is the worst 
 - `BulkScanViewModel` → extract `BulkScanQueueService` (queue management + cancellation) and `RateLimitTracker`. **Skipped at Phase 5 close-out** — see §7.4b log below.
 - `InventoryViewModel` → extract `InventoryFilterService` (filter/sort logic) and `InventoryColumnConfig`.
 - `ExportViewModel` → extract `ExportPreviewBuilder` (already partially in `ExportableCard`).
-- `SettingsViewModel` → extract `SettingsValidationService`, `XimilarConnectionTester`, `OpenRouterConnectionTester`, `ImgBBConnectionTester` — most of the bulk is connection-test helpers that don't belong in a ViewModel.
+- `SettingsViewModel` → extract `SettingsValidationService`, `OpenRouterConnectionTester`, `ImgBBConnectionTester` (and originally a Ximilar tester — Ximilar removed in v3.7.0, now a CardSight tester instead) — most of the bulk is connection-test helpers that don't belong in a ViewModel.
 
 Do these one at a time, on separate branches, each followed by the full manual regression checklist + the new helper unit tests.
 
@@ -493,7 +493,7 @@ Do these one at a time, on separate branches, each followed by the full manual r
 
 **What was deliberately not done:**
 - Server-management coordinator extraction (would have required reworking the start/stop commands + the §7.10 race-fix code that already lives in the VM).
-- Connection tester extractions (Ximilar/OpenRouter/ImgBB).
+- Connection tester extractions (OpenRouter/ImgBB, and the then-present Ximilar tester — Ximilar removed in v3.7.0).
 - Settings validation service.
 
 These are still valid work items but are deferred to Phase 6 re-cost.
@@ -519,7 +519,7 @@ These are still valid work items but are deferred to Phase 6 re-cost.
 
 ### 7.5 Stale `Docs/07-CLAUDE-CODE-GUIDE.md` — **DEFERRED to Phase 6**
 
-This doc still references `MockScannerService` and `BoolToVisibilityConverter` as live files, and uses the old folder layout. Refresh it to match the cleaned tree.
+This doc referenced `MockScannerService` and `BoolToVisibilityConverter` as live files and used the old folder layout. **Resolved:** the guide was rewritten in Phase 6 (now `Docs/development/claude-code-guide.md`) and those dead references are gone.
 
 **Status:** Deferred from Phase 5 to Phase 6 in the post-Phase 4 regroup. Phase 6 is already doc-heavy (roadmap revamp, ADRs); folding this in keeps Phase 5 focused on code work.
 

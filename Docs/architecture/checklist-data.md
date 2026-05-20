@@ -186,7 +186,7 @@ dotnet run -- export --output checklists.db
 dotnet run -- export --output checklist_seed.json --format json
 ```
 
-**Important:** This tool is NOT part of the main Card Lister app. It's a developer tool run before each release. The main app only reads the bundled `checklists.db`.
+**Important:** This tool is NOT part of the main FlipKit app. It's a developer tool run before each release. The main app only reads the bundled `checklists.db`.
 
 ---
 

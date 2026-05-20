@@ -32,18 +32,18 @@ This document outlines planned future enhancements for FlipKit. As of May 2026, 
 
 **Status:** ⏳ Next up — plan approved 2026-05-08, awaiting pre-execution rescan before commit 1
 **Effort:** Medium (1-2 weeks across 4 commits)
-**Plan Doc:** [32-DOCUMENTATION-CLEANUP-PLAN.md](32-DOCUMENTATION-CLEANUP-PLAN.md)
+**Plan Doc:** [documentation-cleanup-plan.md](documentation-cleanup-plan.md)
 
 Restructure `Docs/` into topic folders (`architecture/`, `features/`, `guides/`, `development/`, `planning/`, `archive/`), refresh stale content, add missing documentation, and consolidate overlap.
 
 **Scope:**
 - **Move/restructure** ~30 files from flat `Docs/00-…/31-…` numbering into topic folders.
-- **Heavy rewrite:** `HUB-ARCHITECTURE.md` + `10-GUI-ARCHITECTURE.md` merged into `architecture/overview.md`; `USER-GUIDE.md` (1250 lines) refreshed to v3.6.1 with screenshot placeholders resolved; `02-DATABASE-SCHEMA.md` extended with SurpriseSet/RevenueAllocationMethod/CardStatus/VerificationStatus; `14-VARIATION-VERIFICATION.md` extended with verified-fields LLM hint mode (commit `223cf95`); `07-CLAUDE-CODE-GUIDE.md` rewritten to drop the `MockScannerService` dead reference and dedupe overlap with root `CLAUDE.md`.
+- **Heavy rewrite:** `HUB-ARCHITECTURE.md` + `10-GUI-ARCHITECTURE.md` merged into `architecture/overview.md`; `USER-GUIDE.md` (1250 lines) refreshed to v3.7.0 with screenshot placeholders resolved; `02-DATABASE-SCHEMA.md` extended with SurpriseSet/RevenueAllocationMethod/CardStatus/VerificationStatus/AiModelUsed; `14-VARIATION-VERIFICATION.md` extended with verified-fields LLM hint mode (commit `223cf95`); `03-OPENROUTER-INTEGRATION.md` extended with CardSight; `07-CLAUDE-CODE-GUIDE.md` rewritten to drop the `MockScannerService` dead reference and dedupe overlap with root `CLAUDE.md`.
 - **Archive:** `01-PROJECT-PLAN.md`, `11-UX-DESIGN.md`, `26-CSV-EXPORT-IMPLEMENTATION-PLAN.md`, `References/card_listings_export_spec.md`.
-- **Delete:** `00-PROGRAM-OVERVIEW.md` (658 lines of pre-rebrand "Card Lister" content; current state covered by `README.md` + `guides/user-guide.md`).
-- **Cross-cutting:** root `README.md` (v3.6.0 → v3.6.1 download bump, drop dead Docker mention), root `CLAUDE.md` (fix v3.2.0 build example, trim § Architecture overlap), `.github/copilot-instructions.md` (replace Azure boilerplate or delete), and a new `Docs/README.md` topic index.
+- **Delete:** `00-PROGRAM-OVERVIEW.md` (658 lines of pre-rebrand content under the old product name; current state covered by `README.md` + `guides/user-guide.md`).
+- **Cross-cutting:** root `README.md` (v3.6.0 → v3.7.0 download bump, drop dead Docker mention), root `CLAUDE.md` (fix build example + v3.3.6 current-state, trim § Architecture overlap), `.github/copilot-instructions.md` (replace Azure boilerplate or delete), and a new `Docs/README.md` topic index.
 
-**Why now:** Brand drift (Card Lister → FlipKit, Feb 2026), version drift (v3.1.0/v3.2.0/v3.6.0 strings scattered across active docs vs current v3.6.1), missing schema docs, and dead references have accumulated to the point where new contributors and Claude Code in future sessions waste time figuring out which docs are current. Cleanup is cheaper now than after another round of feature work compounds the drift.
+**Why now:** Brand drift (the Feb 2026 rebrand to FlipKit), version drift (older `v3.x` strings scattered across active docs vs current v3.7.0), missing schema docs, and dead references have accumulated to the point where new contributors and Claude Code in future sessions waste time figuring out which docs are current. Cleanup is cheaper now than after another round of feature work compounds the drift.
 
 **Pre-execution gate:** plan starts with a mandatory rescan (refresh git state, diff each in-flight branch against the cleanup branch, re-run inventory, produce a delta) so the file-by-file action list is reconfirmed against current `master` before commit 1. Move-commit timing must be coordinated with any open doc-touching branches to avoid massive rename diffs across merges.
 
